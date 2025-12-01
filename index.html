@@ -348,6 +348,19 @@
     .download-section.show { display: block; }
     .download-link { color: #22c55e; font-weight: 600; }
 
+    .transcript-input {
+      width: 100%;
+      min-height: 90px;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid #374151;
+      background: #0f172a;
+      color: #e5e7eb;
+      font-size: 14px;
+      resize: vertical;
+      margin-bottom: 10px;
+    }
+
     /* Share Button */
     .share-btn {
       width: 100%;
@@ -507,6 +520,28 @@
       transform: translateY(-2px) scale(1.02);
     }
 
+    /* AI Feedback */
+    .ai-panel {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(250, 204, 21, 0.2);
+      border-radius: 12px;
+      padding: 14px;
+      margin: 16px 0;
+    }
+
+    .ai-panel h3 { font-size: 16px; margin-bottom: 10px; color: #facc15; }
+
+    .ai-panel .helper { font-size: 12px; color: #9ca3af; margin-bottom: 8px; }
+
+    .ai-panel .field-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .ai-panel input { flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid #374151; background: #0f172a; color: #e5e7eb; }
+    .ai-panel button { padding: 10px 12px; border-radius: 8px; border: none; background: linear-gradient(135deg, #22c55e, #16a34a); color: #0f172a; font-weight: 700; cursor: pointer; }
+
+    .ai-status { font-size: 13px; color: #9ca3af; margin-bottom: 8px; }
+    .ai-status.error { color: #f87171; }
+
+    .ai-feedback-box { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 10px; padding: 12px; color: #e2e8f0; font-size: 14px; white-space: pre-wrap; }
+
     @media (max-width: 640px) {
       .container { padding: 20px; }
       h1 { font-size: 24px; }
@@ -610,6 +645,15 @@
     <div class="controls">
       <button id="newWordBtn" class="primary">New Word</button>
       <button id="resetBtn" class="secondary">Reset</button>
+    </div>
+
+    <!-- AI Feedback -->
+    <div class="ai-panel">
+      <h3>🤖 AI Feedback</h3>
+      <div class="helper">We only send your transcript (never your audio) to the secure backend for AI coaching.</div>
+      <textarea id="manualTranscript" class="transcript-input" placeholder="Transcript will appear here automatically or you can paste your own."></textarea>
+      <div class="ai-status" id="aiStatus">Waiting for your next recording.</div>
+      <div class="ai-feedback-box" id="aiFeedback">Your feedback will appear here.</div>
     </div>
 
     <!-- Structure Guide -->
@@ -796,6 +840,10 @@
     let mediaRecorder = null;
     let recordedChunks = [];
     let stream = null;
+    let isRequestingFeedback = false;
+    let recognition = null;
+    let recognitionActive = false;
+    let liveTranscript = '';
 
     // Elements
     const wordEl = document.getElementById('word');
@@ -807,6 +855,9 @@
     const nudgeBanner = document.getElementById('nudgeBanner');
     const achievement = document.getElementById('achievement');
     const ratingModal = document.getElementById('ratingModal');
+    const aiFeedback = document.getElementById('aiFeedback');
+    const aiStatus = document.getElementById('aiStatus');
+    const manualTranscript = document.getElementById('manualTranscript');
 
     // Initialize
     function init() {
@@ -814,6 +865,9 @@
       updateStats();
       updateWeekCalendar();
       updateNudge();
+      initSpeechRecognition();
+      setAiStatus('Waiting for your next recording.');
+      manualTranscript.value = '';
     }
 
     function checkNewDay() {
@@ -916,6 +970,7 @@
     function reset() {
       clearInterval(timerInterval);
       if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      stopTranscriptionCapture();
       isRunning = false;
       elapsedSeconds = 0;
       updateTimerDisplay();
@@ -933,6 +988,96 @@
       document.getElementById('stopAudioBtn').style.display = 'none';
       document.getElementById('startVideoBtn').style.display = 'block';
       document.getElementById('stopVideoBtn').style.display = 'none';
+    }
+
+    function setAiStatus(text, isError = false) {
+      aiStatus.textContent = text;
+      aiStatus.classList.toggle('error', isError);
+    }
+
+    function initSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setAiStatus('Live transcription unavailable on this browser. Paste your transcript to get feedback.', true);
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript + ' ';
+        }
+        liveTranscript = transcript.trim();
+        manualTranscript.value = liveTranscript;
+      };
+
+      recognition.onerror = () => {
+        setAiStatus('Live transcription unavailable. Paste your transcript to get feedback.', true);
+      };
+
+      recognition.onend = () => {
+        recognitionActive = false;
+        if (liveTranscript) setAiStatus('Transcript captured. Generating feedback soon.');
+      };
+    }
+
+    function startTranscriptionCapture() {
+      if (!recognition || recognitionActive) return;
+      liveTranscript = '';
+      try {
+        recognition.start();
+        recognitionActive = true;
+        setAiStatus('Listening and transcribing...');
+      } catch (err) {
+        console.error('Could not start recognition:', err);
+      }
+    }
+
+    function stopTranscriptionCapture() {
+      if (recognition && recognitionActive) {
+        recognition.stop();
+      }
+    }
+
+    function getTranscriptForFeedback() {
+      const text = (manualTranscript.value || liveTranscript || '').trim();
+      if (!text) return '';
+      const header = currentWord ? `Word prompt: ${currentWord.word}\n` : '';
+      const duration = elapsedSeconds ? `Duration: ${formatTime(elapsedSeconds)}\n` : '';
+      return `${header}${duration}Transcript: ${text}`.trim();
+    }
+
+    async function requestFeedback(transcript) {
+      const trimmed = (transcript || '').trim();
+      if (!trimmed) { setAiStatus('Add a transcript to get AI feedback.', true); return; }
+      if (isRequestingFeedback) return;
+      isRequestingFeedback = true;
+      setAiStatus('Requesting AI feedback...');
+
+      try {
+        const feedbackRes = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: trimmed })
+        });
+
+        if (!feedbackRes.ok) throw new Error('Feedback generation failed');
+        const feedbackData = await feedbackRes.json();
+        const feedbackText = feedbackData.feedback?.trim() || 'No feedback generated.';
+
+        aiFeedback.textContent = feedbackText;
+        setAiStatus('Feedback ready!');
+      } catch (err) {
+        console.error(err);
+        setAiStatus('Unable to fetch feedback right now.', true);
+      } finally {
+        isRequestingFeedback = false;
+      }
     }
 
     function updateTimerDisplay() {
@@ -1015,14 +1160,19 @@
       mediaRecorder = new MediaRecorder(stream);
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
       mediaRecorder.onstop = () => {
+        stopTranscriptionCapture();
+        const transcript = getTranscriptForFeedback();
         const blob = new Blob(recordedChunks, { type: 'audio/webm' });
         document.getElementById('audioDownloadLink').href = URL.createObjectURL(blob);
         document.getElementById('audioDownload').classList.add('show');
+        requestFeedback(transcript);
       };
       mediaRecorder.start();
       document.getElementById('audioVisualizer').classList.add('recording');
       document.getElementById('startAudioBtn').style.display = 'none';
       document.getElementById('stopAudioBtn').style.display = 'block';
+      startTranscriptionCapture();
+      setAiStatus('Recording... capturing transcript.');
       isRunning = true;
       wordBox.classList.add('active');
       timerInterval = setInterval(() => {
@@ -1034,6 +1184,7 @@
 
     function stopAudioRecording() {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      stopTranscriptionCapture();
       clearInterval(timerInterval);
       isRunning = false;
       wordBox.classList.remove('active');
@@ -1049,14 +1200,19 @@
       mediaRecorder = new MediaRecorder(stream);
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
       mediaRecorder.onstop = () => {
+        stopTranscriptionCapture();
+        const transcript = getTranscriptForFeedback();
         const blob = new Blob(recordedChunks, { type: 'video/webm' });
         document.getElementById('videoDownloadLink').href = URL.createObjectURL(blob);
         document.getElementById('videoDownload').classList.add('show');
+        requestFeedback(transcript);
       };
       mediaRecorder.start();
       document.getElementById('videoTimer').style.display = 'block';
       document.getElementById('startVideoBtn').style.display = 'none';
       document.getElementById('stopVideoBtn').style.display = 'block';
+      startTranscriptionCapture();
+      setAiStatus('Recording... capturing transcript.');
       isRunning = true;
       wordBox.classList.add('active');
       timerInterval = setInterval(() => {
@@ -1068,6 +1224,7 @@
 
     function stopVideoRecording() {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      stopTranscriptionCapture();
       clearInterval(timerInterval);
       isRunning = false;
       wordBox.classList.remove('active');
