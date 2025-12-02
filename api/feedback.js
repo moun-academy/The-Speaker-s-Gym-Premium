@@ -15,11 +15,20 @@ export default async function handler(req, res) {
 
   try {
     const completion = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'chatgpt-5-mini',
       messages: [
         {
           role: 'system',
-          content: 'You are a concise speaking coach. Provide a quick transcript summary, three bullet strengths, and three bullet suggestions to improve.',
+          content: [
+            'You are an encouraging speaking coach.',
+            'Analyze the provided speech transcript and respond with the following labeled sections:',
+            'Summary: one sentence.',
+            'What you did well: exactly three bullet points.',
+            'What to improve: exactly three bullet points.',
+            'Next speech focus: one actionable bullet.',
+            'Every bullet must explicitly reference structure, vocal variety, pauses, and filler words where relevant.',
+            'Keep the tone concise, specific, and constructive.'
+          ].join(' '),
         },
         { role: 'user', content: text.trim() }
       ],
