@@ -1395,8 +1395,8 @@
       });
     });
 
-    // ===== NOTIFICATION SYSTEM =====
-    let notificationSettings = JSON.parse(localStorage.getItem('sgNotifications')) || {
+    // ===== NOTIFICATION SYSTEM WITH INDEXEDDB =====
+    let notificationSettings = {
       enabled: false,
       time: '09:00',
       lastNotificationDate: null
@@ -1405,11 +1405,81 @@
     const notificationToggle = document.getElementById('notificationToggle');
     const notificationTime = document.getElementById('notificationTime');
     const notificationStatus = document.getElementById('notificationStatus');
-    let notificationCheckInterval = null;
     let swRegistration = null;
 
-    function saveNotificationSettings() {
+    // IndexedDB for sharing data with service worker
+    function openNotificationDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open('SpeakersGymDB', 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains('settings')) {
+            db.createObjectStore('settings', { keyPath: 'key' });
+          }
+          if (!db.objectStoreNames.contains('stats')) {
+            db.createObjectStore('stats', { keyPath: 'key' });
+          }
+        };
+      });
+    }
+
+    async function saveSettingsToDB(settings) {
+      try {
+        const db = await openNotificationDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('settings', 'readwrite');
+          const store = tx.objectStore('settings');
+          const request = store.put({ key: 'notifications', value: settings });
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve();
+        });
+      } catch (e) {
+        console.error('Error saving to IndexedDB:', e);
+      }
+    }
+
+    async function loadSettingsFromDB() {
+      try {
+        const db = await openNotificationDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('settings', 'readonly');
+          const store = tx.objectStore('settings');
+          const request = store.get('notifications');
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve(request.result?.value);
+        });
+      } catch (e) {
+        console.error('Error loading from IndexedDB:', e);
+        return null;
+      }
+    }
+
+    async function saveStatsToDB() {
+      try {
+        const db = await openNotificationDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('stats', 'readwrite');
+          const store = tx.objectStore('stats');
+          const request = store.put({
+            key: 'daily',
+            value: {
+              todaySpeeches: stats.todaySpeeches,
+              lastDate: stats.lastDate
+            }
+          });
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => resolve();
+        });
+      } catch (e) {
+        console.error('Error saving stats to IndexedDB:', e);
+      }
+    }
+
+    async function saveNotificationSettings() {
       localStorage.setItem('sgNotifications', JSON.stringify(notificationSettings));
+      await saveSettingsToDB(notificationSettings);
     }
 
     function updateNotificationStatus() {
@@ -1421,7 +1491,7 @@
       }
 
       if (Notification.permission === 'denied') {
-        notificationStatus.textContent = 'Notifications blocked. Please enable in browser settings.';
+        notificationStatus.textContent = 'Notifications blocked. Enable in browser settings.';
         notificationStatus.className = 'notification-status denied';
         notificationToggle.checked = false;
         notificationSettings.enabled = false;
@@ -1430,13 +1500,10 @@
       }
 
       if (notificationSettings.enabled && Notification.permission === 'granted') {
-        notificationStatus.textContent = `Daily reminder set for ${formatTime12h(notificationSettings.time)}`;
+        notificationStatus.textContent = `Reminder set for ${formatTime12h(notificationSettings.time)}`;
         notificationStatus.className = 'notification-status active';
-      } else if (notificationSettings.enabled) {
-        notificationStatus.textContent = 'Click the toggle to enable notifications';
-        notificationStatus.className = 'notification-status';
       } else {
-        notificationStatus.textContent = 'Enable notifications to get daily practice reminders';
+        notificationStatus.textContent = 'Enable to get daily practice reminders';
         notificationStatus.className = 'notification-status';
       }
     }
@@ -1450,87 +1517,53 @@
 
     async function requestNotificationPermission() {
       if (!('Notification' in window)) return false;
-
       if (Notification.permission === 'granted') return true;
-
       if (Notification.permission !== 'denied') {
         const permission = await Notification.requestPermission();
         return permission === 'granted';
+      }
+      return false;
+    }
+
+    // Register for Periodic Background Sync (for scheduled notifications)
+    async function registerPeriodicSync() {
+      if (!swRegistration) return false;
+
+      try {
+        // Check if periodic sync is supported
+        if ('periodicSync' in swRegistration) {
+          const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+          if (status.state === 'granted') {
+            await swRegistration.periodicSync.register('daily-reminder-sync', {
+              minInterval: 60 * 60 * 1000 // Check every hour minimum
+            });
+            console.log('Periodic sync registered');
+            return true;
+          }
+        }
+      } catch (e) {
+        console.log('Periodic sync not available:', e);
+      }
+
+      // Fallback: use regular background sync
+      try {
+        if ('sync' in swRegistration) {
+          await swRegistration.sync.register('daily-reminder');
+          console.log('Background sync registered');
+          return true;
+        }
+      } catch (e) {
+        console.log('Background sync not available:', e);
       }
 
       return false;
     }
 
-    async function showNotification(title, body) {
-      if (Notification.permission !== 'granted') return;
-
-      // Use service worker for notification if available
-      if (swRegistration) {
-        swRegistration.showNotification(title, {
-          body: body,
-          icon: '/icon-192.png',
-          badge: '/icon-192.png',
-          tag: 'daily-reminder',
-          vibrate: [200, 100, 200],
-          requireInteraction: false
-        });
-      } else {
-        // Fallback to regular notification
-        new Notification(title, {
-          body: body,
-          icon: '/icon-192.png',
-          tag: 'daily-reminder'
-        });
+    // Ask service worker to check and show notification
+    function triggerNotificationCheck() {
+      if (swRegistration && swRegistration.active) {
+        swRegistration.active.postMessage({ type: 'CHECK_REMINDER' });
       }
-    }
-
-    function checkAndTriggerNotification() {
-      if (!notificationSettings.enabled) return;
-      if (Notification.permission !== 'granted') return;
-
-      const now = new Date();
-      const today = now.toDateString();
-      const [targetHours, targetMinutes] = notificationSettings.time.split(':').map(Number);
-      const currentHours = now.getHours();
-      const currentMinutes = now.getMinutes();
-
-      // Check if we already sent a notification today
-      if (notificationSettings.lastNotificationDate === today) return;
-
-      // Check if user already practiced today
-      if (stats.todaySpeeches > 0) return;
-
-      // Check if it's past the notification time
-      const isPastNotificationTime =
-        currentHours > targetHours ||
-        (currentHours === targetHours && currentMinutes >= targetMinutes);
-
-      if (isPastNotificationTime) {
-        // Send the notification
-        const messages = [
-          "Time to flex your speaking muscles!",
-          "Your voice is waiting to be heard. Let's practice!",
-          "A quick speech a day keeps stage fright away!",
-          "Ready to build your speaking confidence?",
-          "Your daily speaking workout awaits!"
-        ];
-        const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-
-        showNotification("The Speaker's Gym", randomMessage);
-
-        // Mark notification as sent for today
-        notificationSettings.lastNotificationDate = today;
-        saveNotificationSettings();
-      }
-    }
-
-    function startNotificationChecker() {
-      // Check immediately
-      checkAndTriggerNotification();
-
-      // Check every minute
-      if (notificationCheckInterval) clearInterval(notificationCheckInterval);
-      notificationCheckInterval = setInterval(checkAndTriggerNotification, 60000);
     }
 
     async function handleNotificationToggle() {
@@ -1539,71 +1572,102 @@
         if (granted) {
           notificationSettings.enabled = true;
           notificationSettings.time = notificationTime.value;
-          saveNotificationSettings();
-          startNotificationChecker();
+          await saveNotificationSettings();
+          await saveStatsToDB();
+          await registerPeriodicSync();
+          triggerNotificationCheck();
           showAchievement("Daily reminders enabled!");
         } else {
           notificationToggle.checked = false;
           notificationSettings.enabled = false;
-          saveNotificationSettings();
+          await saveNotificationSettings();
         }
       } else {
         notificationSettings.enabled = false;
-        saveNotificationSettings();
-        if (notificationCheckInterval) {
-          clearInterval(notificationCheckInterval);
-          notificationCheckInterval = null;
+        await saveNotificationSettings();
+        // Unregister periodic sync
+        if (swRegistration && 'periodicSync' in swRegistration) {
+          try {
+            await swRegistration.periodicSync.unregister('daily-reminder-sync');
+          } catch (e) { /* ignore */ }
         }
       }
       updateNotificationStatus();
     }
 
-    function handleTimeChange() {
+    async function handleTimeChange() {
       notificationSettings.time = notificationTime.value;
-      // Reset today's notification so it can trigger at new time if needed
       const today = new Date().toDateString();
       if (notificationSettings.lastNotificationDate === today) {
         const [targetHours, targetMinutes] = notificationSettings.time.split(':').map(Number);
         const now = new Date();
-        // Only reset if new time is in the future
         if (now.getHours() < targetHours ||
             (now.getHours() === targetHours && now.getMinutes() < targetMinutes)) {
           notificationSettings.lastNotificationDate = null;
         }
       }
-      saveNotificationSettings();
+      await saveNotificationSettings();
       updateNotificationStatus();
     }
 
-    function initNotifications() {
-      // Restore saved settings
+    async function initNotifications() {
+      // Load from IndexedDB first, then localStorage as fallback
+      const dbSettings = await loadSettingsFromDB();
+      if (dbSettings) {
+        notificationSettings = dbSettings;
+      } else {
+        const lsSettings = localStorage.getItem('sgNotifications');
+        if (lsSettings) {
+          notificationSettings = JSON.parse(lsSettings);
+          await saveSettingsToDB(notificationSettings);
+        }
+      }
+
       notificationToggle.checked = notificationSettings.enabled;
       notificationTime.value = notificationSettings.time;
 
-      // Add event listeners
       notificationToggle.addEventListener('change', handleNotificationToggle);
       notificationTime.addEventListener('change', handleTimeChange);
 
-      // Update status display
       updateNotificationStatus();
 
-      // Start checker if enabled
+      // Sync stats to IndexedDB so service worker can access
+      await saveStatsToDB();
+
+      // Register periodic sync if notifications enabled
       if (notificationSettings.enabled && Notification.permission === 'granted') {
-        startNotificationChecker();
+        await registerPeriodicSync();
+        // Check immediately when app opens
+        setTimeout(triggerNotificationCheck, 2000);
       }
     }
 
+    // Update IndexedDB when stats change (hook into completeSpeech)
+    const originalCompleteSpeech = completeSpeech;
+    completeSpeech = function() {
+      originalCompleteSpeech();
+      saveStatsToDB();
+    };
+
     init();
-    initNotifications();
 
     // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js')
-        .then(reg => {
+        .then(async (reg) => {
           console.log('Service Worker registered');
           swRegistration = reg;
+          // Wait for service worker to be ready
+          await navigator.serviceWorker.ready;
+          // Initialize notifications after SW is ready
+          await initNotifications();
         })
-        .catch(err => console.log('Service Worker registration failed:', err));
+        .catch(err => {
+          console.log('Service Worker registration failed:', err);
+          initNotifications();
+        });
+    } else {
+      initNotifications();
     }
   </script>
 </body>
