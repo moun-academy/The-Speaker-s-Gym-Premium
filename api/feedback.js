@@ -15,7 +15,7 @@ export default async function handler(req, res) {
 
   try {
     const completion = await client.chat.completions.create({
-      model: 'chatgpt-5-mini',
+      model: 'gpt-4o',
       messages: [
         {
           role: 'system',

@@ -643,6 +643,16 @@
       color: #ef4444;
     }
 
+    /* App Version Footer */
+    .app-version {
+      text-align: center;
+      padding: 16px 0 0 0;
+      margin-top: 20px;
+      border-top: 1px solid rgba(55, 65, 81, 0.5);
+      font-size: 11px;
+      color: #6b7280;
+    }
+
     @media (max-width: 640px) {
       .container { padding: 20px; }
       h1 { font-size: 24px; }
@@ -791,6 +801,11 @@
       <div class="notification-status" id="notificationStatus">
         Enable notifications to get daily practice reminders
       </div>
+    </div>
+
+    <!-- App Version -->
+    <div class="app-version" id="appVersion">
+      Last updated: Loading...
     </div>
   </div>
 
@@ -944,6 +959,9 @@
       return structures[formula];
     }
 
+    // Version
+    const APP_VERSION = '2025-01-10T19:46:00Z'; // Auto-updated on deployment
+
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
       todaySpeeches: 0, totalSpeeches: 0, streak: 0, ratings: [], weekHistory: {}, lastDate: null
@@ -986,6 +1004,25 @@
       initSpeechRecognition();
       setAiStatus('Waiting for your next recording.');
       manualTranscript.value = '';
+      updateVersionDisplay();
+    }
+
+    function updateVersionDisplay() {
+      const versionEl = document.getElementById('appVersion');
+      try {
+        const date = new Date(APP_VERSION);
+        const formatted = date.toLocaleString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+        versionEl.textContent = `Last updated: ${formatted}`;
+      } catch (e) {
+        versionEl.textContent = `Version: ${APP_VERSION}`;
+      }
     }
 
     function checkNewDay() {
