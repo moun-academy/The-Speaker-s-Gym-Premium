@@ -1026,7 +1026,7 @@
 
     <!-- App Version -->
     <div class="app-version" id="appVersion">
-      Last updated: Loading...
+      Version 2.5.1 • Updated January 11, 2026
     </div>
   </div>
 
@@ -2078,31 +2078,36 @@
     let firebaseReady = false;
 
     async function initializeFirebase() {
+      console.log('[Firebase] Starting initialization...');
       try {
+        console.log('[Firebase] Calling firebase.initializeApp...');
         app = firebase.initializeApp(firebaseConfig);
+        console.log('[Firebase] Getting auth reference...');
         auth = firebase.auth();
+        console.log('[Firebase] Getting firestore reference...');
         db = firebase.firestore();
 
         // Enable offline persistence - MUST await this before any operations
+        console.log('[Firebase] Enabling persistence...');
         try {
           await db.enablePersistence({ synchronizeTabs: true });
-          console.log('Firestore persistence enabled');
+          console.log('[Firebase] Persistence enabled successfully');
         } catch (err) {
           if (err.code === 'failed-precondition') {
-            console.log('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+            console.log('[Firebase] Multiple tabs open, persistence can only be enabled in one tab at a time.');
           } else if (err.code === 'unimplemented') {
-            console.log('The current browser does not support offline persistence');
+            console.log('[Firebase] The current browser does not support offline persistence');
           } else {
-            console.error('Persistence error:', err);
+            console.error('[Firebase] Persistence error:', err);
           }
         }
 
         syncEnabled = true;
         firebaseReady = true;
-        console.log('Firebase initialized successfully');
+        console.log('[Firebase] Initialization complete! syncEnabled:', syncEnabled, 'firebaseReady:', firebaseReady);
       } catch (error) {
-        console.error('Firebase initialization error:', error);
-        console.log('App will work offline only. Add Firebase config to enable sync.');
+        console.error('[Firebase] Initialization error:', error);
+        console.log('[Firebase] App will work offline only.');
         syncEnabled = false;
         firebaseReady = false;
       }
@@ -2265,39 +2270,59 @@
     }
 
     async function migrateLocalDataToFirebase() {
-      if (!syncEnabled || !currentUser) return;
+      console.log('[Migration] Starting migration process...');
+      console.log('[Migration] syncEnabled:', syncEnabled, 'currentUser:', currentUser?.email);
+
+      if (!syncEnabled || !currentUser) {
+        console.log('[Migration] Skipping - not enabled or no user');
+        return;
+      }
 
       try {
+        console.log('[Migration] Setting status to "Migrating data..."');
         updateSyncStatus('syncing', 'Migrating data...');
 
         // Check if migration already done
+        console.log('[Migration] Checking if already migrated...');
         const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        console.log('[Migration] User doc exists:', userDoc.exists);
+
         if (userDoc.exists && userDoc.data().migrated) {
-          console.log('Data already migrated');
+          console.log('[Migration] Data already migrated, skipping');
           updateSyncStatus('synced', 'Up to date');
           return;
         }
 
+        console.log('[Migration] Not migrated yet, starting migration...');
+
         // Upload current stats (skip status updates to prevent nested conflicts)
+        console.log('[Migration] Syncing stats to Firebase...');
         await syncStatsToFirebase(stats, true);
+        console.log('[Migration] Stats synced successfully');
 
         // Upload settings (skip status updates to prevent nested conflicts)
+        console.log('[Migration] Syncing settings to Firebase...');
         await syncSettingsToFirebase({
           aiEnabled: aiEnabled,
           notifications: notificationSettings
         }, true);
+        console.log('[Migration] Settings synced successfully');
 
         // Mark as migrated
+        console.log('[Migration] Marking migration as complete...');
         await db.collection('users').doc(currentUser.uid).set({
           migrated: true,
           migratedAt: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
+        console.log('[Migration] Migration marked complete');
 
-        console.log('Local data migrated to Firebase');
+        console.log('[Migration] Migration completed successfully!');
         showAchievement('📤 Data synced to cloud!');
         updateSyncStatus('synced', 'Up to date');
       } catch (error) {
-        console.error('Migration error:', error);
+        console.error('[Migration] Migration error:', error);
+        console.error('[Migration] Error details:', error.message);
+        console.error('[Migration] Error stack:', error.stack);
         updateSyncStatus('offline', 'Migration failed');
       }
     }
