@@ -115,6 +115,17 @@ function analyzeMetrics(words, duration) {
 }
 
 export default async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle OPTIONS preflight request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
@@ -257,6 +268,27 @@ Speech Metrics:
   } catch (error) {
     console.error('Feedback generation failed:', error);
     console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+
+    // Check if it's an OpenAI API error
+    if (error.status) {
+      console.error('OpenAI API Status:', error.status);
+      console.error('OpenAI API Error:', error.error);
+      return res.status(error.status).json({
+        error: 'OpenAI API error',
+        details: error.message,
+        status: error.status
+      });
+    }
+
+    // Check if API key is missing
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({
+        error: 'OpenAI API key not configured',
+        details: 'OPENAI_API_KEY environment variable is missing'
+      });
+    }
+
     return res.status(500).json({
       error: 'Failed to generate feedback',
       details: error.message
