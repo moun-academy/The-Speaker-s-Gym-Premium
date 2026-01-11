@@ -1026,7 +1026,7 @@
 
     <!-- App Version -->
     <div class="app-version" id="appVersion">
-      Version 2.5.1 • Updated January 11, 2026
+      Version 2.6.0 • January 11, 2026 • Storage Quota Fix
     </div>
   </div>
 
@@ -2087,26 +2087,43 @@
         console.log('[Firebase] Getting firestore reference...');
         db = firebase.firestore();
 
-        // Enable offline persistence - MUST await this before any operations
-        console.log('[Firebase] Enabling persistence...');
+        // Enable offline persistence - handle quota errors gracefully
+        console.log('[Firebase] Attempting to enable persistence...');
         try {
           await db.enablePersistence({ synchronizeTabs: true });
           console.log('[Firebase] Persistence enabled successfully');
         } catch (err) {
           if (err.code === 'failed-precondition') {
-            console.log('[Firebase] Multiple tabs open, persistence can only be enabled in one tab at a time.');
+            console.log('[Firebase] Multiple tabs open, persistence can only be enabled in one tab.');
           } else if (err.code === 'unimplemented') {
-            console.log('[Firebase] The current browser does not support offline persistence');
+            console.log('[Firebase] Browser does not support offline persistence.');
+          } else if (err.name === 'QuotaExceededError' || (err.message && err.message.includes('quota'))) {
+            console.warn('[Firebase] ⚠️ Storage quota exceeded - persistence disabled.');
+            console.log('[Firebase] App will work online-only. Clear browser data to enable offline mode.');
+            // Try to clear old Firestore cache data
+            try {
+              const keys = Object.keys(localStorage);
+              for (const key of keys) {
+                if (key.startsWith('firestore_')) {
+                  localStorage.removeItem(key);
+                  console.log('[Firebase] Cleared cache key:', key);
+                }
+              }
+            } catch (e) {
+              console.log('[Firebase] Could not clear cache:', e);
+            }
           } else {
             console.error('[Firebase] Persistence error:', err);
           }
+          // Continue without persistence - app will still work online
+          console.log('[Firebase] Continuing without offline persistence (online-only mode)');
         }
 
         syncEnabled = true;
         firebaseReady = true;
-        console.log('[Firebase] Initialization complete! syncEnabled:', syncEnabled, 'firebaseReady:', firebaseReady);
+        console.log('[Firebase] ✅ Initialization complete! syncEnabled:', syncEnabled, 'firebaseReady:', firebaseReady);
       } catch (error) {
-        console.error('[Firebase] Initialization error:', error);
+        console.error('[Firebase] ❌ Initialization error:', error);
         console.log('[Firebase] App will work offline only.');
         syncEnabled = false;
         firebaseReady = false;
