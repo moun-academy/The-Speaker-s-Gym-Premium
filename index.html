@@ -2129,7 +2129,11 @@
     }
 
     async function syncSpeechToFirebase(speechData) {
-      if (!syncEnabled || !currentUser || isSyncing) return;
+      if (!syncEnabled || !currentUser) return;
+      if (isSyncing) {
+        console.log('[Firebase] Already syncing, queuing speech sync');
+        return;
+      }
 
       try {
         isSyncing = true;
@@ -2142,37 +2146,50 @@
             syncedAt: firebase.firestore.FieldValue.serverTimestamp()
           });
 
+        console.log('[Firebase] Speech synced successfully');
         isSyncing = false;
         updateSyncStatus('synced', 'Synced');
       } catch (error) {
-        console.error('Error syncing speech:', error);
+        console.error('[Firebase] Error syncing speech:', error);
         isSyncing = false;
         updateSyncStatus('offline', 'Sync failed');
       }
     }
 
-    async function syncStatsToFirebase(statsData) {
-      if (!syncEnabled || !currentUser || isSyncing) return;
+    async function syncStatsToFirebase(statsData, skipStatusUpdate = false) {
+      if (!syncEnabled || !currentUser) return;
+      if (isSyncing && !skipStatusUpdate) {
+        console.log('[Firebase] Already syncing, queuing stats sync');
+        return;
+      }
 
       try {
-        isSyncing = true;
-        updateSyncStatus('syncing', 'Syncing...');
+        if (!skipStatusUpdate) {
+          isSyncing = true;
+          updateSyncStatus('syncing', 'Syncing...');
+        }
 
         await db.collection('users').doc(currentUser.uid).set({
           stats: statsData,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
-        isSyncing = false;
-        updateSyncStatus('synced', 'Synced');
+        console.log('[Firebase] Stats synced successfully');
+
+        if (!skipStatusUpdate) {
+          isSyncing = false;
+          updateSyncStatus('synced', 'Synced');
+        }
       } catch (error) {
-        console.error('Error syncing stats:', error);
-        isSyncing = false;
-        updateSyncStatus('offline', 'Sync failed');
+        console.error('[Firebase] Error syncing stats:', error);
+        if (!skipStatusUpdate) {
+          isSyncing = false;
+          updateSyncStatus('offline', 'Sync failed');
+        }
       }
     }
 
-    async function syncSettingsToFirebase(settings) {
+    async function syncSettingsToFirebase(settings, skipStatusUpdate = false) {
       if (!syncEnabled || !currentUser) return;
 
       try {
@@ -2180,8 +2197,10 @@
           settings: settings,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
+
+        console.log('[Firebase] Settings synced successfully');
       } catch (error) {
-        console.error('Error syncing settings:', error);
+        console.error('[Firebase] Error syncing settings:', error);
       }
     }
 
@@ -2238,17 +2257,18 @@
         const userDoc = await db.collection('users').doc(currentUser.uid).get();
         if (userDoc.exists && userDoc.data().migrated) {
           console.log('Data already migrated');
+          updateSyncStatus('synced', 'Up to date');
           return;
         }
 
-        // Upload current stats
-        await syncStatsToFirebase(stats);
+        // Upload current stats (skip status updates to prevent nested conflicts)
+        await syncStatsToFirebase(stats, true);
 
-        // Upload settings
+        // Upload settings (skip status updates to prevent nested conflicts)
         await syncSettingsToFirebase({
           aiEnabled: aiEnabled,
           notifications: notificationSettings
-        });
+        }, true);
 
         // Mark as migrated
         await db.collection('users').doc(currentUser.uid).set({
