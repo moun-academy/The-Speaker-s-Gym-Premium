@@ -553,6 +553,38 @@
       height: 0;
     }
 
+    .ai-toggle .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #374151;
+      transition: 0.3s;
+      border-radius: 26px;
+    }
+
+    .ai-toggle .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    .ai-toggle input:checked + .toggle-slider {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+    }
+
+    .ai-toggle input:checked + .toggle-slider:before {
+      transform: translateX(24px);
+    }
+
     .ai-panel .helper {
       font-size: 12px;
       color: #9ca3af;
@@ -1149,7 +1181,7 @@
     }
 
     // Version
-    const APP_VERSION = '2025-01-10T22:30:00Z'; // Auto-updated on deployment
+    const APP_VERSION = '2025-01-10T23:00:00Z'; // Auto-updated on deployment
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -1435,43 +1467,70 @@
     }
 
     async function requestFeedbackWithAudio(audioBlob, duration) {
+      console.log('[DEBUG] requestFeedbackWithAudio called');
+      console.log('[DEBUG] Audio blob:', audioBlob ? `${audioBlob.size} bytes, type: ${audioBlob.type}` : 'null');
+      console.log('[DEBUG] Duration:', duration);
+      console.log('[DEBUG] AI enabled:', aiEnabled);
+
       if (!audioBlob) {
+        console.error('[ERROR] No audio blob provided');
         setAiStatus('No audio recording available.', true);
         return;
       }
 
       // If AI is disabled, just show transcript without analysis
       if (!aiEnabled) {
+        console.log('[INFO] AI feedback disabled, skipping analysis');
         setAiStatus('Recording saved. AI feedback is disabled (transcript only).');
         aiFeedback.textContent = 'AI feedback is disabled. Toggle it ON above to get detailed speech analysis.\n\nYour recording has been saved and you can download it below.';
         return;
       }
 
-      if (isRequestingFeedback) return;
+      if (isRequestingFeedback) {
+        console.log('[WARN] Already requesting feedback, skipping');
+        return;
+      }
+
       isRequestingFeedback = true;
       setAiStatus('Analyzing your speech with AI (transcription + vocal analysis)...');
+      console.log('[INFO] Starting AI analysis...');
 
       try {
         // Create form data with audio file
         const formData = new FormData();
         formData.append('audio', audioBlob, 'speech.webm');
         formData.append('duration', duration.toString());
+        console.log('[INFO] Sending request to /api/feedback');
 
         const feedbackRes = await fetch('/api/feedback', {
           method: 'POST',
           body: formData
         });
 
-        if (!feedbackRes.ok) throw new Error('Feedback generation failed');
+        console.log('[INFO] Response status:', feedbackRes.status);
+
+        if (!feedbackRes.ok) {
+          const errorText = await feedbackRes.text();
+          console.error('[ERROR] API response not OK:', errorText);
+          throw new Error(`Feedback generation failed: ${feedbackRes.status}`);
+        }
+
         const feedbackData = await feedbackRes.json();
+        console.log('[INFO] Feedback data received:', feedbackData);
 
         const feedbackText = feedbackData.feedback?.trim() || 'No feedback generated.';
         const transcript = feedbackData.transcript || '';
         const metrics = feedbackData.metrics || {};
 
+        console.log('[INFO] Transcript length:', transcript.length);
+        console.log('[INFO] Metrics:', metrics);
+
         // Update UI with transcript
         if (transcript) {
           manualTranscript.value = transcript;
+          console.log('[INFO] Transcript updated in UI');
+        } else {
+          console.warn('[WARN] No transcript in response');
         }
 
         // Display feedback with metrics
@@ -1486,9 +1545,11 @@
 
         aiFeedback.textContent = displayText;
         setAiStatus('AI analysis complete!');
+        console.log('[SUCCESS] AI analysis complete');
       } catch (err) {
-        console.error(err);
-        setAiStatus('Unable to analyze audio. Check console for details.', true);
+        console.error('[ERROR] Failed to get feedback:', err);
+        console.error('[ERROR] Error details:', err.message, err.stack);
+        setAiStatus(`Unable to analyze audio: ${err.message}. Check console for details.`, true);
       } finally {
         isRequestingFeedback = false;
       }
@@ -2039,6 +2100,9 @@
 
     // ===== FIREBASE SYNC FUNCTIONS =====
 
+    let syncStatusTimeout = null;
+    let isSyncing = false;
+
     function updateSyncStatus(status, text) {
       const syncStatus = document.getElementById('syncStatus');
       const syncStatusText = document.getElementById('syncStatusText');
@@ -2047,12 +2111,28 @@
         syncStatus.className = `sync-status ${status}`;
         syncStatusText.textContent = text;
       }
+
+      // Clear any pending status updates
+      if (syncStatusTimeout) {
+        clearTimeout(syncStatusTimeout);
+        syncStatusTimeout = null;
+      }
+
+      // Auto-change to "Up to date" after syncing completes
+      if (status === 'synced' && text === 'Synced') {
+        syncStatusTimeout = setTimeout(() => {
+          if (syncStatus && syncStatusText) {
+            syncStatusText.textContent = 'Up to date';
+          }
+        }, 2000);
+      }
     }
 
     async function syncSpeechToFirebase(speechData) {
-      if (!syncEnabled || !currentUser) return;
+      if (!syncEnabled || !currentUser || isSyncing) return;
 
       try {
+        isSyncing = true;
         updateSyncStatus('syncing', 'Syncing...');
 
         await db.collection('users').doc(currentUser.uid)
@@ -2062,18 +2142,20 @@
             syncedAt: firebase.firestore.FieldValue.serverTimestamp()
           });
 
+        isSyncing = false;
         updateSyncStatus('synced', 'Synced');
-        setTimeout(() => updateSyncStatus('synced', 'Up to date'), 2000);
       } catch (error) {
         console.error('Error syncing speech:', error);
+        isSyncing = false;
         updateSyncStatus('offline', 'Sync failed');
       }
     }
 
     async function syncStatsToFirebase(statsData) {
-      if (!syncEnabled || !currentUser) return;
+      if (!syncEnabled || !currentUser || isSyncing) return;
 
       try {
+        isSyncing = true;
         updateSyncStatus('syncing', 'Syncing...');
 
         await db.collection('users').doc(currentUser.uid).set({
@@ -2081,10 +2163,11 @@
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
+        isSyncing = false;
         updateSyncStatus('synced', 'Synced');
-        setTimeout(() => updateSyncStatus('synced', 'Up to date'), 2000);
       } catch (error) {
         console.error('Error syncing stats:', error);
+        isSyncing = false;
         updateSyncStatus('offline', 'Sync failed');
       }
     }
