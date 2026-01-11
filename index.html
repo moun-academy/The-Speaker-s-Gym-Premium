@@ -527,9 +527,46 @@
       margin: 16px 0;
     }
 
-    .ai-panel h3 { font-size: 16px; margin-bottom: 10px; color: #facc15; }
+    .ai-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
 
-    .ai-panel .helper { font-size: 12px; color: #9ca3af; margin-bottom: 8px; }
+    .ai-panel h3 {
+      font-size: 16px;
+      margin: 0;
+      color: #facc15;
+    }
+
+    .ai-toggle {
+      position: relative;
+      width: 50px;
+      height: 26px;
+      display: inline-block;
+    }
+
+    .ai-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .ai-panel .helper {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .cost-note {
+      font-size: 11px;
+      color: #6b7280;
+      font-style: italic;
+    }
 
     .ai-panel .field-row { display: flex; gap: 8px; margin-bottom: 10px; }
     .ai-panel input { flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid #374151; background: #0f172a; color: #e5e7eb; }
@@ -759,11 +796,20 @@
 
     <!-- AI Feedback -->
     <div class="ai-panel">
-      <h3>🤖 AI Feedback</h3>
-      <div class="helper">We only send your transcript (never your audio) to the secure backend for AI coaching.</div>
-      <textarea id="manualTranscript" class="transcript-input" placeholder="Transcript will appear here automatically or you can paste your own."></textarea>
+      <div class="ai-header">
+        <h3>🤖 AI Speech Analysis</h3>
+        <label class="ai-toggle">
+          <input type="checkbox" id="aiToggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="helper">
+        <span id="aiToggleHelper">Whisper transcription + GPT-4o analysis with speech metrics (pace, pauses, filler words).</span>
+        <span class="cost-note">~$0.02-0.04 per 2-min speech</span>
+      </div>
+      <textarea id="manualTranscript" class="transcript-input" placeholder="Transcript will appear here automatically after recording. You can also paste text for manual analysis."></textarea>
       <div class="ai-status" id="aiStatus">Waiting for your next recording.</div>
-      <div class="ai-feedback-box" id="aiFeedback">Your feedback will appear here.</div>
+      <div class="ai-feedback-box" id="aiFeedback">Your detailed feedback with speech metrics will appear here.</div>
     </div>
 
     <!-- Structure Guide -->
@@ -960,7 +1006,7 @@
     }
 
     // Version
-    const APP_VERSION = '2025-01-10T19:46:00Z'; // Auto-updated on deployment
+    const APP_VERSION = '2025-01-10T21:00:00Z'; // Auto-updated on deployment
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -980,6 +1026,10 @@
     let recognition = null;
     let recognitionActive = false;
     let liveTranscript = '';
+    let currentAudioBlob = null;
+
+    // AI Feedback Settings
+    let aiEnabled = localStorage.getItem('aiEnabled') !== 'false'; // Default ON
 
     // Elements
     const wordEl = document.getElementById('word');
@@ -1002,9 +1052,43 @@
       updateWeekCalendar();
       updateNudge();
       initSpeechRecognition();
+      initAIToggle();
       setAiStatus('Waiting for your next recording.');
       manualTranscript.value = '';
       updateVersionDisplay();
+    }
+
+    function initAIToggle() {
+      const toggle = document.getElementById('aiToggle');
+      const helper = document.getElementById('aiToggleHelper');
+
+      // Set initial state
+      toggle.checked = aiEnabled;
+      updateAIToggleUI();
+
+      // Handle toggle changes
+      toggle.addEventListener('change', () => {
+        aiEnabled = toggle.checked;
+        localStorage.setItem('aiEnabled', aiEnabled);
+        updateAIToggleUI();
+
+        if (aiEnabled) {
+          showAchievement('✨ AI feedback enabled');
+        } else {
+          showAchievement('💾 AI feedback disabled - transcription only');
+        }
+      });
+    }
+
+    function updateAIToggleUI() {
+      const helper = document.getElementById('aiToggleHelper');
+      if (aiEnabled) {
+        helper.textContent = 'Whisper transcription + GPT-4o analysis with speech metrics (pace, pauses, filler words).';
+        setAiStatus('AI feedback enabled. Ready for your next recording.');
+      } else {
+        helper.textContent = 'Transcription only (no AI analysis). Save costs by disabling feedback.';
+        setAiStatus('AI feedback disabled. Will show transcript only.');
+      }
     }
 
     function updateVersionDisplay() {
@@ -1125,9 +1209,9 @@
     function reset() {
       clearInterval(timerInterval);
       if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-      stopTranscriptionCapture();
       isRunning = false;
       elapsedSeconds = 0;
+      currentAudioBlob = null;
       updateTimerDisplay();
       wordBox.classList.remove('active');
       timerCircle.classList.remove('warning', 'danger');
@@ -1135,7 +1219,7 @@
       document.getElementById('videoDownload').classList.remove('show');
       document.getElementById('audioVisualizer').classList.remove('recording');
       document.getElementById('videoTimer').style.display = 'none';
-      
+
       // Reset all buttons
       document.getElementById('startTimerBtn').style.display = 'block';
       document.getElementById('stopTimerBtn').style.display = 'none';
@@ -1207,7 +1291,68 @@
       return `${header}${duration}Transcript: ${text}`.trim();
     }
 
+    async function requestFeedbackWithAudio(audioBlob, duration) {
+      if (!audioBlob) {
+        setAiStatus('No audio recording available.', true);
+        return;
+      }
+
+      // If AI is disabled, just show transcript without analysis
+      if (!aiEnabled) {
+        setAiStatus('Recording saved. AI feedback is disabled (transcript only).');
+        aiFeedback.textContent = 'AI feedback is disabled. Toggle it ON above to get detailed speech analysis.\n\nYour recording has been saved and you can download it below.';
+        return;
+      }
+
+      if (isRequestingFeedback) return;
+      isRequestingFeedback = true;
+      setAiStatus('Analyzing your speech with AI (transcription + vocal analysis)...');
+
+      try {
+        // Create form data with audio file
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'speech.webm');
+        formData.append('duration', duration.toString());
+
+        const feedbackRes = await fetch('/api/feedback', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!feedbackRes.ok) throw new Error('Feedback generation failed');
+        const feedbackData = await feedbackRes.json();
+
+        const feedbackText = feedbackData.feedback?.trim() || 'No feedback generated.';
+        const transcript = feedbackData.transcript || '';
+        const metrics = feedbackData.metrics || {};
+
+        // Update UI with transcript
+        if (transcript) {
+          manualTranscript.value = transcript;
+        }
+
+        // Display feedback with metrics
+        let displayText = feedbackText;
+        if (metrics.wordsPerMinute) {
+          displayText = `📊 Speech Metrics:\n` +
+            `• Pace: ${metrics.wordsPerMinute} WPM (${metrics.pacingVariation})\n` +
+            `• Pauses: ${metrics.pauseCount} pauses (avg ${metrics.averagePauseDuration}s)\n` +
+            `• Filler words: ${metrics.fillerWordCount}\n\n` +
+            displayText;
+        }
+
+        aiFeedback.textContent = displayText;
+        setAiStatus('AI analysis complete!');
+      } catch (err) {
+        console.error(err);
+        setAiStatus('Unable to analyze audio. Check console for details.', true);
+      } finally {
+        isRequestingFeedback = false;
+      }
+    }
+
     async function requestFeedback(transcript) {
+      // Fallback for manual text input
       const trimmed = (transcript || '').trim();
       if (!trimmed) { setAiStatus('Add a transcript to get AI feedback.', true); return; }
       if (isRequestingFeedback) return;
@@ -1315,19 +1460,19 @@
       mediaRecorder = new MediaRecorder(stream);
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
       mediaRecorder.onstop = () => {
-        stopTranscriptionCapture();
-        const transcript = getTranscriptForFeedback();
         const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+        currentAudioBlob = blob;
         document.getElementById('audioDownloadLink').href = URL.createObjectURL(blob);
         document.getElementById('audioDownload').classList.add('show');
-        requestFeedback(transcript);
+
+        // Send audio to API for Whisper transcription + analysis
+        requestFeedbackWithAudio(blob, elapsedSeconds);
       };
       mediaRecorder.start();
       document.getElementById('audioVisualizer').classList.add('recording');
       document.getElementById('startAudioBtn').style.display = 'none';
       document.getElementById('stopAudioBtn').style.display = 'block';
-      startTranscriptionCapture();
-      setAiStatus('Recording... capturing transcript.');
+      setAiStatus('Recording audio... Will analyze with AI when done.');
       isRunning = true;
       wordBox.classList.add('active');
       timerInterval = setInterval(() => {
@@ -1339,7 +1484,6 @@
 
     function stopAudioRecording() {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-      stopTranscriptionCapture();
       clearInterval(timerInterval);
       isRunning = false;
       wordBox.classList.remove('active');
@@ -1355,19 +1499,20 @@
       mediaRecorder = new MediaRecorder(stream);
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
       mediaRecorder.onstop = () => {
-        stopTranscriptionCapture();
-        const transcript = getTranscriptForFeedback();
         const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        currentAudioBlob = blob;
         document.getElementById('videoDownloadLink').href = URL.createObjectURL(blob);
         document.getElementById('videoDownload').classList.add('show');
-        requestFeedback(transcript);
+
+        // Send audio track to API for Whisper transcription + analysis
+        // Note: We send the whole video blob, backend will extract audio
+        requestFeedbackWithAudio(blob, elapsedSeconds);
       };
       mediaRecorder.start();
       document.getElementById('videoTimer').style.display = 'block';
       document.getElementById('startVideoBtn').style.display = 'none';
       document.getElementById('stopVideoBtn').style.display = 'block';
-      startTranscriptionCapture();
-      setAiStatus('Recording... capturing transcript.');
+      setAiStatus('Recording video... Will analyze audio with AI when done.');
       isRunning = true;
       wordBox.classList.add('active');
       timerInterval = setInterval(() => {
@@ -1379,7 +1524,6 @@
 
     function stopVideoRecording() {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-      stopTranscriptionCapture();
       clearInterval(timerInterval);
       isRunning = false;
       wordBox.classList.remove('active');
