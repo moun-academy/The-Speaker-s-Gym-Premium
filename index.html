@@ -2075,28 +2075,45 @@
     // Initialize Firebase
     let app, auth, db, currentUser = null;
     let syncEnabled = false;
+    let firebaseReady = false;
 
-    try {
-      app = firebase.initializeApp(firebaseConfig);
-      auth = firebase.auth();
-      db = firebase.firestore();
+    async function initializeFirebase() {
+      try {
+        app = firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.firestore();
 
-      // Enable offline persistence
-      db.enablePersistence({ synchronizeTabs: true })
-        .catch((err) => {
-          if (err.code == 'failed-precondition') {
+        // Enable offline persistence - MUST await this before any operations
+        try {
+          await db.enablePersistence({ synchronizeTabs: true });
+          console.log('Firestore persistence enabled');
+        } catch (err) {
+          if (err.code === 'failed-precondition') {
             console.log('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-          } else if (err.code == 'unimplemented') {
+          } else if (err.code === 'unimplemented') {
             console.log('The current browser does not support offline persistence');
+          } else {
+            console.error('Persistence error:', err);
           }
-        });
+        }
 
-      syncEnabled = true;
-      console.log('Firebase initialized successfully');
-    } catch (error) {
-      console.error('Firebase initialization error:', error);
-      console.log('App will work offline only. Add Firebase config to enable sync.');
+        syncEnabled = true;
+        firebaseReady = true;
+        console.log('Firebase initialized successfully');
+      } catch (error) {
+        console.error('Firebase initialization error:', error);
+        console.log('App will work offline only. Add Firebase config to enable sync.');
+        syncEnabled = false;
+        firebaseReady = false;
+      }
     }
+
+    // Initialize Firebase and set up auth listeners
+    initializeFirebase().then(() => {
+      if (syncEnabled && firebaseReady) {
+        setupAuthListeners();
+      }
+    });
 
     // ===== FIREBASE SYNC FUNCTIONS =====
 
@@ -2287,7 +2304,7 @@
 
     // ===== AUTH STATE MANAGEMENT =====
 
-    if (syncEnabled) {
+    function setupAuthListeners() {
       auth.onAuthStateChanged(async (user) => {
         const authSignedOut = document.getElementById('authSignedOut');
         const authSignedIn = document.getElementById('authSignedIn');
