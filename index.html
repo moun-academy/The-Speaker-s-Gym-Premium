@@ -527,9 +527,46 @@
       margin: 16px 0;
     }
 
-    .ai-panel h3 { font-size: 16px; margin-bottom: 10px; color: #facc15; }
+    .ai-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
 
-    .ai-panel .helper { font-size: 12px; color: #9ca3af; margin-bottom: 8px; }
+    .ai-panel h3 {
+      font-size: 16px;
+      margin: 0;
+      color: #facc15;
+    }
+
+    .ai-toggle {
+      position: relative;
+      width: 50px;
+      height: 26px;
+      display: inline-block;
+    }
+
+    .ai-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .ai-panel .helper {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .cost-note {
+      font-size: 11px;
+      color: #6b7280;
+      font-style: italic;
+    }
 
     .ai-panel .field-row { display: flex; gap: 8px; margin-bottom: 10px; }
     .ai-panel input { flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid #374151; background: #0f172a; color: #e5e7eb; }
@@ -759,8 +796,17 @@
 
     <!-- AI Feedback -->
     <div class="ai-panel">
-      <h3>🤖 AI Speech Analysis</h3>
-      <div class="helper">Your audio is analyzed using OpenAI Whisper (transcription) + GPT-4o (coaching) to measure pace, pauses, filler words, and give you actionable feedback.</div>
+      <div class="ai-header">
+        <h3>🤖 AI Speech Analysis</h3>
+        <label class="ai-toggle">
+          <input type="checkbox" id="aiToggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="helper">
+        <span id="aiToggleHelper">Whisper transcription + GPT-4o analysis with speech metrics (pace, pauses, filler words).</span>
+        <span class="cost-note">~$0.02-0.04 per 2-min speech</span>
+      </div>
       <textarea id="manualTranscript" class="transcript-input" placeholder="Transcript will appear here automatically after recording. You can also paste text for manual analysis."></textarea>
       <div class="ai-status" id="aiStatus">Waiting for your next recording.</div>
       <div class="ai-feedback-box" id="aiFeedback">Your detailed feedback with speech metrics will appear here.</div>
@@ -960,7 +1006,7 @@
     }
 
     // Version
-    const APP_VERSION = '2025-01-10T20:15:00Z'; // Auto-updated on deployment
+    const APP_VERSION = '2025-01-10T21:00:00Z'; // Auto-updated on deployment
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -981,6 +1027,9 @@
     let recognitionActive = false;
     let liveTranscript = '';
     let currentAudioBlob = null;
+
+    // AI Feedback Settings
+    let aiEnabled = localStorage.getItem('aiEnabled') !== 'false'; // Default ON
 
     // Elements
     const wordEl = document.getElementById('word');
@@ -1003,9 +1052,43 @@
       updateWeekCalendar();
       updateNudge();
       initSpeechRecognition();
+      initAIToggle();
       setAiStatus('Waiting for your next recording.');
       manualTranscript.value = '';
       updateVersionDisplay();
+    }
+
+    function initAIToggle() {
+      const toggle = document.getElementById('aiToggle');
+      const helper = document.getElementById('aiToggleHelper');
+
+      // Set initial state
+      toggle.checked = aiEnabled;
+      updateAIToggleUI();
+
+      // Handle toggle changes
+      toggle.addEventListener('change', () => {
+        aiEnabled = toggle.checked;
+        localStorage.setItem('aiEnabled', aiEnabled);
+        updateAIToggleUI();
+
+        if (aiEnabled) {
+          showAchievement('✨ AI feedback enabled');
+        } else {
+          showAchievement('💾 AI feedback disabled - transcription only');
+        }
+      });
+    }
+
+    function updateAIToggleUI() {
+      const helper = document.getElementById('aiToggleHelper');
+      if (aiEnabled) {
+        helper.textContent = 'Whisper transcription + GPT-4o analysis with speech metrics (pace, pauses, filler words).';
+        setAiStatus('AI feedback enabled. Ready for your next recording.');
+      } else {
+        helper.textContent = 'Transcription only (no AI analysis). Save costs by disabling feedback.';
+        setAiStatus('AI feedback disabled. Will show transcript only.');
+      }
     }
 
     function updateVersionDisplay() {
@@ -1211,6 +1294,13 @@
     async function requestFeedbackWithAudio(audioBlob, duration) {
       if (!audioBlob) {
         setAiStatus('No audio recording available.', true);
+        return;
+      }
+
+      // If AI is disabled, just show transcript without analysis
+      if (!aiEnabled) {
+        setAiStatus('Recording saved. AI feedback is disabled (transcript only).');
+        aiFeedback.textContent = 'AI feedback is disabled. Toggle it ON above to get detailed speech analysis.\n\nYour recording has been saved and you can download it below.';
         return;
       }
 
