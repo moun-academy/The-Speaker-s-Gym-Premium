@@ -868,6 +868,39 @@
       .word { font-size: 28px; }
       .controls { grid-template-columns: 1fr; }
       .stats-bar { grid-template-columns: repeat(2, 1fr); }
+
+      /* Mobile: Position profile button with proper spacing to avoid logo overlap */
+      .header {
+        padding-bottom: 8px;
+      }
+
+      .profile-btn {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+        z-index: 100;
+      }
+
+      .profile-btn.syncing::after {
+        top: -1px;
+        right: -1px;
+        width: 8px;
+        height: 8px;
+      }
+
+      /* Mobile: Adjust dropdown to fit screen */
+      .profile-dropdown {
+        position: fixed;
+        top: 48px;
+        right: 8px;
+        left: 8px;
+        min-width: auto;
+        max-width: 340px;
+        margin: 0 auto;
+      }
     }
   </style>
 </head>
@@ -1221,7 +1254,7 @@
     }
 
     // Version
-    const APP_VERSION = 'v2.7.0'; // Subtle Auth UI - January 11, 2026
+    const APP_VERSION = 'v2.7.1'; // Mobile Fixes - January 11, 2026
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -1308,7 +1341,7 @@
 
     function updateVersionDisplay() {
       const versionEl = document.getElementById('appVersion');
-      versionEl.textContent = `Version ${APP_VERSION} • January 11, 2026 • Subtle Auth UI`;
+      versionEl.textContent = `Version ${APP_VERSION} • January 11, 2026 • Mobile Fixes`;
     }
 
     function checkNewDay() {
@@ -2168,8 +2201,34 @@
 
     let syncStatusTimeout = null;
     let isSyncing = false;
+    let lastSyncStatus = null; // Track last status to prevent rapid changes
+    let syncDebounceTimeout = null; // Debounce timer for status changes
 
     function updateSyncStatus(status, text) {
+      // Debounce rapid status changes - wait for stable state
+      if (syncDebounceTimeout) {
+        clearTimeout(syncDebounceTimeout);
+      }
+
+      // If trying to change to the same status, ignore
+      if (lastSyncStatus === status && status !== 'syncing') {
+        return;
+      }
+
+      // For 'syncing' status, apply immediately but with debouncing for the end
+      if (status === 'syncing') {
+        applyStatusUpdate(status, text);
+        lastSyncStatus = status;
+      } else {
+        // For other statuses, debounce to prevent rapid flickering
+        syncDebounceTimeout = setTimeout(() => {
+          applyStatusUpdate(status, text);
+          lastSyncStatus = status;
+        }, 1500); // Wait 1.5 seconds before applying non-syncing states
+      }
+    }
+
+    function applyStatusUpdate(status, text) {
       // Update profile dropdown sync status (silent - only visible when dropdown is open)
       const profileSyncStatus = document.getElementById('profileSyncStatus');
       const profileSyncStatusText = document.getElementById('profileSyncStatusText');
