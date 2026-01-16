@@ -1254,7 +1254,7 @@
     }
 
     // Version
-    const APP_VERSION = 'v2.7.2'; // Stats Update Fix - January 11, 2026
+    const APP_VERSION = 'v3.0.0'; // Data Loss Fix - Firestore Source of Truth - January 11, 2026
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -1341,7 +1341,7 @@
 
     function updateVersionDisplay() {
       const versionEl = document.getElementById('appVersion');
-      versionEl.textContent = `Version ${APP_VERSION} • January 11, 2026 • Stats Update Fix`;
+      versionEl.textContent = `Version ${APP_VERSION} • January 11, 2026 • Data Loss Fix`;
     }
 
     function checkNewDay() {
@@ -2287,66 +2287,115 @@
 
     async function syncSpeechToFirebase(speechData) {
       if (!syncEnabled || !currentUser) return;
-      if (isSyncing) {
-        console.log('[Firebase] Already syncing, queuing speech sync');
-        return;
-      }
 
       try {
-        isSyncing = true;
+        console.log('[Firebase] Syncing speech to Firestore...');
         updateSyncStatus('syncing', 'Syncing...');
 
         await db.collection('users').doc(currentUser.uid)
           .collection('speeches').add({
             ...speechData,
             userId: currentUser.uid,
-            syncedAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
 
         console.log('[Firebase] Speech synced successfully');
-        isSyncing = false;
         updateSyncStatus('synced', 'Synced');
       } catch (error) {
         console.error('[Firebase] Error syncing speech:', error);
-        isSyncing = false;
         updateSyncStatus('offline', 'Sync failed');
       }
     }
 
-    async function syncStatsToFirebase(statsData, skipStatusUpdate = false) {
+    // Calculate stats from Firestore speeches collection (single source of truth)
+    async function calculateStatsFromFirestore() {
       if (!syncEnabled || !currentUser) return;
-      if (isSyncing && !skipStatusUpdate) {
-        console.log('[Firebase] Already syncing, queuing stats sync');
-        return;
-      }
 
       try {
-        if (!skipStatusUpdate) {
-          isSyncing = true;
-          updateSyncStatus('syncing', 'Syncing...');
+        console.log('[Stats] Calculating stats from Firestore speeches...');
+
+        // Get all speeches for this user
+        const speechesSnapshot = await db.collection('users').doc(currentUser.uid)
+          .collection('speeches')
+          .orderBy('createdAt', 'desc')
+          .get();
+
+        // Calculate stats from actual speech documents
+        const speeches = [];
+        const ratings = [];
+        const weekHistory = {};
+
+        speechesSnapshot.forEach(doc => {
+          const data = doc.data();
+          speeches.push(data);
+
+          if (data.rating) {
+            ratings.push(data.rating);
+          }
+
+          // Mark dates in week history
+          if (data.createdAt) {
+            const date = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+            weekHistory[date.toDateString()] = true;
+          }
+        });
+
+        // Count today's speeches
+        const today = new Date().toDateString();
+        const todaySpeeches = speeches.filter(s => {
+          if (!s.createdAt) return false;
+          const date = s.createdAt.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
+          return date.toDateString() === today;
+        }).length;
+
+        // Calculate streak
+        let streak = 0;
+        const checkDate = new Date();
+        while (true) {
+          const dateStr = checkDate.toDateString();
+          if (weekHistory[dateStr]) {
+            streak++;
+            checkDate.setDate(checkDate.getDate() - 1);
+          } else if (dateStr === today && todaySpeeches === 0) {
+            // Today doesn't break streak if no speeches yet
+            checkDate.setDate(checkDate.getDate() - 1);
+          } else {
+            break;
+          }
         }
 
-        await db.collection('users').doc(currentUser.uid).set({
-          stats: statsData,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+        // Update stats object
+        stats.todaySpeeches = todaySpeeches;
+        stats.totalSpeeches = speeches.length;
+        stats.streak = streak;
+        stats.ratings = ratings;
+        stats.weekHistory = weekHistory;
+        stats.lastDate = today;
 
-        console.log('[Firebase] Stats synced successfully');
+        // Save to localStorage as cache
+        saveStats();
 
-        if (!skipStatusUpdate) {
-          isSyncing = false;
-          updateSyncStatus('synced', 'Synced');
-        }
+        // Update UI
+        updateStats();
+        updateWeekCalendar();
+        updateNudge();
+
+        console.log('[Stats] Stats calculated:', {
+          total: stats.totalSpeeches,
+          today: stats.todaySpeeches,
+          streak: stats.streak
+        });
+
       } catch (error) {
-        console.error('[Firebase] Error syncing stats:', error);
-        if (!skipStatusUpdate) {
-          isSyncing = false;
-          updateSyncStatus('offline', 'Sync failed');
-        }
+        console.error('[Stats] Error calculating stats:', error);
       }
     }
 
-    async function syncSettingsToFirebase(settings, skipStatusUpdate = false) {
+    // REMOVED: syncStatsToFirebase() - Stats are now derived from speeches collection
+    // REMOVED: syncSettingsToFirebase() - Settings will be handled separately if needed
+    // REMOVED: loadDataFromFirebase() - Replaced with calculateStatsFromFirestore()
+
+    async function syncSettingsToFirebase(settings) {
       if (!syncEnabled || !currentUser) return;
 
       try {
@@ -2361,27 +2410,18 @@
       }
     }
 
-    async function loadDataFromFirebase() {
+    async function loadSettingsFromFirebase() {
       if (!syncEnabled || !currentUser) return;
 
       try {
-        updateSyncStatus('syncing', 'Loading...');
+        console.log('[Settings] Loading settings from Firestore...');
 
-        // Load user stats and settings
         const userDoc = await db.collection('users').doc(currentUser.uid).get();
 
         if (userDoc.exists) {
           const data = userDoc.data();
 
-          // Merge with local data (prefer remote if different)
-          if (data.stats) {
-            stats = { ...stats, ...data.stats };
-            saveStats();
-            updateStats();
-            updateWeekCalendar();
-            updateNudge();
-          }
-
+          // Load settings ONLY (not stats - those are calculated from speeches)
           if (data.settings) {
             if (data.settings.aiEnabled !== undefined) {
               aiEnabled = data.settings.aiEnabled;
@@ -2397,10 +2437,9 @@
           }
         }
 
-        updateSyncStatus('synced', 'Up to date');
+        console.log('[Settings] Settings loaded successfully');
       } catch (error) {
-        console.error('Error loading from Firebase:', error);
-        updateSyncStatus('offline', 'Load failed');
+        console.error('[Settings] Error loading settings:', error);
       }
     }
 
@@ -2430,17 +2469,12 @@
 
         console.log('[Migration] Not migrated yet, starting migration...');
 
-        // Upload current stats (skip status updates to prevent nested conflicts)
-        console.log('[Migration] Syncing stats to Firebase...');
-        await syncStatsToFirebase(stats, true);
-        console.log('[Migration] Stats synced successfully');
-
-        // Upload settings (skip status updates to prevent nested conflicts)
+        // Upload settings only (NOT stats - they're calculated from speeches)
         console.log('[Migration] Syncing settings to Firebase...');
         await syncSettingsToFirebase({
           aiEnabled: aiEnabled,
           notifications: notificationSettings
-        }, true);
+        });
         console.log('[Migration] Settings synced successfully');
 
         // Mark as migrated
@@ -2452,7 +2486,7 @@
         console.log('[Migration] Migration marked complete');
 
         console.log('[Migration] Migration completed successfully!');
-        showAchievement('📤 Data synced to cloud!');
+        showAchievement('📤 Settings synced to cloud!');
         updateSyncStatus('synced', 'Up to date');
       } catch (error) {
         console.error('[Migration] Migration error:', error);
@@ -2505,25 +2539,23 @@
           profileBtn.classList.add('signed-in');
           profileIcon.textContent = '✓';
 
-          // Load data from Firebase silently
-          await loadDataFromFirebase();
+          // Load settings from Firebase
+          await loadSettingsFromFirebase();
 
-          // Migrate local data if first time (silent background operation)
+          // Migrate local data if first time (settings only)
           await migrateLocalDataToFirebase();
 
-          // Set up real-time sync listener (silent background sync)
-          db.collection('users').doc(user.uid).onSnapshot((doc) => {
-            if (doc.exists) {
-              const data = doc.data();
-              if (data.stats) {
-                stats = { ...stats, ...data.stats };
-                saveStats();
-                updateStats();
-                updateWeekCalendar();
-                updateNudge();
-              }
-            }
-          });
+          // Calculate stats from speeches collection (source of truth)
+          await calculateStatsFromFirestore();
+
+          // Set up real-time listener on speeches collection
+          // This ensures stats update whenever a new speech is added from any device
+          db.collection('users').doc(user.uid)
+            .collection('speeches')
+            .onSnapshot(() => {
+              console.log('[Sync] Speeches changed, recalculating stats...');
+              calculateStatsFromFirestore();
+            });
 
         } else {
           // User signed out
@@ -2575,42 +2607,30 @@
 
     // ===== HOOK INTO EXISTING FUNCTIONS FOR AUTO-SYNC =====
 
-    // Wrap completeSpeech to sync to Firebase
+    // Wrap completeSpeech to sync speech to Firebase
     const originalCompleteSpeechFunc = completeSpeech;
     completeSpeech = function() {
       originalCompleteSpeechFunc();
 
-      // Sync to Firebase
+      // Sync speech document to Firebase (stats will be automatically recalculated from speeches)
       if (syncEnabled && currentUser) {
-        syncStatsToFirebase(stats);
-
-        // If there's a recording with transcript/feedback, save it
         const transcript = manualTranscript?.value || '';
         const feedback = aiFeedback?.textContent || '';
 
-        if (transcript || feedback) {
-          syncSpeechToFirebase({
-            word: currentWord?.word || '',
-            definition: currentWord?.definition || '',
-            duration: elapsedSeconds,
-            transcript: transcript,
-            feedback: feedback,
-            rating: stats.ratings[stats.ratings.length - 1] || null,
-            createdAt: new Date().toISOString(),
-            mode: currentMode
-          });
-        }
+        // Always sync the speech (even without transcript/feedback for stats tracking)
+        syncSpeechToFirebase({
+          word: currentWord?.word || '',
+          definition: currentWord?.definition || '',
+          duration: elapsedSeconds,
+          transcript: transcript,
+          feedback: feedback,
+          rating: stats.ratings[stats.ratings.length - 1] || null,
+          mode: currentMode
+        });
       }
     };
 
-    // Wrap saveStats to sync
-    const originalSaveStats = saveStats;
-    saveStats = function() {
-      originalSaveStats();
-      if (syncEnabled && currentUser) {
-        syncStatsToFirebase(stats);
-      }
-    };
+    // NOTE: Removed saveStats wrapper - stats are now calculated from speeches collection, not synced directly
 
     // Wrap AI toggle to sync settings
     const originalUpdateAIToggleUI = updateAIToggleUI;
