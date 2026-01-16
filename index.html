@@ -1254,7 +1254,7 @@
     }
 
     // Version
-    const APP_VERSION = 'v2.7.1'; // Mobile Fixes - January 11, 2026
+    const APP_VERSION = 'v2.7.2'; // Stats Update Fix - January 11, 2026
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -1341,7 +1341,7 @@
 
     function updateVersionDisplay() {
       const versionEl = document.getElementById('appVersion');
-      versionEl.textContent = `Version ${APP_VERSION} • January 11, 2026 • Mobile Fixes`;
+      versionEl.textContent = `Version ${APP_VERSION} • January 11, 2026 • Stats Update Fix`;
     }
 
     function checkNewDay() {
@@ -1543,6 +1543,11 @@
         console.log('[INFO] AI feedback disabled, skipping analysis');
         setAiStatus('Recording saved. AI feedback is disabled (transcript only).');
         aiFeedback.textContent = 'AI feedback is disabled. Toggle it ON above to get detailed speech analysis.\n\nYour recording has been saved and you can download it below.';
+
+        // Still show rating modal to complete the speech and update stats
+        if (duration >= 30) {
+          showRatingModal();
+        }
         return;
       }
 
@@ -1606,10 +1611,20 @@
         aiFeedback.textContent = displayText;
         setAiStatus('AI analysis complete!');
         console.log('[SUCCESS] AI analysis complete');
+
+        // Show rating modal to complete the speech and update stats
+        if (duration >= 30) {
+          showRatingModal();
+        }
       } catch (err) {
         console.error('[ERROR] Failed to get feedback:', err);
         console.error('[ERROR] Error details:', err.message, err.stack);
         setAiStatus(`Unable to analyze audio: ${err.message}. Check console for details.`, true);
+
+        // Even if feedback fails, still show rating modal to update stats
+        if (duration >= 30) {
+          showRatingModal();
+        }
       } finally {
         isRequestingFeedback = false;
       }
@@ -1754,7 +1769,8 @@
       document.getElementById('audioVisualizer').classList.remove('recording');
       document.getElementById('startAudioBtn').style.display = 'block';
       document.getElementById('stopAudioBtn').style.display = 'none';
-      if (elapsedSeconds >= 30) showRatingModal();
+      // Don't show rating modal here - wait for AI feedback to complete first
+      // Rating modal will be shown in requestFeedbackWithAudio() after analysis
     }
 
     function startVideoRecording() {
@@ -1794,7 +1810,8 @@
       document.getElementById('videoTimer').style.display = 'none';
       document.getElementById('startVideoBtn').style.display = 'block';
       document.getElementById('stopVideoBtn').style.display = 'none';
-      if (elapsedSeconds >= 30) showRatingModal();
+      // Don't show rating modal here - wait for AI feedback to complete first
+      // Rating modal will be shown in requestFeedbackWithAudio() after analysis
     }
 
     // Event listeners
