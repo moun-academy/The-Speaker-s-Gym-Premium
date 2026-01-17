@@ -37,6 +37,315 @@
       position: relative;
     }
 
+    /* Hamburger Menu Button */
+    .hamburger-btn {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      transition: all 0.2s;
+      z-index: 100;
+    }
+
+    .hamburger-btn:hover {
+      background: rgba(30, 41, 59, 1);
+      border-color: rgba(250, 204, 21, 0.5);
+      transform: scale(1.05);
+    }
+
+    /* Hamburger Menu Overlay */
+    .menu-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 999;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+    }
+
+    .menu-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Hamburger Menu Sidebar */
+    .menu-sidebar {
+      position: fixed;
+      top: 0;
+      left: -280px;
+      width: 280px;
+      height: 100%;
+      background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+      border-right: 1px solid rgba(250, 204, 21, 0.3);
+      z-index: 1000;
+      transition: left 0.3s ease;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .menu-sidebar.show {
+      left: 0;
+    }
+
+    .menu-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(250, 204, 21, 0.2);
+      margin-bottom: 20px;
+    }
+
+    .menu-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #facc15;
+    }
+
+    .menu-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(239, 68, 68, 0.2);
+      border: none;
+      color: #ef4444;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .menu-close:hover {
+      background: rgba(239, 68, 68, 0.3);
+      transform: scale(1.1);
+    }
+
+    .menu-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(55, 65, 81, 0.5);
+      color: #e5e7eb;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .menu-item:hover {
+      background: rgba(250, 204, 21, 0.1);
+      border-color: rgba(250, 204, 21, 0.3);
+      transform: translateX(4px);
+    }
+
+    .menu-item.active {
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.2), rgba(250, 204, 21, 0.1));
+      border-color: rgba(250, 204, 21, 0.5);
+      color: #facc15;
+    }
+
+    .menu-item-icon {
+      font-size: 20px;
+    }
+
+    .menu-divider {
+      height: 1px;
+      background: rgba(55, 65, 81, 0.5);
+      margin: 16px 0;
+    }
+
+    .menu-footer {
+      margin-top: auto;
+      padding-top: 20px;
+      border-top: 1px solid rgba(55, 65, 81, 0.5);
+      font-size: 12px;
+      color: #6b7280;
+      text-align: center;
+    }
+
+    /* Page containers */
+    .page {
+      display: none;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    /* Back button for sub-pages */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(55, 65, 81, 0.5);
+      color: #9ca3af;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 20px;
+    }
+
+    .back-btn:hover {
+      background: rgba(30, 41, 59, 0.8);
+      border-color: rgba(250, 204, 21, 0.3);
+      color: #e5e7eb;
+    }
+
+    /* Warm Up Page Styles */
+    .warmup-section {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .warmup-section h3 {
+      font-size: 18px;
+      color: #facc15;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .warmup-exercise {
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(55, 65, 81, 0.5);
+    }
+
+    .warmup-exercise:last-child {
+      margin-bottom: 0;
+    }
+
+    .warmup-exercise h4 {
+      font-size: 15px;
+      color: #e5e7eb;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .warmup-exercise p {
+      font-size: 13px;
+      color: #9ca3af;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .warmup-timer {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .warmup-timer-display {
+      font-size: 24px;
+      font-weight: 700;
+      color: #22c55e;
+      min-width: 60px;
+    }
+
+    .warmup-timer-btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .tongue-twister-box {
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.1), rgba(250, 204, 21, 0.05));
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .tongue-twister-text {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fde68a;
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+
+    .tongue-twister-btn {
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+
+    /* Settings Page Styles */
+    .settings-section {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(250, 204, 21, 0.2);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .settings-section h3 {
+      font-size: 16px;
+      color: #facc15;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(55, 65, 81, 0.3);
+    }
+
+    .settings-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .settings-row-label {
+      font-size: 14px;
+      color: #e5e7eb;
+    }
+
+    .settings-row-value {
+      font-size: 14px;
+      color: #9ca3af;
+    }
+
     /* Profile Icon Button */
     .profile-btn {
       position: absolute;
@@ -1010,14 +1319,26 @@
       .controls { grid-template-columns: 1fr; }
       .stats-bar { grid-template-columns: repeat(2, 1fr); }
 
-      /* Mobile: Position profile button with proper spacing to avoid logo overlap */
+      /* Mobile: Position header with extra space for hamburger below logo */
       .header {
+        padding-top: 50px;
         padding-bottom: 8px;
+      }
+
+      /* Mobile: Position hamburger menu below the logo */
+      .hamburger-btn {
+        position: absolute;
+        top: auto;
+        bottom: -45px;
+        left: 0;
+        width: 36px;
+        height: 36px;
+        font-size: 20px;
       }
 
       .profile-btn {
         position: absolute;
-        top: 4px;
+        top: 0;
         right: 4px;
         width: 32px;
         height: 32px;
@@ -1072,8 +1393,41 @@
 </head>
 
 <body>
-  <div class="container">
+  <!-- Hamburger Menu Overlay -->
+  <div class="menu-overlay" id="menuOverlay"></div>
+
+  <!-- Hamburger Menu Sidebar -->
+  <div class="menu-sidebar" id="menuSidebar">
+    <div class="menu-header">
+      <span class="menu-title">Menu</span>
+      <button class="menu-close" id="menuClose">×</button>
+    </div>
+    <nav class="menu-nav">
+      <div class="menu-item active" id="menuHome" data-page="main">
+        <span class="menu-item-icon">🏠</span>
+        <span>Home</span>
+      </div>
+      <div class="menu-item" id="menuRapidFire" data-page="rapidfire">
+        <span class="menu-item-icon">⚡</span>
+        <span>Rapid Fire</span>
+      </div>
+      <div class="menu-item" id="menuWarmUp" data-page="warmup">
+        <span class="menu-item-icon">🎤</span>
+        <span>Warm Up</span>
+      </div>
+      <div class="menu-divider"></div>
+      <div class="menu-item" id="menuSettings" data-page="settings">
+        <span class="menu-item-icon">⚙️</span>
+        <span>Settings</span>
+      </div>
+    </nav>
+  </div>
+
+  <div class="container page active" id="mainPage">
     <div class="header">
+      <!-- Hamburger Menu Button -->
+      <div class="hamburger-btn" id="hamburgerBtn">☰</div>
+
       <h1>🏋️ The Speaker's Gym</h1>
       <div class="brand">by <span class="brand-name">MOUN Academy</span></div>
 
@@ -1159,7 +1513,6 @@
       <button class="mode-btn active" id="timerOnlyBtn">⏱️ Timer</button>
       <button class="mode-btn" id="audioBtn">🎙️ Audio</button>
       <button class="mode-btn" id="cameraBtn">📹 Video</button>
-      <button class="mode-btn" id="rapidFireBtn">⚡ Rapid Fire</button>
     </div>
 
     <!-- Timer Section -->
@@ -1203,73 +1556,6 @@
       </div>
     </div>
 
-    <!-- Rapid Fire Section -->
-    <div class="rapid-fire-section" id="rapidFireSection">
-      <!-- Settings (shown before starting) -->
-      <div id="rapidFireSettings" class="rapid-fire-settings">
-        <h4>⚡ Rapid Fire Settings</h4>
-        <div class="rapid-fire-setting">
-          <label>Time per Round</label>
-          <select id="rapidFireTime">
-            <option value="5">5 seconds (Warm-up)</option>
-            <option value="4">4 seconds (Standard)</option>
-            <option value="3" selected>3 seconds (Challenging)</option>
-            <option value="2">2 seconds (Expert)</option>
-          </select>
-        </div>
-        <div class="rapid-fire-setting">
-          <label>Number of Rounds</label>
-          <select id="rapidFireRounds">
-            <option value="5">5 rounds (Quick)</option>
-            <option value="10" selected>10 rounds (Standard)</option>
-            <option value="15">15 rounds (Extended)</option>
-            <option value="20">20 rounds (Marathon)</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Stats -->
-      <div class="rapid-fire-stats">
-        <div class="rapid-fire-stat">
-          <div class="rapid-fire-stat-value" id="rfTotalSessions">0</div>
-          <div class="rapid-fire-stat-label">Sessions</div>
-        </div>
-        <div class="rapid-fire-stat">
-          <div class="rapid-fire-stat-value" id="rfTotalAnalogies">0</div>
-          <div class="rapid-fire-stat-label">Analogies</div>
-        </div>
-        <div class="rapid-fire-stat">
-          <div class="rapid-fire-stat-value" id="rfFastestTime">--</div>
-          <div class="rapid-fire-stat-label">Fastest</div>
-        </div>
-      </div>
-
-      <!-- Coaching Cue -->
-      <div class="rapid-fire-cue" id="rapidFireCue">
-        "Speak before thinking. No wrong answers. Keep moving forward."
-      </div>
-
-      <!-- Game Area (shown during game) -->
-      <div id="rapidFireGame" style="display: none;">
-        <div class="rapid-fire-round-info" id="rapidFireRoundInfo">Round 1 of 10</div>
-
-        <div class="rapid-fire-sentence" id="rapidFireSentence">
-          A BATTERY IS LIKE A JACUZZI
-        </div>
-        <div class="rapid-fire-because">
-          BECAUSE...
-        </div>
-
-        <div class="rapid-fire-timer" id="rapidFireTimer">3</div>
-      </div>
-
-      <!-- Controls -->
-      <div class="record-controls">
-        <button id="startRapidFireBtn" class="record-btn start">▶️ Start Session</button>
-        <button id="stopRapidFireBtn" class="record-btn stop" style="display: none;">⏹ End Session</button>
-      </div>
-    </div>
-
     <!-- Controls -->
     <div class="controls">
       <button id="newWordBtn" class="primary">New Word</button>
@@ -1296,7 +1582,9 @@
 
     <!-- Structure Guide -->
     <div style="text-align: center; margin-bottom: 12px;">
-      <button id="toggleStructureBtn" class="secondary" style="width: auto;">Show Structure Guide</button>
+      <button id="toggleStructureBtn" class="primary" style="width: auto; padding: 14px 24px; font-size: 16px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">
+        <span style="font-size: 18px;">📋</span> Show Structure
+      </button>
     </div>
 
     <div id="structureBox" class="structure-box">
@@ -1313,29 +1601,238 @@
       </div>
     </div>
 
-    <!-- Daily Reminder Notifications -->
-    <div class="notification-settings">
-      <div class="notification-header">
-        <h3>Daily Reminder</h3>
-        <label class="notification-toggle">
-          <input type="checkbox" id="notificationToggle">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="notification-time-row">
-        <label for="notificationTime">Remind me at:</label>
-        <input type="time" id="notificationTime" value="09:00">
-      </div>
-      <div class="notification-status" id="notificationStatus">
-        Enable notifications to get daily practice reminders
-      </div>
-    </div>
-
     <!-- App Version -->
     <div class="app-version" id="appVersion">
       Loading version...
     </div>
   </div>
+  <!-- END MAIN PAGE -->
+
+  <!-- RAPID FIRE PAGE -->
+  <div class="container page" id="rapidFirePage">
+    <button class="back-btn" id="rapidFireBackBtn">← Back to Home</button>
+    <h2 style="font-size: 24px; color: #facc15; margin-bottom: 20px; text-align: center;">⚡ Rapid Fire Analogies</h2>
+
+    <!-- Rapid Fire Content moved here -->
+    <div class="rapid-fire-section active" id="rapidFireSectionPage">
+      <!-- Settings (shown before starting) -->
+      <div id="rapidFireSettingsPage" class="rapid-fire-settings">
+        <h4>⚡ Rapid Fire Settings</h4>
+        <div class="rapid-fire-setting">
+          <label>Time per Round</label>
+          <select id="rapidFireTimePage">
+            <option value="5">5 seconds (Warm-up)</option>
+            <option value="4">4 seconds (Standard)</option>
+            <option value="3" selected>3 seconds (Challenging)</option>
+            <option value="2">2 seconds (Expert)</option>
+          </select>
+        </div>
+        <div class="rapid-fire-setting">
+          <label>Number of Rounds</label>
+          <select id="rapidFireRoundsPage">
+            <option value="5">5 rounds (Quick)</option>
+            <option value="10" selected>10 rounds (Standard)</option>
+            <option value="15">15 rounds (Extended)</option>
+            <option value="20">20 rounds (Marathon)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="rapid-fire-stats">
+        <div class="rapid-fire-stat">
+          <div class="rapid-fire-stat-value" id="rfTotalSessionsPage">0</div>
+          <div class="rapid-fire-stat-label">Sessions</div>
+        </div>
+        <div class="rapid-fire-stat">
+          <div class="rapid-fire-stat-value" id="rfTotalAnalogiesPage">0</div>
+          <div class="rapid-fire-stat-label">Analogies</div>
+        </div>
+        <div class="rapid-fire-stat">
+          <div class="rapid-fire-stat-value" id="rfFastestTimePage">--</div>
+          <div class="rapid-fire-stat-label">Fastest</div>
+        </div>
+      </div>
+
+      <!-- Coaching Cue -->
+      <div class="rapid-fire-cue" id="rapidFireCuePage">
+        "Speak before thinking. No wrong answers. Keep moving forward."
+      </div>
+
+      <!-- Game Area (shown during game) -->
+      <div id="rapidFireGamePage" style="display: none;">
+        <div class="rapid-fire-round-info" id="rapidFireRoundInfoPage">Round 1 of 10</div>
+
+        <div class="rapid-fire-sentence" id="rapidFireSentencePage">
+          A BATTERY IS LIKE A JACUZZI
+        </div>
+        <div class="rapid-fire-because">
+          BECAUSE...
+        </div>
+
+        <div class="rapid-fire-timer" id="rapidFireTimerPage">3</div>
+      </div>
+
+      <!-- Controls -->
+      <div class="record-controls">
+        <button id="startRapidFireBtnPage" class="record-btn start">▶️ Start Session</button>
+        <button id="stopRapidFireBtnPage" class="record-btn stop" style="display: none;">⏹ End Session</button>
+      </div>
+    </div>
+  </div>
+  <!-- END RAPID FIRE PAGE -->
+
+  <!-- WARM UP PAGE -->
+  <div class="container page" id="warmUpPage">
+    <button class="back-btn" id="warmUpBackBtn">← Back to Home</button>
+    <h2 style="font-size: 24px; color: #facc15; margin-bottom: 20px; text-align: center;">🎤 Vocal Warm Up</h2>
+
+    <!-- Breathing Exercise -->
+    <div class="warmup-section">
+      <h3>🌬️ Deep Breathing</h3>
+      <div class="warmup-exercise">
+        <h4>Box Breathing</h4>
+        <p>Breathe in for 4 seconds, hold for 4, breathe out for 4, hold for 4. Repeat 3 times.</p>
+        <div class="warmup-timer">
+          <span class="warmup-timer-display" id="breathingTimer">0:00</span>
+          <button class="warmup-timer-btn primary" id="startBreathingBtn">Start</button>
+          <button class="warmup-timer-btn secondary" id="stopBreathingBtn" style="display: none;">Stop</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tongue Twisters -->
+    <div class="warmup-section">
+      <h3>👅 Tongue Twisters</h3>
+      <div class="tongue-twister-box">
+        <div class="tongue-twister-text" id="tongueTwisterText">She sells seashells by the seashore</div>
+        <button class="tongue-twister-btn secondary" id="nextTwisterBtn">Next Twister</button>
+      </div>
+      <div class="warmup-exercise">
+        <p>Say each tongue twister 3 times, getting faster each time. Focus on clear articulation.</p>
+      </div>
+    </div>
+
+    <!-- Lip Trills -->
+    <div class="warmup-section">
+      <h3>💋 Lip Trills</h3>
+      <div class="warmup-exercise">
+        <h4>Warm Up Your Voice</h4>
+        <p>Do lip trills (motor boat sound) up and down your vocal range for 30 seconds.</p>
+        <div class="warmup-timer">
+          <span class="warmup-timer-display" id="lipTrillTimer">0:30</span>
+          <button class="warmup-timer-btn primary" id="startLipTrillBtn">Start</button>
+          <button class="warmup-timer-btn secondary" id="stopLipTrillBtn" style="display: none;">Stop</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Humming -->
+    <div class="warmup-section">
+      <h3>🎵 Humming</h3>
+      <div class="warmup-exercise">
+        <h4>Resonance Exercise</h4>
+        <p>Hum at a comfortable pitch, feeling the vibration in your lips and nose. Do this for 30 seconds.</p>
+        <div class="warmup-timer">
+          <span class="warmup-timer-display" id="hummingTimer">0:30</span>
+          <button class="warmup-timer-btn primary" id="startHummingBtn">Start</button>
+          <button class="warmup-timer-btn secondary" id="stopHummingBtn" style="display: none;">Stop</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Articulation -->
+    <div class="warmup-section">
+      <h3>🗣️ Articulation Drills</h3>
+      <div class="warmup-exercise">
+        <h4>Over-Enunciate Practice</h4>
+        <p>Say "A-E-I-O-U" slowly, exaggerating each mouth shape. Then say "Red leather, yellow leather" 5 times.</p>
+      </div>
+    </div>
+  </div>
+  <!-- END WARM UP PAGE -->
+
+  <!-- SETTINGS PAGE -->
+  <div class="container page" id="settingsPage">
+    <button class="back-btn" id="settingsBackBtn">← Back to Home</button>
+    <h2 style="font-size: 24px; color: #facc15; margin-bottom: 20px; text-align: center;">⚙️ Settings</h2>
+
+    <!-- Daily Notifications Section -->
+    <div class="settings-section">
+      <h3>🔔 Daily Notifications</h3>
+      <div class="settings-row">
+        <span class="settings-row-label">Enable Reminders</span>
+        <label class="notification-toggle">
+          <input type="checkbox" id="notificationToggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <span class="settings-row-label">Reminder Time</span>
+        <input type="time" id="notificationTime" value="09:00" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #374151; background: #0f172a; color: #e5e7eb;">
+      </div>
+      <div class="notification-status" id="notificationStatus" style="margin-top: 12px;">
+        Enable notifications to get daily practice reminders
+      </div>
+    </div>
+
+    <!-- Sync Section -->
+    <div class="settings-section">
+      <h3>☁️ Cloud Sync</h3>
+      <div class="settings-row">
+        <span class="settings-row-label">Sync Status</span>
+        <span class="settings-row-value" id="settingsSyncStatus">Not signed in</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-row-label">Last Sync</span>
+        <span class="settings-row-value" id="settingsLastSync">Never</span>
+      </div>
+      <button id="manualSyncBtn" class="primary" style="width: 100%; margin-top: 12px;">
+        🔄 Sync Now
+      </button>
+    </div>
+
+    <!-- Account Section -->
+    <div class="settings-section">
+      <h3>👤 Account</h3>
+      <div id="settingsSignedOut">
+        <p style="color: #9ca3af; font-size: 14px; margin-bottom: 12px;">Sign in to sync your data across devices</p>
+        <button class="profile-action-btn primary" id="settingsGoogleSignInBtn" style="width: 100%;">
+          <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            <path fill="none" d="M0 0h48v48H0z"/>
+          </svg>
+          Sign in with Google
+        </button>
+      </div>
+      <div id="settingsSignedIn" style="display: none;">
+        <div class="settings-row">
+          <span class="settings-row-label">Email</span>
+          <span class="settings-row-value" id="settingsUserEmail">user@example.com</span>
+        </div>
+        <button id="settingsSignOutBtn" class="secondary" style="width: 100%; margin-top: 12px;">
+          Sign Out
+        </button>
+      </div>
+    </div>
+
+    <!-- About Section -->
+    <div class="settings-section">
+      <h3>ℹ️ About</h3>
+      <div class="settings-row">
+        <span class="settings-row-label">Version</span>
+        <span class="settings-row-value" id="settingsAppVersion">Loading...</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-row-label">Developer</span>
+        <span class="settings-row-value">MOUN Academy</span>
+      </div>
+    </div>
+  </div>
+  <!-- END SETTINGS PAGE -->
 
   <!-- Rating Modal -->
   <div class="rating-modal" id="ratingModal">
@@ -2137,16 +2634,14 @@
       else if (stats.todaySpeeches === 3) showAchievement("🔥 3 speeches! On fire!");
     }
 
-    // Mode switching
+    // Mode switching (Timer, Audio, Video only - Rapid Fire is now a separate page)
     function setMode(mode) {
       currentMode = mode;
       document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
       document.getElementById('timerSection').style.display = 'none';
       document.getElementById('audioSection').classList.remove('active');
       document.getElementById('cameraSection').classList.remove('active');
-      document.getElementById('rapidFireSection').classList.remove('active');
       stopMedia();
-      stopRapidFire(); // Stop any active rapid fire session
 
       if (mode === 'timer') {
         document.getElementById('timerOnlyBtn').classList.add('active');
@@ -2155,11 +2650,6 @@
         document.getElementById('audioBtn').classList.add('active');
         document.getElementById('audioSection').classList.add('active');
         initAudio();
-      } else if (mode === 'rapidfire') {
-        document.getElementById('rapidFireBtn').classList.add('active');
-        document.getElementById('rapidFireSection').classList.add('active');
-        updateRapidFireStats();
-        updateRapidFireCue();
       } else {
         document.getElementById('cameraBtn').classList.add('active');
         document.getElementById('cameraSection').classList.add('active');
@@ -2270,26 +2760,34 @@
     }
 
     // ========== RAPID FIRE FUNCTIONS ==========
+    // Note: Main rapid fire functionality is now on the dedicated Rapid Fire page.
+    // These functions are kept for compatibility but may reference non-existent elements.
 
     function updateRapidFireStats() {
-      document.getElementById('rfTotalSessions').textContent = rapidFireStats.totalSessions;
-      document.getElementById('rfTotalAnalogies').textContent = rapidFireStats.totalAnalogies;
+      // Old embedded section elements may not exist - check first
+      const sessionsEl = document.getElementById('rfTotalSessions');
+      const analogiesEl = document.getElementById('rfTotalAnalogies');
+      const fastestEl = document.getElementById('rfFastestTime');
 
-      if (rapidFireStats.fastestTime) {
-        document.getElementById('rfFastestTime').textContent = rapidFireStats.fastestTime + 's';
-      } else {
-        document.getElementById('rfFastestTime').textContent = '--';
+      if (sessionsEl) sessionsEl.textContent = rapidFireStats.totalSessions;
+      if (analogiesEl) analogiesEl.textContent = rapidFireStats.totalAnalogies;
+      if (fastestEl) {
+        fastestEl.textContent = rapidFireStats.fastestTime ? rapidFireStats.fastestTime + 's' : '--';
       }
     }
 
     function saveRapidFireStats() {
       localStorage.setItem('rapidFireStats', JSON.stringify(rapidFireStats));
-      updateRapidFireStats();
+      // Don't call updateRapidFireStats() here - page version handles its own updates
     }
 
     function updateRapidFireCue() {
-      const randomCue = rapidFireCues[Math.floor(Math.random() * rapidFireCues.length)];
-      document.getElementById('rapidFireCue').textContent = `"${randomCue}"`;
+      // Old embedded section element may not exist - check first
+      const cueEl = document.getElementById('rapidFireCue');
+      if (cueEl) {
+        const randomCue = rapidFireCues[Math.floor(Math.random() * rapidFireCues.length)];
+        cueEl.textContent = `"${randomCue}"`;
+      }
     }
 
     function getRandomWords() {
@@ -2446,13 +2944,16 @@
       rapidFireIsActive = false;
       rapidFireCurrentRound = 0;
 
-      // Show settings, hide game
-      document.getElementById('rapidFireSettings').style.display = 'block';
-      document.getElementById('rapidFireGame').style.display = 'none';
+      // Old embedded section elements may not exist - check first
+      const settingsEl = document.getElementById('rapidFireSettings');
+      const gameEl = document.getElementById('rapidFireGame');
+      const startBtn = document.getElementById('startRapidFireBtn');
+      const stopBtn = document.getElementById('stopRapidFireBtn');
 
-      // Reset buttons
-      document.getElementById('startRapidFireBtn').style.display = 'inline-block';
-      document.getElementById('stopRapidFireBtn').style.display = 'none';
+      if (settingsEl) settingsEl.style.display = 'block';
+      if (gameEl) gameEl.style.display = 'none';
+      if (startBtn) startBtn.style.display = 'inline-block';
+      if (stopBtn) stopBtn.style.display = 'none';
 
       // Update cue
       updateRapidFireCue();
@@ -2464,7 +2965,6 @@
     document.getElementById('timerOnlyBtn').addEventListener('click', () => setMode('timer'));
     document.getElementById('audioBtn').addEventListener('click', () => setMode('audio'));
     document.getElementById('cameraBtn').addEventListener('click', () => setMode('video'));
-    document.getElementById('rapidFireBtn').addEventListener('click', () => setMode('rapidfire'));
     document.getElementById('skipRating').addEventListener('click', () => submitRating(null));
 
     document.getElementById('startTimerBtn').addEventListener('click', startTimer);
@@ -2474,17 +2974,18 @@
     document.getElementById('startVideoBtn').addEventListener('click', startVideoRecording);
     document.getElementById('stopVideoBtn').addEventListener('click', stopVideoRecording);
 
-    document.getElementById('startRapidFireBtn').addEventListener('click', startRapidFire);
-    document.getElementById('stopRapidFireBtn').addEventListener('click', stopRapidFire);
-
     document.getElementById('toggleStructureBtn').addEventListener('click', () => {
-      if (!currentWord) return;
+      if (!currentWord) {
+        showAchievement("📝 Generate a word first!");
+        return;
+      }
+      const toggleBtn = document.getElementById('toggleStructureBtn');
       if (structureBox.style.display === 'none' || structureBox.style.display === '') {
         structureBox.style.display = 'block';
-        document.getElementById('toggleStructureBtn').textContent = 'Hide Structure Guide';
+        toggleBtn.innerHTML = '<span style="font-size: 18px;">📋</span> Hide Structure';
       } else {
         structureBox.style.display = 'none';
-        document.getElementById('toggleStructureBtn').textContent = 'Show Structure Guide';
+        toggleBtn.innerHTML = '<span style="font-size: 18px;">📋</span> Show Structure';
       }
     });
 
@@ -3305,6 +3806,407 @@
         updateSyncStatus('offline', 'Offline');
       });
     }
+
+    // ===== PAGE NAVIGATION SYSTEM =====
+    let currentPage = 'main';
+
+    function navigateToPage(pageName) {
+      // Stop any active media/timers when leaving main page
+      if (currentPage === 'main') {
+        stopMedia();
+        if (isRunning) {
+          stopTimer(false);
+        }
+      }
+
+      // Stop rapid fire if leaving that page
+      if (currentPage === 'rapidfire') {
+        stopRapidFirePage();
+      }
+
+      // Stop warm up timers if leaving that page
+      if (currentPage === 'warmup') {
+        stopAllWarmupTimers();
+      }
+
+      // Hide all pages
+      document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+
+      // Show the target page
+      if (pageName === 'main') {
+        document.getElementById('mainPage').classList.add('active');
+      } else if (pageName === 'rapidfire') {
+        document.getElementById('rapidFirePage').classList.add('active');
+        updateRapidFirePageStats();
+        updateRapidFirePageCue();
+      } else if (pageName === 'warmup') {
+        document.getElementById('warmUpPage').classList.add('active');
+      } else if (pageName === 'settings') {
+        document.getElementById('settingsPage').classList.add('active');
+        updateSettingsPageUI();
+      }
+
+      // Update menu active state
+      document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+      const menuItem = document.querySelector(`.menu-item[data-page="${pageName}"]`);
+      if (menuItem) menuItem.classList.add('active');
+
+      currentPage = pageName;
+      closeMenu();
+    }
+
+    // Hamburger Menu Functions
+    function openMenu() {
+      document.getElementById('menuSidebar').classList.add('show');
+      document.getElementById('menuOverlay').classList.add('show');
+    }
+
+    function closeMenu() {
+      document.getElementById('menuSidebar').classList.remove('show');
+      document.getElementById('menuOverlay').classList.remove('show');
+    }
+
+    // Setup hamburger menu event listeners
+    document.getElementById('hamburgerBtn').addEventListener('click', openMenu);
+    document.getElementById('menuClose').addEventListener('click', closeMenu);
+    document.getElementById('menuOverlay').addEventListener('click', closeMenu);
+
+    // Menu item navigation
+    document.querySelectorAll('.menu-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const pageName = item.getAttribute('data-page');
+        navigateToPage(pageName);
+      });
+    });
+
+    // Back buttons
+    document.getElementById('rapidFireBackBtn').addEventListener('click', () => navigateToPage('main'));
+    document.getElementById('warmUpBackBtn').addEventListener('click', () => navigateToPage('main'));
+    document.getElementById('settingsBackBtn').addEventListener('click', () => navigateToPage('main'));
+
+    // ===== RAPID FIRE PAGE FUNCTIONS =====
+    let rapidFirePageInterval = null;
+    let rapidFirePageRunning = false;
+    let rapidFirePageCurrentRound = 0;
+    let rapidFirePageTotalRounds = 10;
+    let rapidFirePageTimePerRound = 3;
+    let rapidFirePageTimer = 3;
+
+    function updateRapidFirePageStats() {
+      document.getElementById('rfTotalSessionsPage').textContent = rapidFireStats.totalSessions;
+      document.getElementById('rfTotalAnalogiesPage').textContent = rapidFireStats.totalAnalogies;
+      if (rapidFireStats.fastestTime) {
+        document.getElementById('rfFastestTimePage').textContent = rapidFireStats.fastestTime + 's';
+      } else {
+        document.getElementById('rfFastestTimePage').textContent = '--';
+      }
+    }
+
+    function updateRapidFirePageCue() {
+      const randomCue = rapidFireCues[Math.floor(Math.random() * rapidFireCues.length)];
+      document.getElementById('rapidFireCuePage').textContent = `"${randomCue}"`;
+    }
+
+    function startRapidFirePage() {
+      if (rapidFirePageRunning) return;
+      rapidFirePageRunning = true;
+
+      // Get settings
+      rapidFirePageTimePerRound = parseInt(document.getElementById('rapidFireTimePage').value);
+      rapidFirePageTotalRounds = parseInt(document.getElementById('rapidFireRoundsPage').value);
+      rapidFirePageCurrentRound = 0;
+      rapidFirePageTimer = rapidFirePageTimePerRound;
+
+      // Hide settings, show game
+      document.getElementById('rapidFireSettingsPage').style.display = 'none';
+      document.getElementById('rapidFireGamePage').style.display = 'block';
+      document.getElementById('startRapidFireBtnPage').style.display = 'none';
+      document.getElementById('stopRapidFireBtnPage').style.display = 'block';
+
+      // Start first round
+      nextRapidFirePageRound();
+    }
+
+    function nextRapidFirePageRound() {
+      rapidFirePageCurrentRound++;
+      if (rapidFirePageCurrentRound > rapidFirePageTotalRounds) {
+        endRapidFirePageSession();
+        return;
+      }
+
+      // Update round info
+      document.getElementById('rapidFireRoundInfoPage').textContent = `Round ${rapidFirePageCurrentRound} of ${rapidFirePageTotalRounds}`;
+
+      // Generate new word pair (getRandomWords() returns formatted sentence)
+      const sentence = getRandomWords();
+      document.getElementById('rapidFireSentencePage').textContent = sentence;
+
+      // Reset timer
+      rapidFirePageTimer = rapidFirePageTimePerRound;
+      updateRapidFirePageTimerDisplay();
+
+      // Start countdown
+      rapidFirePageInterval = setInterval(() => {
+        rapidFirePageTimer--;
+        updateRapidFirePageTimerDisplay();
+        if (rapidFirePageTimer <= 0) {
+          clearInterval(rapidFirePageInterval);
+          rapidFireStats.totalAnalogies++;
+          saveRapidFireStats();
+          updateRapidFirePageStats();
+          nextRapidFirePageRound();
+        }
+      }, 1000);
+    }
+
+    function updateRapidFirePageTimerDisplay() {
+      const timerEl = document.getElementById('rapidFireTimerPage');
+      timerEl.textContent = rapidFirePageTimer;
+      timerEl.classList.remove('warning', 'danger');
+      if (rapidFirePageTimer <= 1) timerEl.classList.add('danger');
+      else if (rapidFirePageTimer <= 2) timerEl.classList.add('warning');
+    }
+
+    function endRapidFirePageSession() {
+      rapidFirePageRunning = false;
+      clearInterval(rapidFirePageInterval);
+
+      // Update stats
+      rapidFireStats.totalSessions++;
+      if (!rapidFireStats.fastestTime || rapidFirePageTimePerRound < rapidFireStats.fastestTime) {
+        rapidFireStats.fastestTime = rapidFirePageTimePerRound;
+      }
+      saveRapidFireStats();
+      updateRapidFirePageStats();
+
+      // Save to Firestore if logged in
+      if (syncEnabled && currentUser) {
+        syncRapidFireToFirebase();
+      }
+
+      // Show settings, hide game
+      document.getElementById('rapidFireSettingsPage').style.display = 'block';
+      document.getElementById('rapidFireGamePage').style.display = 'none';
+      document.getElementById('startRapidFireBtnPage').style.display = 'block';
+      document.getElementById('stopRapidFireBtnPage').style.display = 'none';
+
+      showAchievement(`⚡ Session complete! ${rapidFirePageTotalRounds} analogies!`);
+    }
+
+    function stopRapidFirePage() {
+      if (!rapidFirePageRunning) return;
+      rapidFirePageRunning = false;
+      clearInterval(rapidFirePageInterval);
+
+      // Show settings, hide game
+      document.getElementById('rapidFireSettingsPage').style.display = 'block';
+      document.getElementById('rapidFireGamePage').style.display = 'none';
+      document.getElementById('startRapidFireBtnPage').style.display = 'block';
+      document.getElementById('stopRapidFireBtnPage').style.display = 'none';
+    }
+
+    // Sync rapid fire to Firebase
+    async function syncRapidFireToFirebase() {
+      if (!currentUser) return;
+      try {
+        await db.collection('users').doc(currentUser.uid)
+          .collection('rapidFire').add({
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            rounds: rapidFirePageTotalRounds,
+            timePerRound: rapidFirePageTimePerRound,
+            totalAnalogies: rapidFirePageTotalRounds
+          });
+        console.log('[Firebase] Rapid Fire session synced');
+      } catch (error) {
+        console.error('[Firebase] Error syncing Rapid Fire:', error);
+      }
+    }
+
+    // Rapid Fire page event listeners
+    document.getElementById('startRapidFireBtnPage').addEventListener('click', startRapidFirePage);
+    document.getElementById('stopRapidFireBtnPage').addEventListener('click', stopRapidFirePage);
+
+    // ===== WARM UP PAGE FUNCTIONS =====
+    const tongueTwisters = [
+      "She sells seashells by the seashore",
+      "Peter Piper picked a peck of pickled peppers",
+      "How much wood would a woodchuck chuck if a woodchuck could chuck wood",
+      "Red lorry, yellow lorry, red lorry, yellow lorry",
+      "Unique New York, unique New York, you know you need unique New York",
+      "The sixth sick sheikh's sixth sheep's sick",
+      "Fuzzy Wuzzy was a bear, Fuzzy Wuzzy had no hair",
+      "A proper copper coffee pot",
+      "I scream, you scream, we all scream for ice cream",
+      "Betty Botter bought some butter, but she said the butter's bitter"
+    ];
+    let currentTwisterIndex = 0;
+
+    let warmupTimers = {
+      breathing: { interval: null, running: false, seconds: 0, target: 48 },
+      lipTrill: { interval: null, running: false, seconds: 30, target: 30 },
+      humming: { interval: null, running: false, seconds: 30, target: 30 }
+    };
+
+    function formatWarmupTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function startWarmupTimer(type) {
+      if (warmupTimers[type].running) return;
+      warmupTimers[type].running = true;
+
+      const startBtn = document.getElementById(`start${type.charAt(0).toUpperCase() + type.slice(1)}Btn`);
+      const stopBtn = document.getElementById(`stop${type.charAt(0).toUpperCase() + type.slice(1)}Btn`);
+      const display = document.getElementById(`${type}Timer`);
+
+      startBtn.style.display = 'none';
+      stopBtn.style.display = 'inline-block';
+
+      if (type === 'breathing') {
+        warmupTimers[type].seconds = 0;
+      }
+
+      warmupTimers[type].interval = setInterval(() => {
+        if (type === 'breathing') {
+          warmupTimers[type].seconds++;
+          display.textContent = formatWarmupTime(warmupTimers[type].seconds);
+          if (warmupTimers[type].seconds >= warmupTimers[type].target) {
+            stopWarmupTimer(type);
+            showAchievement("🌬️ Breathing exercise complete!");
+          }
+        } else {
+          warmupTimers[type].seconds--;
+          display.textContent = formatWarmupTime(warmupTimers[type].seconds);
+          if (warmupTimers[type].seconds <= 0) {
+            stopWarmupTimer(type);
+            showAchievement(type === 'lipTrill' ? "💋 Lip trills done!" : "🎵 Humming complete!");
+          }
+        }
+      }, 1000);
+    }
+
+    function stopWarmupTimer(type) {
+      clearInterval(warmupTimers[type].interval);
+      warmupTimers[type].running = false;
+
+      const btnName = type.charAt(0).toUpperCase() + type.slice(1);
+      const startBtn = document.getElementById(`start${btnName}Btn`);
+      const stopBtn = document.getElementById(`stop${btnName}Btn`);
+      const display = document.getElementById(`${type}Timer`);
+
+      startBtn.style.display = 'inline-block';
+      stopBtn.style.display = 'none';
+
+      // Reset display
+      if (type === 'breathing') {
+        warmupTimers[type].seconds = 0;
+        display.textContent = '0:00';
+      } else {
+        warmupTimers[type].seconds = 30;
+        display.textContent = '0:30';
+      }
+    }
+
+    function stopAllWarmupTimers() {
+      ['breathing', 'lipTrill', 'humming'].forEach(type => {
+        if (warmupTimers[type].running) {
+          stopWarmupTimer(type);
+        }
+      });
+    }
+
+    function nextTongueTwister() {
+      currentTwisterIndex = (currentTwisterIndex + 1) % tongueTwisters.length;
+      document.getElementById('tongueTwisterText').textContent = tongueTwisters[currentTwisterIndex];
+    }
+
+    // Warm up event listeners
+    document.getElementById('startBreathingBtn').addEventListener('click', () => startWarmupTimer('breathing'));
+    document.getElementById('stopBreathingBtn').addEventListener('click', () => stopWarmupTimer('breathing'));
+    document.getElementById('startLipTrillBtn').addEventListener('click', () => startWarmupTimer('lipTrill'));
+    document.getElementById('stopLipTrillBtn').addEventListener('click', () => stopWarmupTimer('lipTrill'));
+    document.getElementById('startHummingBtn').addEventListener('click', () => startWarmupTimer('humming'));
+    document.getElementById('stopHummingBtn').addEventListener('click', () => stopWarmupTimer('humming'));
+    document.getElementById('nextTwisterBtn').addEventListener('click', nextTongueTwister);
+
+    // ===== SETTINGS PAGE FUNCTIONS =====
+    let lastSyncTime = null;
+
+    function updateSettingsPageUI() {
+      // Update sync status
+      const syncStatusEl = document.getElementById('settingsSyncStatus');
+      const lastSyncEl = document.getElementById('settingsLastSync');
+      const settingsSignedOut = document.getElementById('settingsSignedOut');
+      const settingsSignedIn = document.getElementById('settingsSignedIn');
+      const settingsUserEmail = document.getElementById('settingsUserEmail');
+      const settingsAppVersion = document.getElementById('settingsAppVersion');
+
+      if (currentUser) {
+        syncStatusEl.textContent = 'Connected';
+        syncStatusEl.style.color = '#22c55e';
+        settingsSignedOut.style.display = 'none';
+        settingsSignedIn.style.display = 'block';
+        settingsUserEmail.textContent = currentUser.email;
+      } else {
+        syncStatusEl.textContent = 'Not signed in';
+        syncStatusEl.style.color = '#9ca3af';
+        settingsSignedOut.style.display = 'block';
+        settingsSignedIn.style.display = 'none';
+      }
+
+      if (lastSyncTime) {
+        lastSyncEl.textContent = lastSyncTime.toLocaleString();
+      } else {
+        lastSyncEl.textContent = 'Never';
+      }
+
+      // Update version
+      if (settingsAppVersion) {
+        settingsAppVersion.textContent = 'v3.1.0';
+      }
+    }
+
+    // Settings page sign in/out buttons
+    document.getElementById('settingsGoogleSignInBtn').addEventListener('click', async () => {
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await auth.signInWithPopup(provider);
+        showAchievement('✅ Signed in successfully!');
+        updateSettingsPageUI();
+      } catch (error) {
+        console.error('[Auth] Sign in error:', error);
+        showAchievement('❌ Sign in failed: ' + error.message);
+      }
+    });
+
+    document.getElementById('settingsSignOutBtn').addEventListener('click', async () => {
+      try {
+        await auth.signOut();
+        showAchievement('👋 Signed out');
+        updateSettingsPageUI();
+      } catch (error) {
+        console.error('[Auth] Sign out error:', error);
+      }
+    });
+
+    // Manual sync button
+    document.getElementById('manualSyncBtn').addEventListener('click', async () => {
+      if (!currentUser) {
+        showAchievement('⚠️ Sign in to sync');
+        return;
+      }
+      try {
+        showAchievement('🔄 Syncing...');
+        await calculateStatsFromFirestore();
+        lastSyncTime = new Date();
+        updateSettingsPageUI();
+        showAchievement('✅ Sync complete!');
+      } catch (error) {
+        showAchievement('❌ Sync failed');
+      }
+    });
 
   </script>
 </body>
