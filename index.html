@@ -381,31 +381,25 @@
     .rapid-fire-section { display: none; text-align: center; margin-bottom: 20px; }
     .rapid-fire-section.active { display: block; }
 
-    .rapid-fire-words {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 24px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
-
-    .rapid-fire-word {
-      font-size: 42px;
+    .rapid-fire-sentence {
+      font-size: 38px;
       font-weight: 800;
       background: linear-gradient(135deg, #facc15, #fbbf24);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      padding: 12px 20px;
-      border-radius: 12px;
-      background-color: rgba(250, 204, 21, 0.05);
-      border: 2px solid rgba(250, 204, 21, 0.3);
+      text-align: center;
+      margin-bottom: 16px;
+      line-height: 1.3;
+      letter-spacing: 0.02em;
     }
 
-    .rapid-fire-connector {
+    .rapid-fire-because {
       font-size: 32px;
-      color: #9ca3af;
-      font-weight: 600;
+      font-weight: 700;
+      color: #facc15;
+      text-align: center;
+      margin-bottom: 24px;
+      letter-spacing: 0.05em;
     }
 
     .rapid-fire-timer {
@@ -1048,6 +1042,31 @@
         max-width: 340px;
         margin: 0 auto;
       }
+
+      /* Mobile: Adjust Rapid Fire for smaller screens */
+      .rapid-fire-sentence {
+        font-size: 26px;
+        line-height: 1.4;
+      }
+
+      .rapid-fire-because {
+        font-size: 24px;
+      }
+
+      .rapid-fire-timer {
+        width: 100px;
+        height: 100px;
+        font-size: 36px;
+      }
+
+      .rapid-fire-stats {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .rapid-fire-stat-value {
+        font-size: 20px;
+      }
     }
   </style>
 </head>
@@ -1234,10 +1253,11 @@
       <div id="rapidFireGame" style="display: none;">
         <div class="rapid-fire-round-info" id="rapidFireRoundInfo">Round 1 of 10</div>
 
-        <div class="rapid-fire-words">
-          <div class="rapid-fire-word" id="rfWord1">Battery</div>
-          <div class="rapid-fire-connector">are like a</div>
-          <div class="rapid-fire-word" id="rfWord2">Jacuzzi</div>
+        <div class="rapid-fire-sentence" id="rapidFireSentence">
+          A BATTERY IS LIKE A JACUZZI
+        </div>
+        <div class="rapid-fire-because">
+          BECAUSE...
         </div>
 
         <div class="rapid-fire-timer" id="rapidFireTimer">3</div>
@@ -1391,43 +1411,190 @@
       { word: "Family", definition: "Group of related people" }
     ];
 
-    // Rapid Fire word list for analogies (100+ simple, concrete nouns)
+    // Rapid Fire word list for analogies (150+ words with grammar metadata)
+    // Each word has: word, plural (true/false), article ('a', 'an', 'the', or null for no article)
     const rapidFireWords = [
       // Objects
-      "Battery", "Flashlight", "Hammer", "Screwdriver", "Pencil", "Eraser", "Scissors", "Paperclip",
-      "Stapler", "Mirror", "Clock", "Lamp", "Chair", "Table", "Pillow", "Blanket", "Umbrella",
-      "Backpack", "Wallet", "Keys", "Phone", "Laptop", "Charger", "Headphones", "Camera",
-      "Microphone", "Speaker", "Remote", "Calculator", "Notebook", "Calendar", "Map", "Compass",
-      "Thermometer", "Scale", "Ruler", "Magnet", "Tape", "Glue", "Brush", "Comb", "Toothbrush",
+      { word: "BATTERY", plural: false, article: "A" },
+      { word: "FLASHLIGHT", plural: false, article: "A" },
+      { word: "HAMMER", plural: false, article: "A" },
+      { word: "SCREWDRIVER", plural: false, article: "A" },
+      { word: "PENCIL", plural: false, article: "A" },
+      { word: "ERASER", plural: false, article: "AN" },
+      { word: "SCISSORS", plural: true, article: null },
+      { word: "PAPERCLIP", plural: false, article: "A" },
+      { word: "STAPLER", plural: false, article: "A" },
+      { word: "MIRROR", plural: false, article: "A" },
+      { word: "CLOCK", plural: false, article: "A" },
+      { word: "LAMP", plural: false, article: "A" },
+      { word: "CHAIR", plural: false, article: "A" },
+      { word: "TABLE", plural: false, article: "A" },
+      { word: "PILLOW", plural: false, article: "A" },
+      { word: "BLANKET", plural: false, article: "A" },
+      { word: "UMBRELLA", plural: false, article: "AN" },
+      { word: "BACKPACK", plural: false, article: "A" },
+      { word: "WALLET", plural: false, article: "A" },
+      { word: "KEYS", plural: true, article: null },
+      { word: "PHONE", plural: false, article: "A" },
+      { word: "LAPTOP", plural: false, article: "A" },
+      { word: "CHARGER", plural: false, article: "A" },
+      { word: "HEADPHONES", plural: true, article: null },
+      { word: "CAMERA", plural: false, article: "A" },
+      { word: "MICROPHONE", plural: false, article: "A" },
+      { word: "SPEAKER", plural: false, article: "A" },
+      { word: "REMOTE", plural: false, article: "A" },
+      { word: "CALCULATOR", plural: false, article: "A" },
+      { word: "NOTEBOOK", plural: false, article: "A" },
+      { word: "CALENDAR", plural: false, article: "A" },
+      { word: "MAP", plural: false, article: "A" },
+      { word: "COMPASS", plural: false, article: "A" },
+      { word: "THERMOMETER", plural: false, article: "A" },
+      { word: "RULER", plural: false, article: "A" },
+      { word: "MAGNET", plural: false, article: "A" },
+      { word: "BRUSH", plural: false, article: "A" },
+      { word: "COMB", plural: false, article: "A" },
+      { word: "TOOTHBRUSH", plural: false, article: "A" },
 
       // Animals
-      "Dog", "Cat", "Bird", "Fish", "Horse", "Elephant", "Lion", "Tiger", "Bear", "Wolf",
-      "Fox", "Rabbit", "Squirrel", "Deer", "Dolphin", "Whale", "Shark", "Eagle", "Owl",
-      "Parrot", "Penguin", "Butterfly", "Bee", "Spider", "Ant", "Snail", "Frog", "Turtle",
-      "Snake", "Lizard", "Monkey", "Gorilla", "Giraffe", "Zebra", "Kangaroo",
+      { word: "DOG", plural: false, article: "A" },
+      { word: "CAT", plural: false, article: "A" },
+      { word: "BIRD", plural: false, article: "A" },
+      { word: "HORSE", plural: false, article: "A" },
+      { word: "ELEPHANT", plural: false, article: "AN" },
+      { word: "LION", plural: false, article: "A" },
+      { word: "TIGER", plural: false, article: "A" },
+      { word: "BEAR", plural: false, article: "A" },
+      { word: "WOLF", plural: false, article: "A" },
+      { word: "FOX", plural: false, article: "A" },
+      { word: "RABBIT", plural: false, article: "A" },
+      { word: "SQUIRREL", plural: false, article: "A" },
+      { word: "DEER", plural: false, article: "A" },
+      { word: "DOLPHIN", plural: false, article: "A" },
+      { word: "WHALE", plural: false, article: "A" },
+      { word: "SHARK", plural: false, article: "A" },
+      { word: "EAGLE", plural: false, article: "AN" },
+      { word: "OWL", plural: false, article: "AN" },
+      { word: "PARROT", plural: false, article: "A" },
+      { word: "PENGUIN", plural: false, article: "A" },
+      { word: "BUTTERFLY", plural: false, article: "A" },
+      { word: "BEE", plural: false, article: "A" },
+      { word: "SPIDER", plural: false, article: "A" },
+      { word: "ANT", plural: false, article: "AN" },
+      { word: "SNAIL", plural: false, article: "A" },
+      { word: "FROG", plural: false, article: "A" },
+      { word: "TURTLE", plural: false, article: "A" },
+      { word: "SNAKE", plural: false, article: "A" },
+      { word: "LIZARD", plural: false, article: "A" },
+      { word: "MONKEY", plural: false, article: "A" },
+      { word: "GORILLA", plural: false, article: "A" },
+      { word: "GIRAFFE", plural: false, article: "A" },
+      { word: "ZEBRA", plural: false, article: "A" },
+      { word: "KANGAROO", plural: false, article: "A" },
 
       // Nature
-      "Tree", "Flower", "Grass", "Mountain", "River", "Ocean", "Lake", "Beach", "Desert",
-      "Forest", "Garden", "Cloud", "Rain", "Snow", "Wind", "Thunder", "Lightning", "Rainbow",
-      "Sun", "Moon", "Star", "Stone", "Rock", "Sand", "Soil", "Seed", "Root", "Branch",
-      "Leaf", "Sunrise", "Sunset", "Wave", "Waterfall", "Canyon", "Valley", "Island",
+      { word: "TREE", plural: false, article: "A" },
+      { word: "FLOWER", plural: false, article: "A" },
+      { word: "MOUNTAIN", plural: false, article: "A" },
+      { word: "RIVER", plural: false, article: "A" },
+      { word: "OCEAN", plural: false, article: "AN" },
+      { word: "LAKE", plural: false, article: "A" },
+      { word: "BEACH", plural: false, article: "A" },
+      { word: "DESERT", plural: false, article: "A" },
+      { word: "FOREST", plural: false, article: "A" },
+      { word: "GARDEN", plural: false, article: "A" },
+      { word: "CLOUD", plural: false, article: "A" },
+      { word: "RAINBOW", plural: false, article: "A" },
+      { word: "SUN", plural: false, article: "THE" },
+      { word: "MOON", plural: false, article: "THE" },
+      { word: "STAR", plural: false, article: "A" },
+      { word: "STONE", plural: false, article: "A" },
+      { word: "ROCK", plural: false, article: "A" },
+      { word: "SEED", plural: false, article: "A" },
+      { word: "ROOT", plural: false, article: "A" },
+      { word: "BRANCH", plural: false, article: "A" },
+      { word: "LEAF", plural: false, article: "A" },
+      { word: "SUNRISE", plural: false, article: "A" },
+      { word: "SUNSET", plural: false, article: "A" },
+      { word: "WAVE", plural: false, article: "A" },
+      { word: "WATERFALL", plural: false, article: "A" },
+      { word: "CANYON", plural: false, article: "A" },
+      { word: "VALLEY", plural: false, article: "A" },
+      { word: "ISLAND", plural: false, article: "AN" },
+      { word: "VOLCANO", plural: false, article: "A" },
 
       // Technology
-      "Computer", "Keyboard", "Mouse", "Monitor", "Printer", "Scanner", "Router", "Modem",
-      "Cable", "Adapter", "Drive", "Chip", "Sensor", "Robot", "Drone", "Engine", "Motor",
-      "Wheel", "Gear", "Lever", "Button", "Switch", "Screen", "Display", "Socket",
+      { word: "COMPUTER", plural: false, article: "A" },
+      { word: "KEYBOARD", plural: false, article: "A" },
+      { word: "MOUSE", plural: false, article: "A" },
+      { word: "MONITOR", plural: false, article: "A" },
+      { word: "PRINTER", plural: false, article: "A" },
+      { word: "SCANNER", plural: false, article: "A" },
+      { word: "ROUTER", plural: false, article: "A" },
+      { word: "ROBOT", plural: false, article: "A" },
+      { word: "DRONE", plural: false, article: "A" },
+      { word: "ENGINE", plural: false, article: "AN" },
+      { word: "MOTOR", plural: false, article: "A" },
+      { word: "WHEEL", plural: false, article: "A" },
+      { word: "GEAR", plural: false, article: "A" },
+      { word: "LEVER", plural: false, article: "A" },
+      { word: "BUTTON", plural: false, article: "A" },
+      { word: "SWITCH", plural: false, article: "A" },
+      { word: "SCREEN", plural: false, article: "A" },
 
-      // Food
-      "Bread", "Butter", "Cheese", "Milk", "Coffee", "Tea", "Water", "Juice", "Apple",
-      "Orange", "Banana", "Grape", "Strawberry", "Pizza", "Burger", "Sandwich", "Salad",
-      "Soup", "Rice", "Pasta", "Cookie", "Cake", "Chocolate", "Honey", "Salt", "Pepper",
-      "Sugar", "Flour", "Egg", "Meat", "Chicken", "Fish", "Potato", "Tomato", "Carrot",
+      // Food & Drinks
+      { word: "BREAD", plural: false, article: null },
+      { word: "BUTTER", plural: false, article: null },
+      { word: "CHEESE", plural: false, article: null },
+      { word: "MILK", plural: false, article: null },
+      { word: "COFFEE", plural: false, article: null },
+      { word: "TEA", plural: false, article: null },
+      { word: "WATER", plural: false, article: null },
+      { word: "JUICE", plural: false, article: null },
+      { word: "APPLE", plural: false, article: "AN" },
+      { word: "ORANGE", plural: false, article: "AN" },
+      { word: "BANANA", plural: false, article: "A" },
+      { word: "PIZZA", plural: false, article: "A" },
+      { word: "BURGER", plural: false, article: "A" },
+      { word: "SANDWICH", plural: false, article: "A" },
+      { word: "SALAD", plural: false, article: "A" },
+      { word: "COOKIE", plural: false, article: "A" },
+      { word: "CAKE", plural: false, article: "A" },
+      { word: "HONEY", plural: false, article: null },
+      { word: "SALT", plural: false, article: null },
+      { word: "PEPPER", plural: false, article: null },
+      { word: "SUGAR", plural: false, article: null },
+      { word: "EGG", plural: false, article: "AN" },
+      { word: "POTATO", plural: false, article: "A" },
+      { word: "TOMATO", plural: false, article: "A" },
+      { word: "CARROT", plural: false, article: "A" },
 
       // Activities & Concepts
-      "Game", "Sport", "Dance", "Music", "Song", "Book", "Story", "Movie", "Paint",
-      "Drawing", "Puzzle", "Toy", "Ball", "Card", "Dice", "Race", "Jump", "Run",
-      "Swim", "Climb", "Bridge", "Road", "Path", "Door", "Window", "Wall", "Roof",
-      "Stairs", "Elevator", "Tunnel", "Tower", "Castle", "Pyramid", "Circle", "Square"
+      { word: "GAME", plural: false, article: "A" },
+      { word: "BOOK", plural: false, article: "A" },
+      { word: "STORY", plural: false, article: "A" },
+      { word: "MOVIE", plural: false, article: "A" },
+      { word: "PUZZLE", plural: false, article: "A" },
+      { word: "TOY", plural: false, article: "A" },
+      { word: "BALL", plural: false, article: "A" },
+      { word: "RACE", plural: false, article: "A" },
+      { word: "BRIDGE", plural: false, article: "A" },
+      { word: "ROAD", plural: false, article: "A" },
+      { word: "PATH", plural: false, article: "A" },
+      { word: "DOOR", plural: false, article: "A" },
+      { word: "WINDOW", plural: false, article: "A" },
+      { word: "WALL", plural: false, article: "A" },
+      { word: "ROOF", plural: false, article: "A" },
+      { word: "STAIRS", plural: true, article: null },
+      { word: "ELEVATOR", plural: false, article: "AN" },
+      { word: "TUNNEL", plural: false, article: "A" },
+      { word: "TOWER", plural: false, article: "A" },
+      { word: "CASTLE", plural: false, article: "A" },
+      { word: "PYRAMID", plural: false, article: "A" },
+      { word: "CIRCLE", plural: false, article: "A" },
+      { word: "SQUARE", plural: false, article: "A" },
+      { word: "VACATION", plural: false, article: "A" },
+      { word: "JOURNEY", plural: false, article: "A" },
+      { word: "ADVENTURE", plural: false, article: "AN" }
     ];
 
     // Coaching cues for Rapid Fire
@@ -2135,7 +2302,28 @@
         word2Index = Math.floor(Math.random() * rapidFireWords.length);
       } while (used.has(word2Index));
 
-      return [rapidFireWords[word1Index], rapidFireWords[word2Index]];
+      const word1Obj = rapidFireWords[word1Index];
+      const word2Obj = rapidFireWords[word2Index];
+
+      // Build grammatically correct sentence: "[ARTICLE] WORD1 [IS/ARE] LIKE [ARTICLE] WORD2"
+      let sentence = "";
+
+      // First word with article
+      if (word1Obj.article) {
+        sentence += word1Obj.article + " ";
+      }
+      sentence += word1Obj.word;
+
+      // Verb (is/are)
+      sentence += word1Obj.plural ? " ARE LIKE " : " IS LIKE ";
+
+      // Second word with article
+      if (word2Obj.article) {
+        sentence += word2Obj.article + " ";
+      }
+      sentence += word2Obj.word;
+
+      return sentence;
     }
 
     function startRapidFire() {
@@ -2163,10 +2351,9 @@
     function startRapidFireRound() {
       if (!rapidFireIsActive) return;
 
-      // Generate new word pair
-      const [word1, word2] = getRandomWords();
-      document.getElementById('rfWord1').textContent = word1;
-      document.getElementById('rfWord2').textContent = word2;
+      // Generate grammatically correct sentence
+      const sentence = getRandomWords();
+      document.getElementById('rapidFireSentence').textContent = sentence;
 
       // Update round info
       document.getElementById('rapidFireRoundInfo').textContent =
