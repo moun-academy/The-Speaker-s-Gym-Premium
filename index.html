@@ -377,6 +377,147 @@
 
     .audio-visualizer.recording { animation: pulse 1s infinite; box-shadow: 0 0 40px rgba(59, 130, 246, 0.5); }
 
+    /* Rapid Fire Section */
+    .rapid-fire-section { display: none; text-align: center; margin-bottom: 20px; }
+    .rapid-fire-section.active { display: block; }
+
+    .rapid-fire-sentence {
+      font-size: 38px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #facc15, #fbbf24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-align: center;
+      margin-bottom: 16px;
+      line-height: 1.3;
+      letter-spacing: 0.02em;
+    }
+
+    .rapid-fire-because {
+      font-size: 32px;
+      font-weight: 700;
+      color: #facc15;
+      text-align: center;
+      margin-bottom: 24px;
+      letter-spacing: 0.05em;
+    }
+
+    .rapid-fire-timer {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: #0f172a;
+      transition: all 0.3s;
+      box-shadow: 0 8px 24px rgba(34, 197, 94, 0.4);
+    }
+
+    .rapid-fire-timer.warning {
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      box-shadow: 0 8px 24px rgba(249, 115, 22, 0.4);
+    }
+
+    .rapid-fire-timer.danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      animation: pulse 0.5s infinite;
+      box-shadow: 0 8px 24px rgba(239, 68, 68, 0.6);
+    }
+
+    .rapid-fire-round-info {
+      font-size: 16px;
+      color: #9ca3af;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    .rapid-fire-settings {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .rapid-fire-settings h4 {
+      font-size: 16px;
+      color: #facc15;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .rapid-fire-setting {
+      margin-bottom: 16px;
+    }
+
+    .rapid-fire-setting:last-child {
+      margin-bottom: 0;
+    }
+
+    .rapid-fire-setting label {
+      display: block;
+      font-size: 13px;
+      color: #d1d5db;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .rapid-fire-setting select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #374151;
+      background: #1f2937;
+      color: #e5e7eb;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .rapid-fire-cue {
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.1), rgba(251, 191, 36, 0.05));
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-size: 15px;
+      color: #fde68a;
+      font-weight: 600;
+      font-style: italic;
+    }
+
+    .rapid-fire-stats {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .rapid-fire-stat {
+      text-align: center;
+    }
+
+    .rapid-fire-stat-value {
+      font-size: 24px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #facc15, #fbbf24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .rapid-fire-stat-label {
+      font-size: 10px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
     /* Controls */
     .controls {
       display: flex;
@@ -901,6 +1042,31 @@
         max-width: 340px;
         margin: 0 auto;
       }
+
+      /* Mobile: Adjust Rapid Fire for smaller screens */
+      .rapid-fire-sentence {
+        font-size: 26px;
+        line-height: 1.4;
+      }
+
+      .rapid-fire-because {
+        font-size: 24px;
+      }
+
+      .rapid-fire-timer {
+        width: 100px;
+        height: 100px;
+        font-size: 36px;
+      }
+
+      .rapid-fire-stats {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .rapid-fire-stat-value {
+        font-size: 20px;
+      }
     }
   </style>
 </head>
@@ -993,6 +1159,7 @@
       <button class="mode-btn active" id="timerOnlyBtn">⏱️ Timer</button>
       <button class="mode-btn" id="audioBtn">🎙️ Audio</button>
       <button class="mode-btn" id="cameraBtn">📹 Video</button>
+      <button class="mode-btn" id="rapidFireBtn">⚡ Rapid Fire</button>
     </div>
 
     <!-- Timer Section -->
@@ -1033,6 +1200,73 @@
       <div class="download-section" id="videoDownload">
         <p style="color: #22c55e; margin-bottom: 8px;">✅ Recording saved!</p>
         <a href="#" id="videoDownloadLink" class="download-link" download="speech.webm">Download Recording</a>
+      </div>
+    </div>
+
+    <!-- Rapid Fire Section -->
+    <div class="rapid-fire-section" id="rapidFireSection">
+      <!-- Settings (shown before starting) -->
+      <div id="rapidFireSettings" class="rapid-fire-settings">
+        <h4>⚡ Rapid Fire Settings</h4>
+        <div class="rapid-fire-setting">
+          <label>Time per Round</label>
+          <select id="rapidFireTime">
+            <option value="5">5 seconds (Warm-up)</option>
+            <option value="4">4 seconds (Standard)</option>
+            <option value="3" selected>3 seconds (Challenging)</option>
+            <option value="2">2 seconds (Expert)</option>
+          </select>
+        </div>
+        <div class="rapid-fire-setting">
+          <label>Number of Rounds</label>
+          <select id="rapidFireRounds">
+            <option value="5">5 rounds (Quick)</option>
+            <option value="10" selected>10 rounds (Standard)</option>
+            <option value="15">15 rounds (Extended)</option>
+            <option value="20">20 rounds (Marathon)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="rapid-fire-stats">
+        <div class="rapid-fire-stat">
+          <div class="rapid-fire-stat-value" id="rfTotalSessions">0</div>
+          <div class="rapid-fire-stat-label">Sessions</div>
+        </div>
+        <div class="rapid-fire-stat">
+          <div class="rapid-fire-stat-value" id="rfTotalAnalogies">0</div>
+          <div class="rapid-fire-stat-label">Analogies</div>
+        </div>
+        <div class="rapid-fire-stat">
+          <div class="rapid-fire-stat-value" id="rfFastestTime">--</div>
+          <div class="rapid-fire-stat-label">Fastest</div>
+        </div>
+      </div>
+
+      <!-- Coaching Cue -->
+      <div class="rapid-fire-cue" id="rapidFireCue">
+        "Speak before thinking. No wrong answers. Keep moving forward."
+      </div>
+
+      <!-- Game Area (shown during game) -->
+      <div id="rapidFireGame" style="display: none;">
+        <div class="rapid-fire-round-info" id="rapidFireRoundInfo">Round 1 of 10</div>
+
+        <div class="rapid-fire-sentence" id="rapidFireSentence">
+          A BATTERY IS LIKE A JACUZZI
+        </div>
+        <div class="rapid-fire-because">
+          BECAUSE...
+        </div>
+
+        <div class="rapid-fire-timer" id="rapidFireTimer">3</div>
+      </div>
+
+      <!-- Controls -->
+      <div class="record-controls">
+        <button id="startRapidFireBtn" class="record-btn start">▶️ Start Session</button>
+        <button id="stopRapidFireBtn" class="record-btn stop" style="display: none;">⏹ End Session</button>
       </div>
     </div>
 
@@ -1177,6 +1411,206 @@
       { word: "Family", definition: "Group of related people" }
     ];
 
+    // Rapid Fire word list for analogies (150+ words with grammar metadata)
+    // Each word has: word, plural (true/false), article ('a', 'an', 'the', or null for no article)
+    const rapidFireWords = [
+      // Objects
+      { word: "BATTERY", plural: false, article: "A" },
+      { word: "FLASHLIGHT", plural: false, article: "A" },
+      { word: "HAMMER", plural: false, article: "A" },
+      { word: "SCREWDRIVER", plural: false, article: "A" },
+      { word: "PENCIL", plural: false, article: "A" },
+      { word: "ERASER", plural: false, article: "AN" },
+      { word: "SCISSORS", plural: true, article: null },
+      { word: "PAPERCLIP", plural: false, article: "A" },
+      { word: "STAPLER", plural: false, article: "A" },
+      { word: "MIRROR", plural: false, article: "A" },
+      { word: "CLOCK", plural: false, article: "A" },
+      { word: "LAMP", plural: false, article: "A" },
+      { word: "CHAIR", plural: false, article: "A" },
+      { word: "TABLE", plural: false, article: "A" },
+      { word: "PILLOW", plural: false, article: "A" },
+      { word: "BLANKET", plural: false, article: "A" },
+      { word: "UMBRELLA", plural: false, article: "AN" },
+      { word: "BACKPACK", plural: false, article: "A" },
+      { word: "WALLET", plural: false, article: "A" },
+      { word: "KEYS", plural: true, article: null },
+      { word: "PHONE", plural: false, article: "A" },
+      { word: "LAPTOP", plural: false, article: "A" },
+      { word: "CHARGER", plural: false, article: "A" },
+      { word: "HEADPHONES", plural: true, article: null },
+      { word: "CAMERA", plural: false, article: "A" },
+      { word: "MICROPHONE", plural: false, article: "A" },
+      { word: "SPEAKER", plural: false, article: "A" },
+      { word: "REMOTE", plural: false, article: "A" },
+      { word: "CALCULATOR", plural: false, article: "A" },
+      { word: "NOTEBOOK", plural: false, article: "A" },
+      { word: "CALENDAR", plural: false, article: "A" },
+      { word: "MAP", plural: false, article: "A" },
+      { word: "COMPASS", plural: false, article: "A" },
+      { word: "THERMOMETER", plural: false, article: "A" },
+      { word: "RULER", plural: false, article: "A" },
+      { word: "MAGNET", plural: false, article: "A" },
+      { word: "BRUSH", plural: false, article: "A" },
+      { word: "COMB", plural: false, article: "A" },
+      { word: "TOOTHBRUSH", plural: false, article: "A" },
+
+      // Animals
+      { word: "DOG", plural: false, article: "A" },
+      { word: "CAT", plural: false, article: "A" },
+      { word: "BIRD", plural: false, article: "A" },
+      { word: "HORSE", plural: false, article: "A" },
+      { word: "ELEPHANT", plural: false, article: "AN" },
+      { word: "LION", plural: false, article: "A" },
+      { word: "TIGER", plural: false, article: "A" },
+      { word: "BEAR", plural: false, article: "A" },
+      { word: "WOLF", plural: false, article: "A" },
+      { word: "FOX", plural: false, article: "A" },
+      { word: "RABBIT", plural: false, article: "A" },
+      { word: "SQUIRREL", plural: false, article: "A" },
+      { word: "DEER", plural: false, article: "A" },
+      { word: "DOLPHIN", plural: false, article: "A" },
+      { word: "WHALE", plural: false, article: "A" },
+      { word: "SHARK", plural: false, article: "A" },
+      { word: "EAGLE", plural: false, article: "AN" },
+      { word: "OWL", plural: false, article: "AN" },
+      { word: "PARROT", plural: false, article: "A" },
+      { word: "PENGUIN", plural: false, article: "A" },
+      { word: "BUTTERFLY", plural: false, article: "A" },
+      { word: "BEE", plural: false, article: "A" },
+      { word: "SPIDER", plural: false, article: "A" },
+      { word: "ANT", plural: false, article: "AN" },
+      { word: "SNAIL", plural: false, article: "A" },
+      { word: "FROG", plural: false, article: "A" },
+      { word: "TURTLE", plural: false, article: "A" },
+      { word: "SNAKE", plural: false, article: "A" },
+      { word: "LIZARD", plural: false, article: "A" },
+      { word: "MONKEY", plural: false, article: "A" },
+      { word: "GORILLA", plural: false, article: "A" },
+      { word: "GIRAFFE", plural: false, article: "A" },
+      { word: "ZEBRA", plural: false, article: "A" },
+      { word: "KANGAROO", plural: false, article: "A" },
+
+      // Nature
+      { word: "TREE", plural: false, article: "A" },
+      { word: "FLOWER", plural: false, article: "A" },
+      { word: "MOUNTAIN", plural: false, article: "A" },
+      { word: "RIVER", plural: false, article: "A" },
+      { word: "OCEAN", plural: false, article: "AN" },
+      { word: "LAKE", plural: false, article: "A" },
+      { word: "BEACH", plural: false, article: "A" },
+      { word: "DESERT", plural: false, article: "A" },
+      { word: "FOREST", plural: false, article: "A" },
+      { word: "GARDEN", plural: false, article: "A" },
+      { word: "CLOUD", plural: false, article: "A" },
+      { word: "RAINBOW", plural: false, article: "A" },
+      { word: "SUN", plural: false, article: "THE" },
+      { word: "MOON", plural: false, article: "THE" },
+      { word: "STAR", plural: false, article: "A" },
+      { word: "STONE", plural: false, article: "A" },
+      { word: "ROCK", plural: false, article: "A" },
+      { word: "SEED", plural: false, article: "A" },
+      { word: "ROOT", plural: false, article: "A" },
+      { word: "BRANCH", plural: false, article: "A" },
+      { word: "LEAF", plural: false, article: "A" },
+      { word: "SUNRISE", plural: false, article: "A" },
+      { word: "SUNSET", plural: false, article: "A" },
+      { word: "WAVE", plural: false, article: "A" },
+      { word: "WATERFALL", plural: false, article: "A" },
+      { word: "CANYON", plural: false, article: "A" },
+      { word: "VALLEY", plural: false, article: "A" },
+      { word: "ISLAND", plural: false, article: "AN" },
+      { word: "VOLCANO", plural: false, article: "A" },
+
+      // Technology
+      { word: "COMPUTER", plural: false, article: "A" },
+      { word: "KEYBOARD", plural: false, article: "A" },
+      { word: "MOUSE", plural: false, article: "A" },
+      { word: "MONITOR", plural: false, article: "A" },
+      { word: "PRINTER", plural: false, article: "A" },
+      { word: "SCANNER", plural: false, article: "A" },
+      { word: "ROUTER", plural: false, article: "A" },
+      { word: "ROBOT", plural: false, article: "A" },
+      { word: "DRONE", plural: false, article: "A" },
+      { word: "ENGINE", plural: false, article: "AN" },
+      { word: "MOTOR", plural: false, article: "A" },
+      { word: "WHEEL", plural: false, article: "A" },
+      { word: "GEAR", plural: false, article: "A" },
+      { word: "LEVER", plural: false, article: "A" },
+      { word: "BUTTON", plural: false, article: "A" },
+      { word: "SWITCH", plural: false, article: "A" },
+      { word: "SCREEN", plural: false, article: "A" },
+
+      // Food & Drinks
+      { word: "BREAD", plural: false, article: null },
+      { word: "BUTTER", plural: false, article: null },
+      { word: "CHEESE", plural: false, article: null },
+      { word: "MILK", plural: false, article: null },
+      { word: "COFFEE", plural: false, article: null },
+      { word: "TEA", plural: false, article: null },
+      { word: "WATER", plural: false, article: null },
+      { word: "JUICE", plural: false, article: null },
+      { word: "APPLE", plural: false, article: "AN" },
+      { word: "ORANGE", plural: false, article: "AN" },
+      { word: "BANANA", plural: false, article: "A" },
+      { word: "PIZZA", plural: false, article: "A" },
+      { word: "BURGER", plural: false, article: "A" },
+      { word: "SANDWICH", plural: false, article: "A" },
+      { word: "SALAD", plural: false, article: "A" },
+      { word: "COOKIE", plural: false, article: "A" },
+      { word: "CAKE", plural: false, article: "A" },
+      { word: "HONEY", plural: false, article: null },
+      { word: "SALT", plural: false, article: null },
+      { word: "PEPPER", plural: false, article: null },
+      { word: "SUGAR", plural: false, article: null },
+      { word: "EGG", plural: false, article: "AN" },
+      { word: "POTATO", plural: false, article: "A" },
+      { word: "TOMATO", plural: false, article: "A" },
+      { word: "CARROT", plural: false, article: "A" },
+
+      // Activities & Concepts
+      { word: "GAME", plural: false, article: "A" },
+      { word: "BOOK", plural: false, article: "A" },
+      { word: "STORY", plural: false, article: "A" },
+      { word: "MOVIE", plural: false, article: "A" },
+      { word: "PUZZLE", plural: false, article: "A" },
+      { word: "TOY", plural: false, article: "A" },
+      { word: "BALL", plural: false, article: "A" },
+      { word: "RACE", plural: false, article: "A" },
+      { word: "BRIDGE", plural: false, article: "A" },
+      { word: "ROAD", plural: false, article: "A" },
+      { word: "PATH", plural: false, article: "A" },
+      { word: "DOOR", plural: false, article: "A" },
+      { word: "WINDOW", plural: false, article: "A" },
+      { word: "WALL", plural: false, article: "A" },
+      { word: "ROOF", plural: false, article: "A" },
+      { word: "STAIRS", plural: true, article: null },
+      { word: "ELEVATOR", plural: false, article: "AN" },
+      { word: "TUNNEL", plural: false, article: "A" },
+      { word: "TOWER", plural: false, article: "A" },
+      { word: "CASTLE", plural: false, article: "A" },
+      { word: "PYRAMID", plural: false, article: "A" },
+      { word: "CIRCLE", plural: false, article: "A" },
+      { word: "SQUARE", plural: false, article: "A" },
+      { word: "VACATION", plural: false, article: "A" },
+      { word: "JOURNEY", plural: false, article: "A" },
+      { word: "ADVENTURE", plural: false, article: "AN" }
+    ];
+
+    // Coaching cues for Rapid Fire
+    const rapidFireCues = [
+      "Speak before thinking. No wrong answers.",
+      "Keep moving forward. Don't hesitate.",
+      "Your first thought is good enough.",
+      "Trust your instincts. Say it out loud.",
+      "No pausing. Just speak.",
+      "Every answer is the right answer.",
+      "Faster than your doubts. Go!",
+      "Don't overthink it. Just go.",
+      "Speed beats perfection here.",
+      "Your brain is faster than you think."
+    ];
+
     // Structure templates
     function getStructure(word, formula) {
       const structures = {
@@ -1275,6 +1709,20 @@
     let recognitionActive = false;
     let liveTranscript = '';
     let currentAudioBlob = null;
+
+    // Rapid Fire state
+    let rapidFireStats = JSON.parse(localStorage.getItem('rapidFireStats')) || {
+      totalSessions: 0,
+      totalAnalogies: 0,
+      fastestTime: null
+    };
+    let rapidFireInterval = null;
+    let rapidFireTimeLeft = 0;
+    let rapidFireCurrentRound = 0;
+    let rapidFireTotalRounds = 10;
+    let rapidFireTimePerRound = 3;
+    let rapidFireSessionStart = null;
+    let rapidFireIsActive = false;
 
     // AI Feedback Settings
     let aiEnabled = localStorage.getItem('aiEnabled') !== 'false'; // Default ON
@@ -1696,7 +2144,9 @@
       document.getElementById('timerSection').style.display = 'none';
       document.getElementById('audioSection').classList.remove('active');
       document.getElementById('cameraSection').classList.remove('active');
+      document.getElementById('rapidFireSection').classList.remove('active');
       stopMedia();
+      stopRapidFire(); // Stop any active rapid fire session
 
       if (mode === 'timer') {
         document.getElementById('timerOnlyBtn').classList.add('active');
@@ -1705,6 +2155,11 @@
         document.getElementById('audioBtn').classList.add('active');
         document.getElementById('audioSection').classList.add('active');
         initAudio();
+      } else if (mode === 'rapidfire') {
+        document.getElementById('rapidFireBtn').classList.add('active');
+        document.getElementById('rapidFireSection').classList.add('active');
+        updateRapidFireStats();
+        updateRapidFireCue();
       } else {
         document.getElementById('cameraBtn').classList.add('active');
         document.getElementById('cameraSection').classList.add('active');
@@ -1814,12 +2269,202 @@
       // Rating modal will be shown in requestFeedbackWithAudio() after analysis
     }
 
+    // ========== RAPID FIRE FUNCTIONS ==========
+
+    function updateRapidFireStats() {
+      document.getElementById('rfTotalSessions').textContent = rapidFireStats.totalSessions;
+      document.getElementById('rfTotalAnalogies').textContent = rapidFireStats.totalAnalogies;
+
+      if (rapidFireStats.fastestTime) {
+        document.getElementById('rfFastestTime').textContent = rapidFireStats.fastestTime + 's';
+      } else {
+        document.getElementById('rfFastestTime').textContent = '--';
+      }
+    }
+
+    function saveRapidFireStats() {
+      localStorage.setItem('rapidFireStats', JSON.stringify(rapidFireStats));
+      updateRapidFireStats();
+    }
+
+    function updateRapidFireCue() {
+      const randomCue = rapidFireCues[Math.floor(Math.random() * rapidFireCues.length)];
+      document.getElementById('rapidFireCue').textContent = `"${randomCue}"`;
+    }
+
+    function getRandomWords() {
+      const used = new Set();
+      const word1Index = Math.floor(Math.random() * rapidFireWords.length);
+      used.add(word1Index);
+
+      let word2Index;
+      do {
+        word2Index = Math.floor(Math.random() * rapidFireWords.length);
+      } while (used.has(word2Index));
+
+      const word1Obj = rapidFireWords[word1Index];
+      const word2Obj = rapidFireWords[word2Index];
+
+      // Build grammatically correct sentence: "[ARTICLE] WORD1 [IS/ARE] LIKE [ARTICLE] WORD2"
+      let sentence = "";
+
+      // First word with article
+      if (word1Obj.article) {
+        sentence += word1Obj.article + " ";
+      }
+      sentence += word1Obj.word;
+
+      // Verb (is/are)
+      sentence += word1Obj.plural ? " ARE LIKE " : " IS LIKE ";
+
+      // Second word with article
+      if (word2Obj.article) {
+        sentence += word2Obj.article + " ";
+      }
+      sentence += word2Obj.word;
+
+      return sentence;
+    }
+
+    function startRapidFire() {
+      // Get settings
+      rapidFireTimePerRound = parseInt(document.getElementById('rapidFireTime').value);
+      rapidFireTotalRounds = parseInt(document.getElementById('rapidFireRounds').value);
+
+      // Initialize session
+      rapidFireCurrentRound = 1;
+      rapidFireIsActive = true;
+      rapidFireSessionStart = Date.now();
+
+      // Hide settings, show game
+      document.getElementById('rapidFireSettings').style.display = 'none';
+      document.getElementById('rapidFireGame').style.display = 'block';
+
+      // Update buttons
+      document.getElementById('startRapidFireBtn').style.display = 'none';
+      document.getElementById('stopRapidFireBtn').style.display = 'inline-block';
+
+      // Start first round
+      startRapidFireRound();
+    }
+
+    function startRapidFireRound() {
+      if (!rapidFireIsActive) return;
+
+      // Generate grammatically correct sentence
+      const sentence = getRandomWords();
+      document.getElementById('rapidFireSentence').textContent = sentence;
+
+      // Update round info
+      document.getElementById('rapidFireRoundInfo').textContent =
+        `Round ${rapidFireCurrentRound} of ${rapidFireTotalRounds}`;
+
+      // Reset timer
+      rapidFireTimeLeft = rapidFireTimePerRound;
+      updateRapidFireTimer();
+
+      // Start countdown
+      rapidFireInterval = setInterval(() => {
+        rapidFireTimeLeft--;
+        updateRapidFireTimer();
+
+        if (rapidFireTimeLeft <= 0) {
+          clearInterval(rapidFireInterval);
+          nextRapidFireRound();
+        }
+      }, 1000);
+    }
+
+    function updateRapidFireTimer() {
+      const timerEl = document.getElementById('rapidFireTimer');
+      timerEl.textContent = rapidFireTimeLeft;
+
+      // Update colors based on time left
+      timerEl.classList.remove('warning', 'danger');
+
+      const percentLeft = rapidFireTimeLeft / rapidFireTimePerRound;
+      if (percentLeft <= 0.33) {
+        timerEl.classList.add('danger');
+      } else if (percentLeft <= 0.66) {
+        timerEl.classList.add('warning');
+      }
+    }
+
+    function nextRapidFireRound() {
+      rapidFireCurrentRound++;
+
+      if (rapidFireCurrentRound <= rapidFireTotalRounds) {
+        // Continue to next round
+        setTimeout(() => startRapidFireRound(), 300);
+      } else {
+        // Session complete
+        completeRapidFireSession();
+      }
+    }
+
+    function completeRapidFireSession() {
+      rapidFireIsActive = false;
+
+      // Calculate session time
+      const sessionDuration = Math.floor((Date.now() - rapidFireSessionStart) / 1000);
+
+      // Update stats
+      rapidFireStats.totalSessions++;
+      rapidFireStats.totalAnalogies += rapidFireTotalRounds;
+
+      // Update fastest time
+      if (!rapidFireStats.fastestTime || sessionDuration < rapidFireStats.fastestTime) {
+        rapidFireStats.fastestTime = sessionDuration;
+      }
+
+      saveRapidFireStats();
+
+      // Show completion message
+      showAchievement(`⚡ Session complete! ${rapidFireTotalRounds} analogies in ${sessionDuration}s`);
+
+      // Reset UI
+      resetRapidFireUI();
+    }
+
+    function stopRapidFire() {
+      if (rapidFireInterval) {
+        clearInterval(rapidFireInterval);
+        rapidFireInterval = null;
+      }
+      rapidFireIsActive = false;
+      resetRapidFireUI();
+    }
+
+    function resetRapidFireUI() {
+      // Clear interval if exists
+      if (rapidFireInterval) {
+        clearInterval(rapidFireInterval);
+        rapidFireInterval = null;
+      }
+
+      // Reset state
+      rapidFireIsActive = false;
+      rapidFireCurrentRound = 0;
+
+      // Show settings, hide game
+      document.getElementById('rapidFireSettings').style.display = 'block';
+      document.getElementById('rapidFireGame').style.display = 'none';
+
+      // Reset buttons
+      document.getElementById('startRapidFireBtn').style.display = 'inline-block';
+      document.getElementById('stopRapidFireBtn').style.display = 'none';
+
+      // Update cue
+      updateRapidFireCue();
+    }
+
     // Event listeners
     document.getElementById('newWordBtn').addEventListener('click', newWord);
     document.getElementById('resetBtn').addEventListener('click', reset);
     document.getElementById('timerOnlyBtn').addEventListener('click', () => setMode('timer'));
     document.getElementById('audioBtn').addEventListener('click', () => setMode('audio'));
     document.getElementById('cameraBtn').addEventListener('click', () => setMode('video'));
+    document.getElementById('rapidFireBtn').addEventListener('click', () => setMode('rapidfire'));
     document.getElementById('skipRating').addEventListener('click', () => submitRating(null));
 
     document.getElementById('startTimerBtn').addEventListener('click', startTimer);
@@ -1828,6 +2473,9 @@
     document.getElementById('stopAudioBtn').addEventListener('click', stopAudioRecording);
     document.getElementById('startVideoBtn').addEventListener('click', startVideoRecording);
     document.getElementById('stopVideoBtn').addEventListener('click', stopVideoRecording);
+
+    document.getElementById('startRapidFireBtn').addEventListener('click', startRapidFire);
+    document.getElementById('stopRapidFireBtn').addEventListener('click', stopRapidFire);
 
     document.getElementById('toggleStructureBtn').addEventListener('click', () => {
       if (!currentWord) return;
