@@ -305,6 +305,101 @@
       font-size: 13px;
     }
 
+    /* Breathing Animation */
+    .breathing-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 20px;
+    }
+
+    .breathing-circle {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(147, 197, 253, 0.6), rgba(59, 130, 246, 0.4), rgba(30, 64, 175, 0.3));
+      box-shadow:
+        0 0 40px rgba(59, 130, 246, 0.3),
+        0 0 80px rgba(59, 130, 246, 0.2),
+        inset 0 0 30px rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: transform 0.3s ease;
+    }
+
+    .breathing-circle::before {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 2px solid rgba(147, 197, 253, 0.4);
+      animation: breathePulse 4s ease-in-out infinite;
+    }
+
+    .breathing-circle.animating {
+      animation: breathe 8s ease-in-out infinite;
+    }
+
+    .breathing-circle.animating::before {
+      animation: breathePulse 8s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow:
+          0 0 40px rgba(59, 130, 246, 0.3),
+          0 0 80px rgba(59, 130, 246, 0.2),
+          inset 0 0 30px rgba(255, 255, 255, 0.1);
+      }
+      50% {
+        transform: scale(1.5);
+        box-shadow:
+          0 0 60px rgba(59, 130, 246, 0.5),
+          0 0 120px rgba(59, 130, 246, 0.3),
+          inset 0 0 40px rgba(255, 255, 255, 0.2);
+      }
+    }
+
+    @keyframes breathePulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.4;
+      }
+      50% {
+        transform: scale(1.6);
+        opacity: 0.1;
+      }
+    }
+
+    .breathing-text {
+      font-size: 16px;
+      font-weight: 600;
+      color: #93c5fd;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      z-index: 1;
+    }
+
+    .breathing-instruction {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #9ca3af;
+      text-align: center;
+    }
+
+    .breathing-phase {
+      font-size: 20px;
+      font-weight: 700;
+      color: #60a5fa;
+      margin-top: 16px;
+      min-height: 28px;
+    }
+
     /* Settings Page Styles */
     .settings-section {
       background: rgba(30, 41, 59, 0.6);
@@ -996,6 +1091,69 @@
       border-color: rgba(250, 204, 21, 0.3);
     }
 
+    /* Show Structure Button - Premium Style */
+    .structure-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 16px 32px;
+      font-size: 17px;
+      font-weight: 700;
+      color: #0f172a;
+      background: linear-gradient(135deg, #fde047, #facc15, #eab308);
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      box-shadow:
+        0 4px 15px rgba(250, 204, 21, 0.4),
+        0 1px 3px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .structure-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .structure-btn:hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 6px 20px rgba(250, 204, 21, 0.5),
+        0 2px 5px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    }
+
+    .structure-btn:hover::before {
+      left: 100%;
+    }
+
+    .structure-btn:active {
+      transform: translateY(0);
+      box-shadow:
+        0 2px 10px rgba(250, 204, 21, 0.3),
+        0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .structure-btn .btn-icon {
+      font-size: 20px;
+    }
+
+    .structure-btn.active {
+      background: linear-gradient(135deg, #6b7280, #4b5563);
+      color: #e5e7eb;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
     /* Structure Guide */
     .structure-box {
       display: none;
@@ -1182,12 +1340,6 @@
       gap: 4px;
     }
 
-    .cost-note {
-      font-size: 11px;
-      color: #6b7280;
-      font-style: italic;
-    }
-
     .ai-panel .field-row { display: flex; gap: 8px; margin-bottom: 10px; }
     .ai-panel input { flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid #374151; background: #0f172a; color: #e5e7eb; }
     .ai-panel button { padding: 10px 12px; border-radius: 8px; border: none; background: linear-gradient(135deg, #22c55e, #16a34a); color: #0f172a; font-weight: 700; cursor: pointer; }
@@ -1313,37 +1465,42 @@
     /* Removed old Firebase Auth & Sync styles - now using profile dropdown */
 
     @media (max-width: 640px) {
-      .container { padding: 20px; }
+      .container { padding: 20px; padding-top: 60px; }
       h1 { font-size: 24px; }
       .word { font-size: 28px; }
       .controls { grid-template-columns: 1fr; }
       .stats-bar { grid-template-columns: repeat(2, 1fr); }
 
-      /* Mobile: Position header with extra space for hamburger below logo */
+      /* Mobile: Reset header padding */
       .header {
-        padding-top: 50px;
+        padding-top: 0;
         padding-bottom: 8px;
       }
 
-      /* Mobile: Position hamburger menu below the logo */
+      /* Mobile: Position hamburger menu at absolute top-left of viewport */
       .hamburger-btn {
-        position: absolute;
-        top: auto;
-        bottom: -45px;
-        left: 0;
-        width: 36px;
-        height: 36px;
-        font-size: 20px;
+        position: fixed;
+        top: 28px;
+        left: 28px;
+        width: 40px;
+        height: 40px;
+        font-size: 22px;
+        z-index: 500;
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(250, 204, 21, 0.4);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       }
 
       .profile-btn {
-        position: absolute;
-        top: 0;
-        right: 4px;
-        width: 32px;
-        height: 32px;
+        position: fixed;
+        top: 28px;
+        right: 28px;
+        width: 36px;
+        height: 36px;
         font-size: 16px;
-        z-index: 100;
+        z-index: 500;
+        background: rgba(15, 23, 42, 0.95);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       }
 
       .profile-btn.syncing::after {
@@ -1572,18 +1729,18 @@
         </label>
       </div>
       <div class="helper">
-        <span id="aiToggleHelper">Whisper transcription + GPT-4o analysis with speech metrics (pace, pauses, filler words).</span>
-        <span class="cost-note">~$0.02-0.04 per 2-min speech</span>
+        <span id="aiToggleHelper">Get personalized feedback on your pace, pauses, and delivery.</span>
       </div>
       <textarea id="manualTranscript" class="transcript-input" placeholder="Transcript will appear here automatically after recording. You can also paste text for manual analysis."></textarea>
       <div class="ai-status" id="aiStatus">Waiting for your next recording.</div>
-      <div class="ai-feedback-box" id="aiFeedback">Your detailed feedback with speech metrics will appear here.</div>
+      <div class="ai-feedback-box" id="aiFeedback">Your detailed feedback will appear here after your speech.</div>
     </div>
 
     <!-- Structure Guide -->
-    <div style="text-align: center; margin-bottom: 12px;">
-      <button id="toggleStructureBtn" class="primary" style="width: auto; padding: 14px 24px; font-size: 16px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">
-        <span style="font-size: 18px;">📋</span> Show Structure
+    <div style="text-align: center; margin: 24px 0;">
+      <button id="toggleStructureBtn" class="structure-btn">
+        <span class="btn-icon">✨</span>
+        <span>Structure Guide</span>
       </button>
     </div>
 
@@ -1687,16 +1844,26 @@
     <button class="back-btn" id="warmUpBackBtn">← Back to Home</button>
     <h2 style="font-size: 24px; color: #facc15; margin-bottom: 20px; text-align: center;">🎤 Vocal Warm Up</h2>
 
-    <!-- Breathing Exercise -->
+    <!-- Breathing Exercise with Animation -->
     <div class="warmup-section">
       <h3>🌬️ Deep Breathing</h3>
-      <div class="warmup-exercise">
-        <h4>Box Breathing</h4>
-        <p>Breathe in for 4 seconds, hold for 4, breathe out for 4, hold for 4. Repeat 3 times.</p>
-        <div class="warmup-timer">
-          <span class="warmup-timer-display" id="breathingTimer">0:00</span>
-          <button class="warmup-timer-btn primary" id="startBreathingBtn">Start</button>
-          <button class="warmup-timer-btn secondary" id="stopBreathingBtn" style="display: none;">Stop</button>
+
+      <!-- Breathing Animation Circle -->
+      <div class="breathing-container">
+        <div class="breathing-circle" id="breathingCircle">
+          <span class="breathing-text" id="breathingTimerDisplay">0:00</span>
+        </div>
+        <div class="breathing-phase" id="breathingPhase"></div>
+        <div class="breathing-instruction">
+          Inhale 4s → Hold 4s → Exhale 4s → Hold 4s<br>
+          <small style="color: #6b7280;">Follow the expanding and contracting circle</small>
+        </div>
+      </div>
+
+      <div class="warmup-exercise" style="text-align: center;">
+        <div class="warmup-timer" style="justify-content: center;">
+          <button class="warmup-timer-btn primary" id="startBreathingBtn" style="padding: 12px 28px; font-size: 15px;">▶️ Start Breathing</button>
+          <button class="warmup-timer-btn secondary" id="stopBreathingBtn" style="display: none; padding: 12px 28px; font-size: 15px;">⏹ Stop</button>
         </div>
       </div>
     </div>
@@ -2276,17 +2443,19 @@
     function updateAIToggleUI() {
       const helper = document.getElementById('aiToggleHelper');
       if (aiEnabled) {
-        helper.textContent = 'Whisper transcription + GPT-4o analysis with speech metrics (pace, pauses, filler words).';
+        helper.textContent = 'Get personalized feedback on your pace, pauses, and delivery.';
         setAiStatus('AI feedback enabled. Ready for your next recording.');
       } else {
-        helper.textContent = 'Transcription only (no AI analysis). Save costs by disabling feedback.';
+        helper.textContent = 'Transcript only mode. Toggle on for coaching feedback.';
         setAiStatus('AI feedback disabled. Will show transcript only.');
       }
     }
 
     function updateVersionDisplay() {
       const versionEl = document.getElementById('appVersion');
-      versionEl.textContent = `Version ${APP_VERSION} • January 11, 2026 • Data Loss Fix`;
+      if (versionEl) {
+        versionEl.textContent = `Version ${APP_VERSION}`;
+      }
     }
 
     function checkNewDay() {
@@ -2982,10 +3151,12 @@
       const toggleBtn = document.getElementById('toggleStructureBtn');
       if (structureBox.style.display === 'none' || structureBox.style.display === '') {
         structureBox.style.display = 'block';
-        toggleBtn.innerHTML = '<span style="font-size: 18px;">📋</span> Hide Structure';
+        toggleBtn.innerHTML = '<span class="btn-icon">📋</span><span>Hide Guide</span>';
+        toggleBtn.classList.add('active');
       } else {
         structureBox.style.display = 'none';
-        toggleBtn.innerHTML = '<span style="font-size: 18px;">📋</span> Show Structure';
+        toggleBtn.innerHTML = '<span class="btn-icon">✨</span><span>Structure Guide</span>';
+        toggleBtn.classList.remove('active');
       }
     });
 
@@ -4042,15 +4213,41 @@
     let currentTwisterIndex = 0;
 
     let warmupTimers = {
-      breathing: { interval: null, running: false, seconds: 0, target: 48 },
+      breathing: { interval: null, running: false, seconds: 0, target: 48, phase: 0, phaseTime: 0 },
       lipTrill: { interval: null, running: false, seconds: 30, target: 30 },
       humming: { interval: null, running: false, seconds: 30, target: 30 }
     };
+
+    const breathingPhases = [
+      { name: 'INHALE', duration: 4, color: '#60a5fa' },
+      { name: 'HOLD', duration: 4, color: '#a78bfa' },
+      { name: 'EXHALE', duration: 4, color: '#34d399' },
+      { name: 'HOLD', duration: 4, color: '#a78bfa' }
+    ];
 
     function formatWarmupTime(seconds) {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
       return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function updateBreathingPhase() {
+      const timer = warmupTimers.breathing;
+      const circle = document.getElementById('breathingCircle');
+      const phaseEl = document.getElementById('breathingPhase');
+      const display = document.getElementById('breathingTimerDisplay');
+
+      const phase = breathingPhases[timer.phase];
+      phaseEl.textContent = phase.name;
+      phaseEl.style.color = phase.color;
+      display.textContent = timer.phaseTime;
+
+      // Update animation based on phase
+      if (phase.name === 'INHALE') {
+        circle.style.transform = `scale(${1 + (timer.phaseTime / phase.duration) * 0.5})`;
+      } else if (phase.name === 'EXHALE') {
+        circle.style.transform = `scale(${1.5 - (timer.phaseTime / phase.duration) * 0.5})`;
+      }
     }
 
     function startWarmupTimer(type) {
@@ -4059,32 +4256,48 @@
 
       const startBtn = document.getElementById(`start${type.charAt(0).toUpperCase() + type.slice(1)}Btn`);
       const stopBtn = document.getElementById(`stop${type.charAt(0).toUpperCase() + type.slice(1)}Btn`);
-      const display = document.getElementById(`${type}Timer`);
 
       startBtn.style.display = 'none';
       stopBtn.style.display = 'inline-block';
 
       if (type === 'breathing') {
         warmupTimers[type].seconds = 0;
-      }
+        warmupTimers[type].phase = 0;
+        warmupTimers[type].phaseTime = 0;
 
-      warmupTimers[type].interval = setInterval(() => {
-        if (type === 'breathing') {
-          warmupTimers[type].seconds++;
-          display.textContent = formatWarmupTime(warmupTimers[type].seconds);
-          if (warmupTimers[type].seconds >= warmupTimers[type].target) {
-            stopWarmupTimer(type);
+        const circle = document.getElementById('breathingCircle');
+        circle.classList.add('animating');
+        updateBreathingPhase();
+
+        warmupTimers[type].interval = setInterval(() => {
+          const timer = warmupTimers.breathing;
+          timer.seconds++;
+          timer.phaseTime++;
+
+          const currentPhase = breathingPhases[timer.phase];
+          if (timer.phaseTime >= currentPhase.duration) {
+            timer.phaseTime = 0;
+            timer.phase = (timer.phase + 1) % breathingPhases.length;
+          }
+
+          updateBreathingPhase();
+
+          if (timer.seconds >= timer.target) {
+            stopWarmupTimer('breathing');
             showAchievement("🌬️ Breathing exercise complete!");
           }
-        } else {
+        }, 1000);
+      } else {
+        const display = document.getElementById(`${type}Timer`);
+        warmupTimers[type].interval = setInterval(() => {
           warmupTimers[type].seconds--;
           display.textContent = formatWarmupTime(warmupTimers[type].seconds);
           if (warmupTimers[type].seconds <= 0) {
             stopWarmupTimer(type);
             showAchievement(type === 'lipTrill' ? "💋 Lip trills done!" : "🎵 Humming complete!");
           }
-        }
-      }, 1000);
+        }, 1000);
+      }
     }
 
     function stopWarmupTimer(type) {
@@ -4094,16 +4307,25 @@
       const btnName = type.charAt(0).toUpperCase() + type.slice(1);
       const startBtn = document.getElementById(`start${btnName}Btn`);
       const stopBtn = document.getElementById(`stop${btnName}Btn`);
-      const display = document.getElementById(`${type}Timer`);
 
       startBtn.style.display = 'inline-block';
       stopBtn.style.display = 'none';
 
-      // Reset display
       if (type === 'breathing') {
         warmupTimers[type].seconds = 0;
+        warmupTimers[type].phase = 0;
+        warmupTimers[type].phaseTime = 0;
+
+        const circle = document.getElementById('breathingCircle');
+        const phaseEl = document.getElementById('breathingPhase');
+        const display = document.getElementById('breathingTimerDisplay');
+
+        circle.classList.remove('animating');
+        circle.style.transform = 'scale(1)';
+        phaseEl.textContent = '';
         display.textContent = '0:00';
       } else {
+        const display = document.getElementById(`${type}Timer`);
         warmupTimers[type].seconds = 30;
         display.textContent = '0:30';
       }
