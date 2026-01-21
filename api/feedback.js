@@ -180,7 +180,7 @@ Speech Metrics:
 `;
 
       const completion = await client.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-5.1',
         messages: [
           {
             role: 'system',
@@ -242,7 +242,7 @@ Speech Metrics:
       }
 
       const completion = await client.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-5.1',
         messages: [
           {
             role: 'system',
