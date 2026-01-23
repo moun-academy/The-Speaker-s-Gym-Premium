@@ -675,6 +675,122 @@
 
     .definition { font-size: 14px; color: #d1d5db; }
 
+    /* Prompt Mode Toggle (Random Words vs IELTS) */
+    .prompt-mode-toggle {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .prompt-mode-btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      border: 2px solid #374151;
+      background: #1f2937;
+      color: #9ca3af;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .prompt-mode-btn:hover {
+      border-color: rgba(250, 204, 21, 0.5);
+      color: #e5e7eb;
+    }
+
+    .prompt-mode-btn.active {
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.2), rgba(250, 204, 21, 0.1));
+      color: #facc15;
+      border-color: rgba(250, 204, 21, 0.5);
+    }
+
+    .prompt-mode-btn .mode-icon {
+      font-size: 16px;
+    }
+
+    /* IELTS Question Display */
+    .ielts-question {
+      display: none;
+      padding: 8px 0;
+    }
+
+    .ielts-question.show {
+      display: block;
+    }
+
+    .ielts-part-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
+    }
+
+    .ielts-part-badge.part1 {
+      background: rgba(34, 197, 94, 0.2);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .ielts-part-badge.part2 {
+      background: rgba(59, 130, 246, 0.2);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .ielts-part-badge.part3 {
+      background: rgba(168, 85, 247, 0.2);
+      color: #a855f7;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+
+    .ielts-question-text {
+      font-size: 20px;
+      font-weight: 600;
+      color: #e5e7eb;
+      line-height: 1.5;
+      text-align: left;
+      padding: 0 8px;
+    }
+
+    .ielts-question-text.part2 {
+      font-size: 17px;
+    }
+
+    .ielts-subpoints {
+      margin-top: 12px;
+      padding-left: 20px;
+      text-align: left;
+    }
+
+    .ielts-subpoints li {
+      font-size: 14px;
+      color: #9ca3af;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+
+    /* Hide definition when in IELTS mode */
+    .word-box.ielts-mode .definition {
+      display: none;
+    }
+
+    .word-box.ielts-mode .word {
+      display: none;
+    }
+
+    .word-box.ielts-mode .label {
+      display: none;
+    }
+
     /* Mode Selector */
     .mode-selector {
       display: flex;
@@ -1658,11 +1774,31 @@
     <!-- Nudge Banner -->
     <div class="nudge-banner" id="nudgeBanner"></div>
 
+    <!-- Prompt Mode Toggle -->
+    <div class="prompt-mode-toggle">
+      <button class="prompt-mode-btn active" id="randomWordsBtn">
+        <span class="mode-icon">🎲</span>
+        <span>Random Words</span>
+      </button>
+      <button class="prompt-mode-btn" id="ieltsBtn">
+        <span class="mode-icon">📝</span>
+        <span>IELTS Questions</span>
+      </button>
+    </div>
+
     <!-- Word Box -->
     <div class="word-box" id="wordBox">
+      <!-- Random Words Mode -->
       <div class="label">Your Word</div>
       <div id="word" class="word">Ready?</div>
       <div class="definition" id="definition">Click "New Word" to get started</div>
+
+      <!-- IELTS Mode -->
+      <div class="ielts-question" id="ieltsQuestion">
+        <span class="ielts-part-badge part1" id="ieltsBadge">Part 1</span>
+        <div class="ielts-question-text" id="ieltsQuestionText">Click "New Question" to get an IELTS speaking question</div>
+        <ul class="ielts-subpoints" id="ieltsSubpoints" style="display: none;"></ul>
+      </div>
     </div>
 
     <!-- Mode Selector -->
@@ -2075,6 +2211,65 @@
       { word: "Family", definition: "Group of related people" }
     ];
 
+    // IELTS Speaking Questions (50 questions from Parts 1, 2, and 3)
+    const ieltsQuestions = [
+      // PART 1 - Personal Questions (20 questions)
+      { part: 1, question: "What do you do for work or study?" },
+      { part: 1, question: "Tell me about your hometown. What do you like about it?" },
+      { part: 1, question: "What kind of accommodation do you live in?" },
+      { part: 1, question: "Do you have any hobbies? What equipment do you need for it?" },
+      { part: 1, question: "What's your favorite food? Have you always liked it?" },
+      { part: 1, question: "How do you usually spend your weekends?" },
+      { part: 1, question: "Do you prefer going out alone or with friends?" },
+      { part: 1, question: "What makes you happy?" },
+      { part: 1, question: "Tell me about your daily routine." },
+      { part: 1, question: "What are the different seasons like in your country?" },
+      { part: 1, question: "Do you like reading books? What kind?" },
+      { part: 1, question: "How important is your family to you?" },
+      { part: 1, question: "Do you enjoy cooking? What do you usually cook?" },
+      { part: 1, question: "What kind of music do you like?" },
+      { part: 1, question: "How do you usually travel to work or school?" },
+      { part: 1, question: "Do you like to stay up late or go to bed early?" },
+      { part: 1, question: "What did you enjoy doing as a child?" },
+      { part: 1, question: "Do you prefer hot or cold weather? Why?" },
+      { part: 1, question: "What do you usually do when you have free time?" },
+      { part: 1, question: "Tell me about your neighborhood." },
+
+      // PART 2 - 2-Minute Topics (20 questions)
+      { part: 2, question: "Describe a person who has inspired you.", subpoints: ["Who they are", "How you know them", "What they did to inspire you", "Explain why they inspired you"] },
+      { part: 2, question: "Describe a place you would like to visit.", subpoints: ["Where it is", "How you know about it", "What you would do there", "Explain why you want to visit it"] },
+      { part: 2, question: "Describe a memorable event from your childhood.", subpoints: ["What the event was", "When it happened", "Who was there", "Explain why it was memorable"] },
+      { part: 2, question: "Describe a skill you would like to learn.", subpoints: ["What the skill is", "Why you want to learn it", "How you would learn it", "Explain how it would benefit you"] },
+      { part: 2, question: "Describe a book or movie that made an impact on you.", subpoints: ["What it was about", "When you read/watched it", "Why it was significant", "Explain how it affected you"] },
+      { part: 2, question: "Describe a goal or ambition you have.", subpoints: ["What it is", "When you first had this goal", "What you're doing to achieve it", "Explain why it's important to you"] },
+      { part: 2, question: "Describe a gift you gave someone that they really liked.", subpoints: ["What it was", "Who you gave it to", "Why you chose it", "Explain their reaction"] },
+      { part: 2, question: "Describe a time when you helped someone.", subpoints: ["Who you helped", "What you did", "Why you helped them", "Explain how you felt about it"] },
+      { part: 2, question: "Describe a festival or celebration in your country.", subpoints: ["What it is", "When it happens", "What people do", "Explain why it's important"] },
+      { part: 2, question: "Describe a difficult decision you had to make.", subpoints: ["What the decision was", "When you made it", "What options you had", "Explain why it was difficult"] },
+      { part: 2, question: "Describe a photograph you really like.", subpoints: ["What's in the photo", "When it was taken", "Why you like it", "Explain what it means to you"] },
+      { part: 2, question: "Describe a time when you were really proud of yourself.", subpoints: ["What you accomplished", "When it happened", "How you felt", "Explain why you were proud"] },
+      { part: 2, question: "Describe your favorite place to relax.", subpoints: ["Where it is", "What it looks like", "What you do there", "Explain why it helps you relax"] },
+      { part: 2, question: "Describe an interesting animal you have seen.", subpoints: ["What it was", "Where you saw it", "What it was doing", "Explain why it was interesting"] },
+      { part: 2, question: "Describe a teacher who influenced you.", subpoints: ["Who they were", "What they taught", "How they influenced you", "Explain why they were important"] },
+      { part: 2, question: "Describe a small business you would like to start.", subpoints: ["What it would be", "Why you're interested in it", "What would be needed to start it", "Explain how it would help people"] },
+      { part: 2, question: "Describe a time when you had to be brave.", subpoints: ["What happened", "When it was", "How you felt", "Explain why you needed to be brave"] },
+      { part: 2, question: "Describe a piece of technology you find useful.", subpoints: ["What it is", "How you use it", "Why it's useful", "Explain how it makes your life easier"] },
+      { part: 2, question: "Describe a tradition in your family.", subpoints: ["What it is", "When it happens", "Who participates", "Explain why it's important to your family"] },
+      { part: 2, question: "Describe a beautiful place in your city.", subpoints: ["Where it is", "What it looks like", "What people do there", "Explain why you think it's beautiful"] },
+
+      // PART 3 - Discussion Questions (10 questions)
+      { part: 3, question: "How has technology changed the way people communicate in your country?" },
+      { part: 3, question: "Do you think it's important to preserve traditional customs? Why or why not?" },
+      { part: 3, question: "What are the advantages and disadvantages of living in a big city?" },
+      { part: 3, question: "How can education be improved in your country?" },
+      { part: 3, question: "Do you think people today have more stress than previous generations? Why?" },
+      { part: 3, question: "What role should governments play in protecting the environment?" },
+      { part: 3, question: "How has the internet affected the way young people learn?" },
+      { part: 3, question: "Do you think work-life balance is important? How can it be achieved?" },
+      { part: 3, question: "What are the benefits and drawbacks of globalization?" },
+      { part: 3, question: "How can communities support elderly people better?" }
+    ];
+
     // Rapid Fire word list for analogies (150+ words with grammar metadata)
     // Each word has: word, plural (true/false), article ('a', 'an', 'the', or null for no article)
     const rapidFireWords = [
@@ -2374,6 +2569,10 @@
     let liveTranscript = '';
     let currentAudioBlob = null;
 
+    // Prompt Mode state (Random Words vs IELTS)
+    let isIeltsMode = localStorage.getItem('promptMode') === 'ielts';
+    let currentIeltsQuestion = null;
+
     // Rapid Fire state
     let rapidFireStats = JSON.parse(localStorage.getItem('rapidFireStats')) || {
       totalSessions: 0,
@@ -2405,6 +2604,15 @@
     const aiStatus = document.getElementById('aiStatus');
     const manualTranscript = document.getElementById('manualTranscript');
 
+    // IELTS Elements
+    const ieltsQuestionEl = document.getElementById('ieltsQuestion');
+    const ieltsQuestionText = document.getElementById('ieltsQuestionText');
+    const ieltsBadge = document.getElementById('ieltsBadge');
+    const ieltsSubpoints = document.getElementById('ieltsSubpoints');
+    const randomWordsBtn = document.getElementById('randomWordsBtn');
+    const ieltsBtn = document.getElementById('ieltsBtn');
+    const newWordBtn = document.getElementById('newWordBtn');
+
     // Initialize
     function init() {
       checkNewDay();
@@ -2413,9 +2621,95 @@
       updateNudge();
       initSpeechRecognition();
       initAIToggle();
+      initPromptModeToggle();
       setAiStatus('Waiting for your next recording.');
       manualTranscript.value = '';
       updateVersionDisplay();
+    }
+
+    // Prompt Mode Toggle (Random Words vs IELTS)
+    function initPromptModeToggle() {
+      // Set initial UI state
+      updatePromptModeUI();
+
+      // Toggle event listeners
+      randomWordsBtn.addEventListener('click', () => {
+        if (!isIeltsMode) return;
+        isIeltsMode = false;
+        localStorage.setItem('promptMode', 'words');
+        updatePromptModeUI();
+        resetPrompt();
+      });
+
+      ieltsBtn.addEventListener('click', () => {
+        if (isIeltsMode) return;
+        isIeltsMode = true;
+        localStorage.setItem('promptMode', 'ielts');
+        updatePromptModeUI();
+        resetPrompt();
+      });
+    }
+
+    function updatePromptModeUI() {
+      // Update toggle buttons
+      randomWordsBtn.classList.toggle('active', !isIeltsMode);
+      ieltsBtn.classList.toggle('active', isIeltsMode);
+
+      // Update word box class
+      wordBox.classList.toggle('ielts-mode', isIeltsMode);
+
+      // Show/hide appropriate content
+      if (isIeltsMode) {
+        ieltsQuestionEl.classList.add('show');
+        newWordBtn.textContent = 'New Question';
+      } else {
+        ieltsQuestionEl.classList.remove('show');
+        newWordBtn.textContent = 'New Word';
+      }
+    }
+
+    function resetPrompt() {
+      reset();
+      currentWord = null;
+      currentIeltsQuestion = null;
+      wordEl.textContent = 'Ready?';
+      definitionEl.textContent = isIeltsMode ? 'Click "New Question" to get started' : 'Click "New Word" to get started';
+      ieltsQuestionText.textContent = isIeltsMode ? 'Click "New Question" to get an IELTS speaking question' : '';
+      ieltsSubpoints.style.display = 'none';
+      ieltsSubpoints.innerHTML = '';
+      ieltsBadge.textContent = 'Part 1';
+      ieltsBadge.className = 'ielts-part-badge part1';
+      structureBox.style.display = 'none';
+    }
+
+    function newIeltsQuestion() {
+      reset();
+      currentIeltsQuestion = ieltsQuestions[Math.floor(Math.random() * ieltsQuestions.length)];
+
+      // Update badge
+      ieltsBadge.textContent = `Part ${currentIeltsQuestion.part}`;
+      ieltsBadge.className = `ielts-part-badge part${currentIeltsQuestion.part}`;
+
+      // Update question text
+      ieltsQuestionText.textContent = currentIeltsQuestion.question;
+      ieltsQuestionText.classList.toggle('part2', currentIeltsQuestion.part === 2);
+
+      // Handle subpoints for Part 2
+      if (currentIeltsQuestion.subpoints && currentIeltsQuestion.subpoints.length > 0) {
+        ieltsSubpoints.innerHTML = currentIeltsQuestion.subpoints.map(sp => `<li>${sp}</li>`).join('');
+        ieltsSubpoints.style.display = 'block';
+      } else {
+        ieltsSubpoints.style.display = 'none';
+        ieltsSubpoints.innerHTML = '';
+      }
+
+      // Set currentWord for compatibility with feedback system
+      currentWord = {
+        word: `IELTS Part ${currentIeltsQuestion.part}`,
+        definition: currentIeltsQuestion.question
+      };
+
+      structureBox.style.display = 'none';
     }
 
     function initAIToggle() {
@@ -2521,6 +2815,12 @@
     }
 
     function newWord() {
+      // Check if in IELTS mode
+      if (isIeltsMode) {
+        newIeltsQuestion();
+        return;
+      }
+
       reset();
       currentWord = words[Math.floor(Math.random() * words.length)];
       wordEl.textContent = currentWord.word;
@@ -2532,7 +2832,7 @@
 
     function startTimer() {
       if (!currentWord || isRunning) {
-        if (!currentWord) showAchievement("Generate a word first!");
+        if (!currentWord) showAchievement(isIeltsMode ? "Get a question first!" : "Generate a word first!");
         return;
       }
       isRunning = true;
@@ -2635,7 +2935,12 @@
     function getTranscriptForFeedback() {
       const text = (manualTranscript.value || liveTranscript || '').trim();
       if (!text) return '';
-      const header = currentWord ? `Word prompt: ${currentWord.word}\n` : '';
+      let header = '';
+      if (isIeltsMode && currentIeltsQuestion) {
+        header = `IELTS Part ${currentIeltsQuestion.part} Question: ${currentIeltsQuestion.question}\n`;
+      } else if (currentWord) {
+        header = `Word prompt: ${currentWord.word}\n`;
+      }
       const duration = elapsedSeconds ? `Duration: ${formatTime(elapsedSeconds)}\n` : '';
       return `${header}${duration}Transcript: ${text}`.trim();
     }
@@ -2848,7 +3153,7 @@
     }
 
     function startAudioRecording() {
-      if (!currentWord) { showAchievement("Generate a word first!"); return; }
+      if (!currentWord) { showAchievement(isIeltsMode ? "Get a question first!" : "Generate a word first!"); return; }
       recordedChunks = [];
       mediaRecorder = new MediaRecorder(stream);
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
@@ -2888,7 +3193,7 @@
     }
 
     function startVideoRecording() {
-      if (!currentWord) { showAchievement("Generate a word first!"); return; }
+      if (!currentWord) { showAchievement(isIeltsMode ? "Get a question first!" : "Generate a word first!"); return; }
       recordedChunks = [];
       mediaRecorder = new MediaRecorder(stream);
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
@@ -3145,7 +3450,7 @@
 
     document.getElementById('toggleStructureBtn').addEventListener('click', () => {
       if (!currentWord) {
-        showAchievement("📝 Generate a word first!");
+        showAchievement(isIeltsMode ? "📝 Get a question first!" : "📝 Generate a word first!");
         return;
       }
       const toggleBtn = document.getElementById('toggleStructureBtn');
