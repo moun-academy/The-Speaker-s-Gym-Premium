@@ -21,6 +21,141 @@
       padding: 20px;
     }
 
+    /* Authentication Wall - Login Screen */
+    .login-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      padding: 24px;
+    }
+
+    .login-screen.hidden {
+      display: none;
+    }
+
+    .login-card {
+      background: rgba(17, 24, 39, 0.95);
+      border-radius: 24px;
+      padding: 48px 40px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(250, 204, 21, 0.2);
+    }
+
+    .login-logo {
+      font-size: 72px;
+      margin-bottom: 16px;
+    }
+
+    .login-title {
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #facc15, #fbbf24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+
+    .login-subtitle {
+      font-size: 15px;
+      color: #9ca3af;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    .login-google-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      padding: 14px 24px;
+      background: #ffffff;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1f2937;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .login-google-btn:hover {
+      background: #f3f4f6;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .login-google-btn:active {
+      transform: translateY(0);
+    }
+
+    .login-google-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .login-footer {
+      margin-top: 32px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .login-footer .highlight {
+      color: #facc15;
+    }
+
+    .login-loading {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 0;
+    }
+
+    .login-loading.show {
+      display: flex;
+    }
+
+    .login-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(250, 204, 21, 0.2);
+      border-top-color: #facc15;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .login-loading-text {
+      font-size: 14px;
+      color: #9ca3af;
+    }
+
+    /* Hide app content when not authenticated */
+    .app-content {
+      display: none;
+    }
+
+    .app-content.authenticated {
+      display: block;
+    }
+
     .container {
       background: rgba(17, 24, 39, 0.95);
       border-radius: 24px;
@@ -1666,11 +1801,41 @@
 </head>
 
 <body>
-  <!-- Hamburger Menu Overlay -->
-  <div class="menu-overlay" id="menuOverlay"></div>
+  <!-- Authentication Wall - Login Screen -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <div class="login-logo">🏋️</div>
+      <h1 class="login-title">The Speaker's Gym Premium</h1>
+      <p class="login-subtitle">Master your speaking skills with AI-powered feedback and personalized coaching</p>
 
-  <!-- Hamburger Menu Sidebar -->
-  <div class="menu-sidebar" id="menuSidebar">
+      <button class="login-google-btn" id="loginGoogleBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        Sign in with Google
+      </button>
+
+      <div class="login-loading" id="loginLoading">
+        <div class="login-spinner"></div>
+        <span class="login-loading-text">Signing you in...</span>
+      </div>
+
+      <div class="login-footer">
+        For <span class="highlight">paid students</span> only &bull; by MOUN Academy
+      </div>
+    </div>
+  </div>
+
+  <!-- App Content (hidden until authenticated) -->
+  <div class="app-content" id="appContent">
+    <!-- Hamburger Menu Overlay -->
+    <div class="menu-overlay" id="menuOverlay"></div>
+
+    <!-- Hamburger Menu Sidebar -->
+    <div class="menu-sidebar" id="menuSidebar">
     <div class="menu-header">
       <span class="menu-title">Menu</span>
       <button class="menu-close" id="menuClose">×</button>
@@ -3758,6 +3923,8 @@
     }
   </script>
 
+  </div><!-- End of app-content -->
+
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -4146,14 +4313,20 @@
       });
 
       auth.onAuthStateChanged(async (user) => {
+        const loginScreen = document.getElementById('loginScreen');
+        const appContent = document.getElementById('appContent');
         const profileSignedOut = document.getElementById('profileSignedOut');
         const profileSignedIn = document.getElementById('profileSignedIn');
         const profileUserEmail = document.getElementById('profileUserEmail');
 
         if (user) {
-          // User signed in
+          // User signed in - SHOW APP, HIDE LOGIN
           currentUser = user;
           console.log('[Auth] User signed in:', user.email);
+
+          // Hide login screen, show app
+          if (loginScreen) loginScreen.classList.add('hidden');
+          if (appContent) appContent.classList.add('authenticated');
 
           // Update profile UI
           if (profileSignedOut) profileSignedOut.style.display = 'none';
@@ -4183,9 +4356,13 @@
             });
 
         } else {
-          // User signed out
+          // User signed out - SHOW LOGIN, HIDE APP
           currentUser = null;
           console.log('[Auth] User signed out');
+
+          // Show login screen, hide app
+          if (loginScreen) loginScreen.classList.remove('hidden');
+          if (appContent) appContent.classList.remove('authenticated');
 
           // Update profile UI
           if (profileSignedOut) profileSignedOut.style.display = 'block';
@@ -4225,6 +4402,31 @@
             showAchievement('👋 Signed out');
           } catch (error) {
             console.error('[Auth] Sign out error:', error);
+          }
+        });
+      }
+
+      // Login screen Google sign in button
+      const loginGoogleBtn = document.getElementById('loginGoogleBtn');
+      const loginLoading = document.getElementById('loginLoading');
+      if (loginGoogleBtn) {
+        loginGoogleBtn.addEventListener('click', async () => {
+          try {
+            // Show loading state
+            loginGoogleBtn.style.display = 'none';
+            if (loginLoading) loginLoading.classList.add('show');
+
+            const provider = new firebase.auth.GoogleAuthProvider();
+            await auth.signInWithPopup(provider);
+            // Auth state listener will handle the rest
+          } catch (error) {
+            console.error('[Auth] Login error:', error);
+            // Reset login button
+            loginGoogleBtn.style.display = 'flex';
+            if (loginLoading) loginLoading.classList.remove('show');
+
+            // Show error to user
+            alert('Sign in failed: ' + error.message);
           }
         });
       }
