@@ -798,96 +798,54 @@
     /* Conversation Question Display */
     .conversation-question {
       display: none;
-      padding: 8px 0;
+      padding: 4px 0;
     }
 
     .conversation-question.show {
       display: block;
     }
 
-    .category-badge {
-      display: inline-block;
-      padding: 5px 14px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 14px;
-    }
-
-    .category-badge {
-      background: rgba(59, 130, 246, 0.15);
-      color: #60a5fa;
-      border: 1px solid rgba(59, 130, 246, 0.25);
-    }
-
-    .conversation-question-text {
-      font-size: 20px;
-      font-weight: 700;
-      color: #f1f5f9;
-      line-height: 1.5;
-      text-align: left;
-      padding: 0 8px;
-      margin-bottom: 12px;
-    }
-
-    .conversation-followups,
-    .conversation-tip {
-      font-size: 13px;
-      color: #9ca3af;
-      text-align: left;
-      padding: 0 8px;
-      margin-bottom: 6px;
-    }
-
-    .conversation-tip {
-      color: #facc15;
-      margin-top: 10px;
-    }
-
-    .category-controls {
-      margin-top: 10px;
+    .category-pills {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      align-items: center;
       justify-content: center;
+      margin-bottom: 20px;
     }
 
-    .category-select {
-      background: rgba(31, 41, 55, 0.6);
-      color: #e5e7eb;
-      border: 1px solid rgba(55, 65, 81, 0.5);
-      border-radius: 10px;
-      padding: 9px 12px;
+    .category-pill {
+      padding: 8px 16px;
+      border-radius: 50px;
       font-size: 13px;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      min-width: 260px;
-      transition: border-color 0.2s ease;
-    }
-
-    .category-select:focus {
-      outline: none;
-      border-color: rgba(250, 204, 21, 0.35);
-    }
-
-    .category-action-btn {
-      padding: 8px 14px;
-      border: 1px solid rgba(55, 65, 81, 0.4);
-      border-radius: 10px;
-      background: rgba(31, 41, 55, 0.5);
-      color: #d1d5db;
-      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s ease;
+      border: 1px solid rgba(55, 65, 81, 0.4);
+      background: rgba(31, 41, 55, 0.4);
+      color: #9ca3af;
+      transition: all 0.25s ease;
+      white-space: nowrap;
     }
 
-    .category-action-btn:hover {
-      border-color: rgba(250, 204, 21, 0.4);
+    .category-pill:hover {
+      border-color: rgba(250, 204, 21, 0.3);
+      color: #e5e7eb;
+      background: rgba(31, 41, 55, 0.6);
+    }
+
+    .category-pill.active {
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.2), rgba(250, 204, 21, 0.08));
+      border-color: rgba(250, 204, 21, 0.5);
       color: #facc15;
-      background: rgba(31, 41, 55, 0.7);
+      box-shadow: 0 2px 12px rgba(250, 204, 21, 0.1);
+    }
+
+    .conversation-question-text {
+      font-size: 21px;
+      font-weight: 700;
+      color: #f1f5f9;
+      line-height: 1.55;
+      text-align: center;
+      padding: 0 4px;
     }
 
     /* Hide definition when in conversation mode */
@@ -1821,6 +1779,16 @@
         margin: 0 auto;
       }
 
+      /* Mobile: Category pills */
+      .category-pill {
+        padding: 7px 12px;
+        font-size: 12px;
+      }
+
+      .conversation-question-text {
+        font-size: 18px;
+      }
+
       /* Mobile: Adjust Rapid Fire for smaller screens */
       .rapid-fire-sentence {
         font-size: 26px;
@@ -1979,16 +1947,8 @@
 
       <!-- Conversation Mode -->
       <div class="conversation-question" id="conversationQuestion">
-        <span class="category-badge" id="conversationCategoryLabel">Category</span>
-        <div class="conversation-question-text" id="conversationQuestionText">Select a category and click "Next Question" to begin</div>
-        <div class="conversation-followups" id="conversationFollowup1">Follow-up suggestion: Add a specific example from this week.</div>
-        <div class="conversation-followups" id="conversationFollowup2">Follow-up suggestion: Mention what changed after that.</div>
-        <div class="conversation-tip" id="conversationTip">Delivery tip: Speak in short chunks, then pause for one beat.</div>
-        <div class="category-controls">
-          <select id="categorySelect" class="category-select"></select>
-          <button id="restartCategoryBtn" class="category-action-btn">Restart Category</button>
-          <button id="switchCategoryBtn" class="category-action-btn">Switch Category</button>
-        </div>
+        <div class="category-pills" id="categoryPills"></div>
+        <div class="conversation-question-text" id="conversationQuestionText">Tap a category to get started</div>
       </div>
     </div>
 
@@ -2466,23 +2426,6 @@
       ]
     };
 
-    const conversationFollowups = [
-      "Follow-up suggestion: Give one concrete example.",
-      "Follow-up suggestion: Explain why this matters to you.",
-      "Follow-up suggestion: Describe what happened next.",
-      "Follow-up suggestion: Compare this with how you felt before.",
-      "Follow-up suggestion: Share one detail most people miss.",
-      "Follow-up suggestion: Mention what you learned from it."
-    ];
-
-    const conversationTips = [
-      "Delivery tip: Start with a one-line answer, then expand naturally.",
-      "Delivery tip: Keep your pace steady and pause between ideas.",
-      "Delivery tip: Emphasize key words to sound confident.",
-      "Delivery tip: Use short sentences first, then add detail.",
-      "Delivery tip: Smile lightly while speaking to warm your tone."
-    ];
-
 // Rapid Fire word list for analogies (150+ words with grammar metadata)
     // Each word has: word, plural (true/false), article ('a', 'an', 'the', or null for no article)
     const rapidFireWords = [
@@ -2822,13 +2765,7 @@
     // Conversation Elements
     const conversationQuestionEl = document.getElementById('conversationQuestion');
     const conversationQuestionText = document.getElementById('conversationQuestionText');
-    const conversationCategoryLabel = document.getElementById('conversationCategoryLabel');
-    const conversationFollowup1 = document.getElementById('conversationFollowup1');
-    const conversationFollowup2 = document.getElementById('conversationFollowup2');
-    const conversationTip = document.getElementById('conversationTip');
-    const categorySelect = document.getElementById('categorySelect');
-    const restartCategoryBtn = document.getElementById('restartCategoryBtn');
-    const switchCategoryBtn = document.getElementById('switchCategoryBtn');
+    const categoryPillsContainer = document.getElementById('categoryPills');
     const randomWordsBtn = document.getElementById('randomWordsBtn');
     const ieltsBtn = document.getElementById('ieltsBtn');
     const newWordBtn = document.getElementById('newWordBtn');
@@ -2871,32 +2808,41 @@
 
     function initConversationCategoryControls() {
       const categories = Object.keys(conversationCategories);
-      categorySelect.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
       if (!conversationCategories[currentConversationCategory]) {
         currentConversationCategory = categories[0];
       }
-      categorySelect.value = currentConversationCategory;
 
-      categorySelect.addEventListener('change', () => {
-        currentConversationCategory = categorySelect.value;
-        localStorage.setItem('conversationCategory', currentConversationCategory);
-      });
+      // Build category pill chips
+      const categoryIcons = {
+        'Fun & Playful': '🎉',
+        'Ambitious & Future-Focused': '🚀',
+        'Story-Based & Interesting': '📖',
+        'Deep but Light': '💡',
+        'Unexpected & Creative': '🎨'
+      };
 
-      restartCategoryBtn.addEventListener('click', () => {
-        reshuffleConversationCategory(currentConversationCategory);
-        showAchievement('🔁 Category restarted with fresh shuffle');
-        if (isConversationMode) {
-          nextConversationQuestion();
-        }
-      });
+      categoryPillsContainer.innerHTML = categories.map(c => {
+        const icon = categoryIcons[c] || '💬';
+        const isActive = c === currentConversationCategory ? ' active' : '';
+        return `<button class="category-pill${isActive}" data-category="${c}">${icon} ${c}</button>`;
+      }).join('');
 
-      switchCategoryBtn.addEventListener('click', () => {
-        currentConversationCategory = categorySelect.value;
-        localStorage.setItem('conversationCategory', currentConversationCategory);
-        reshuffleConversationCategory(currentConversationCategory);
-        if (isConversationMode) {
-          nextConversationQuestion();
-        }
+      // Attach click handlers to pills
+      categoryPillsContainer.querySelectorAll('.category-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          const category = pill.dataset.category;
+          currentConversationCategory = category;
+          localStorage.setItem('conversationCategory', category);
+
+          // Update active pill
+          categoryPillsContainer.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
+          pill.classList.add('active');
+
+          // Immediately show a question from this category
+          if (isConversationMode) {
+            nextConversationQuestion();
+          }
+        });
       });
     }
 
@@ -2920,12 +2866,8 @@
       currentWord = null;
       currentConversationQuestion = null;
       wordEl.textContent = 'Ready?';
-      definitionEl.textContent = isConversationMode ? 'Select a category and click "Next Question"' : 'Click "New Word" to get started';
-      conversationCategoryLabel.textContent = currentConversationCategory;
-      conversationQuestionText.textContent = 'Select a category and click "Next Question" to begin';
-      conversationFollowup1.textContent = 'Follow-up suggestion: Add a specific example from this week.';
-      conversationFollowup2.textContent = 'Follow-up suggestion: Mention what changed after that.';
-      conversationTip.textContent = 'Delivery tip: Speak in short chunks, then pause for one beat.';
+      definitionEl.textContent = isConversationMode ? 'Tap a category to get started' : 'Click "New Word" to get started';
+      conversationQuestionText.textContent = 'Tap a category to get started';
       structureBox.style.display = 'none';
     }
 
@@ -2949,24 +2891,18 @@
       return categoryQuestionPool[category].pop();
     }
 
-    function pickTwoFollowups() {
-      const shuffled = shuffleArray(conversationFollowups);
-      return [shuffled[0], shuffled[1]];
-    }
-
     function nextConversationQuestion() {
       reset();
       const category = currentConversationCategory;
       const question = getNextConversationQuestion(category);
-      const [followup1, followup2] = pickTwoFollowups();
-      const tip = conversationTips[Math.floor(Math.random() * conversationTips.length)];
 
       currentConversationQuestion = { category, question };
-      conversationCategoryLabel.textContent = category;
       conversationQuestionText.textContent = question;
-      conversationFollowup1.textContent = followup1;
-      conversationFollowup2.textContent = followup2;
-      conversationTip.textContent = tip;
+
+      // Update active pill to reflect current category
+      categoryPillsContainer.querySelectorAll('.category-pill').forEach(p => {
+        p.classList.toggle('active', p.dataset.category === category);
+      });
 
       currentWord = {
         word: `Conversation • ${category}`,
