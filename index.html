@@ -1382,6 +1382,11 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
 
+    .structure-guide-row {
+      text-align: center;
+      margin: 16px 0 8px;
+    }
+
     /* Structure Guide */
     .structure-box {
       display: none;
@@ -2006,25 +2011,8 @@
       <button id="resetBtn" class="secondary">Reset</button>
     </div>
 
-    <!-- AI Feedback -->
-    <div class="ai-panel">
-      <div class="ai-header">
-        <h3>🤖 AI Speech Analysis</h3>
-        <label class="ai-toggle">
-          <input type="checkbox" id="aiToggle" checked>
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="helper">
-        <span id="aiToggleHelper">Get personalized feedback on your pace, pauses, and delivery.</span>
-      </div>
-      <textarea id="manualTranscript" class="transcript-input" placeholder="Transcript will appear here automatically after recording. You can also paste text for manual analysis."></textarea>
-      <div class="ai-status" id="aiStatus">Waiting for your next recording.</div>
-      <div class="ai-feedback-box" id="aiFeedback">Your detailed feedback will appear here after your speech.</div>
-    </div>
-
     <!-- Structure Guide -->
-    <div style="text-align: center; margin: 24px 0;">
+    <div class="structure-guide-row">
       <button id="toggleStructureBtn" class="structure-btn">
         <span class="btn-icon">✨</span>
         <span>Structure Guide</span>
@@ -2043,6 +2031,23 @@
       <div class="structure-content" id="structureContent">
         Generate a word first to see your personalized speaking structure
       </div>
+    </div>
+
+    <!-- AI Feedback -->
+    <div class="ai-panel">
+      <div class="ai-header">
+        <h3>🤖 AI Speech Analysis</h3>
+        <label class="ai-toggle">
+          <input type="checkbox" id="aiToggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="helper">
+        <span id="aiToggleHelper">Get personalized feedback on your pace, pauses, and delivery.</span>
+      </div>
+      <textarea id="manualTranscript" class="transcript-input" placeholder="Transcript will appear here automatically after recording. You can also paste text for manual analysis."></textarea>
+      <div class="ai-status" id="aiStatus">Waiting for your next recording.</div>
+      <div class="ai-feedback-box" id="aiFeedback">Your detailed feedback will appear here after your speech.</div>
     </div>
 
     <!-- App Version -->
@@ -2628,14 +2633,21 @@
 
     // Structure templates
     function getStructure(word, formula) {
+      const topic = word.toLowerCase();
+      const isConversationPrompt = isConversationMode && currentConversationQuestion;
+
       const structures = {
         'one-thing': `
           <div class="structure-section">
             <h4>1. POINT (10-15 seconds)</h4>
-            <strong>"The one thing about ${word.toLowerCase()} is..."</strong>
+            <strong>${isConversationPrompt ? '"My clear answer is..."' : `"The one thing about ${topic} is..."`}</strong>
             <div class="example-box">
-              • "The one thing about ${word.toLowerCase()} is that it's not what you think..."<br>
-              • "The one thing about ${word.toLowerCase()} is that everyone gets it wrong..."
+              ${isConversationPrompt
+                ? `• "My short answer is..."<br>
+              • "What stands out most is..."`
+                : `• "The one thing about ${topic} is that it's not what you think..."<br>
+              • "The one thing about ${topic} is that everyone gets it wrong..."`
+              }
             </div>
           </div>
           <div class="structure-section">
@@ -2648,17 +2660,21 @@
           <div class="structure-section">
             <h4>3. TAKEAWAY (10-15 seconds)</h4>
             <strong>What should they remember?</strong>
-            <em>→ "So remember, ${word.toLowerCase()} is..."</em>
-            <em>→ "The next time you think about ${word.toLowerCase()}..."</em>
+            <em>→ "So remember, ${topic} is..."</em>
+            <em>→ "The next time you think about this question..."</em>
           </div>
         `,
         'two-types': `
           <div class="structure-section">
             <h4>1. POINT (10-15 seconds)</h4>
-            <strong>"There are two types of ${word.toLowerCase()}..."</strong>
+            <strong>${isConversationPrompt ? '"I can answer this from two angles..."' : `"There are two types of ${topic}..."`}</strong>
             <div class="example-box">
-              • "There are two types of ${word.toLowerCase()} - the kind that helps and the kind that hurts..."<br>
-              • "There are two ways to think about ${word.toLowerCase()}..."
+              ${isConversationPrompt
+                ? `• "From my personal experience..." and "From a practical side..."<br>
+              • "Short-term..." and "Long-term..."`
+                : `• "There are two types of ${topic} - the kind that helps and the kind that hurts..."<br>
+              • "There are two ways to think about ${topic}..."`
+              }
             </div>
           </div>
           <div class="structure-section">
@@ -2672,16 +2688,20 @@
             <h4>3. TAKEAWAY (10-15 seconds)</h4>
             <strong>Which type should they choose?</strong>
             <em>→ "The question is: which type are you?"</em>
-            <em>→ "Choose the right type of ${word.toLowerCase()}, and..."</em>
+            <em>→ "Choose the right approach, and..."</em>
           </div>
         `,
         'three-steps': `
           <div class="structure-section">
             <h4>1. POINT (10-15 seconds)</h4>
-            <strong>"There are three steps to ${word.toLowerCase()}..."</strong>
+            <strong>${isConversationPrompt ? '"I would answer this in three steps..."' : `"There are three steps to ${topic}..."`}</strong>
             <div class="example-box">
-              • "If you want real ${word.toLowerCase()}, follow these three steps..."<br>
-              • "I learned three steps to ${word.toLowerCase()} the hard way..."
+              ${isConversationPrompt
+                ? `• "Step 1: direct answer" → "Step 2: quick example" → "Step 3: lesson"<br>
+              • "What happened" → "What I learned" → "Why it matters"`
+                : `• "If you want real ${topic}, follow these three steps..."<br>
+              • "I learned three steps to ${topic} the hard way..."`
+              }
             </div>
           </div>
           <div class="structure-section">
@@ -2694,11 +2714,23 @@
           <div class="structure-section">
             <h4>3. TAKEAWAY (10-15 seconds)</h4>
             <strong>Why these steps matter:</strong>
-            <em>→ "Follow these three steps, and ${word.toLowerCase()} becomes..."</em>
+            <em>→ "Follow these three steps, and your answer becomes clear."</em>
             <em>→ "Three steps - that's all it takes."</em>
           </div>
         `
       };
+
+      if (isConversationPrompt) {
+        return `
+          <div class="structure-section">
+            <h4>QUESTION</h4>
+            <strong>${currentConversationQuestion.question}</strong>
+            <em>Give one clear answer, one supporting example, and one takeaway.</em>
+          </div>
+          ${structures[formula]}
+        `;
+      }
+
       return structures[formula];
     }
 
@@ -2869,6 +2901,9 @@
       definitionEl.textContent = isConversationMode ? 'Tap a category to get started' : 'Click "New Word" to get started';
       conversationQuestionText.textContent = 'Tap a category to get started';
       structureBox.style.display = 'none';
+      const toggleBtn = document.getElementById('toggleStructureBtn');
+      toggleBtn.innerHTML = '<span class="btn-icon">✨</span><span>Structure Guide</span>';
+      toggleBtn.classList.remove('active');
     }
 
     function shuffleArray(items) {
@@ -2909,7 +2944,11 @@
         definition: question
       };
 
+      updateStructure();
       structureBox.style.display = 'none';
+      const toggleBtn = document.getElementById('toggleStructureBtn');
+      toggleBtn.innerHTML = '<span class="btn-icon">✨</span><span>Structure Guide</span>';
+      toggleBtn.classList.remove('active');
     }
 
     function initAIToggle() {
@@ -3027,7 +3066,9 @@
       definitionEl.textContent = currentWord.definition;
       updateStructure();
       structureBox.style.display = 'none';
-      document.getElementById('toggleStructureBtn').textContent = 'Show Structure Guide';
+      const toggleBtn = document.getElementById('toggleStructureBtn');
+      toggleBtn.innerHTML = '<span class="btn-icon">✨</span><span>Structure Guide</span>';
+      toggleBtn.classList.remove('active');
     }
 
     function startTimer() {
