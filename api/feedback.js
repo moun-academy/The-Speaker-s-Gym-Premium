@@ -1,7 +1,8 @@
 import OpenAI from "openai";
-import { Readable } from "stream";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_TEXT_CHARS = 12000;
 
 export const config = {
   api: {
@@ -11,9 +12,24 @@ export const config = {
 
 // Helper to parse multipart form data
 async function parseMultipartForm(req) {
+  const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+  if (contentLength > MAX_UPLOAD_BYTES) {
+    throw new Error('Upload exceeds size limit');
+  }
+
   return new Promise((resolve, reject) => {
     const chunks = [];
-    req.on('data', chunk => chunks.push(chunk));
+    let bytesReceived = 0;
+
+    req.on('data', chunk => {
+      bytesReceived += chunk.length;
+      if (bytesReceived > MAX_UPLOAD_BYTES) {
+        reject(new Error('Upload exceeds size limit'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on('end', () => {
       try {
         const buffer = Buffer.concat(chunks);
@@ -61,6 +77,62 @@ async function parseMultipartForm(req) {
   });
 }
 
+async function parseJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let bytesReceived = 0;
+
+    req.on('data', chunk => {
+      bytesReceived += chunk.length;
+      if (bytesReceived > MAX_UPLOAD_BYTES) {
+        reject(new Error('Request body exceeds size limit'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+
+    req.on('end', () => {
+      try {
+        const rawBody = Buffer.concat(chunks).toString('utf8').trim();
+        if (!rawBody) {
+          resolve({});
+          return;
+        }
+        resolve(JSON.parse(rawBody));
+      } catch (error) {
+        reject(new Error('Invalid JSON payload'));
+      }
+    });
+
+    req.on('error', reject);
+  });
+}
+
+async function parseTextBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let bytesReceived = 0;
+
+    req.on('data', chunk => {
+      bytesReceived += chunk.length;
+      if (bytesReceived > MAX_UPLOAD_BYTES) {
+        reject(new Error('Request body exceeds size limit'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+
+    req.on('end', () => {
+      const text = Buffer.concat(chunks).toString('utf8');
+      resolve({ text });
+    });
+
+    req.on('error', reject);
+  });
+}
+
 // Analyze speech metrics from Whisper word timestamps
 function analyzeMetrics(words, duration) {
   if (!words || words.length === 0) {
@@ -94,7 +166,8 @@ function analyzeMetrics(words, duration) {
   }
 
   // Calculate words per minute
-  const wordsPerMinute = Math.round((words.length / duration) * 60);
+  const safeDuration = duration > 0 ? duration : 0;
+  const wordsPerMinute = safeDuration > 0 ? Math.round((words.length / safeDuration) * 60) : 0;
 
   // Analyze pacing variation
   let pacingVariation = 'steady';
@@ -153,7 +226,7 @@ export default async function handler(req, res) {
         timestamp_granularities: ['word']
       });
 
-      const transcript = transcription.text;
+      const transcript = (transcription.text || '').trim().slice(0, MAX_TEXT_CHARS);
       const words = transcription.words || [];
       const duration = fields.duration ? parseFloat(fields.duration) : transcription.duration || 0;
 
@@ -236,10 +309,21 @@ Speech Metrics:
 
     } else {
       // Fallback: Handle old text-only format for backwards compatibility
-      const { text } = req.body || {};
+      let payload;
+      if (req.body && typeof req.body === 'object') {
+        payload = req.body;
+      } else if (contentType.includes('text/plain')) {
+        payload = await parseTextBody(req);
+      } else {
+        payload = await parseJsonBody(req);
+      }
+      const { text } = payload || {};
+
       if (!text || typeof text !== 'string' || !text.trim()) {
         return res.status(400).json({ error: 'Missing transcript text or audio file' });
       }
+
+      const cleanedText = text.trim().slice(0, MAX_TEXT_CHARS);
 
       const completion = await client.chat.completions.create({
         model: 'gpt-5.1',
@@ -256,7 +340,7 @@ Speech Metrics:
               'Keep the tone concise, specific, and constructive.'
             ].join(' '),
           },
-          { role: 'user', content: text.trim() }
+          { role: 'user', content: cleanedText }
         ],
         temperature: 0.5
       });
@@ -269,6 +353,13 @@ Speech Metrics:
     console.error('Feedback generation failed:', error);
     console.error('Error details:', error.message);
     console.error('Error stack:', error.stack);
+
+    if (error.message && error.message.includes('size limit')) {
+      return res.status(413).json({
+        error: 'Request too large',
+        details: error.message
+      });
+    }
 
     // Check if it's an OpenAI API error
     if (error.status) {
