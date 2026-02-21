@@ -2367,69 +2367,59 @@
       { word: "Family", definition: "Group of related people" }
     ];
 
-    // Conversation Practice categories and prompts
-    const conversationCategories = {
-      "Fun & Playful": [
-        "What’s your current guilty pleasure?",
-        "What’s something you pretend not to care about but secretly love?",
-        "What’s the most random thing you’ve Googled this week?",
-        "If your life had a theme song right now, what would it be?",
-        "What’s your useless superpower?",
-        "What’s a tiny thing that makes your day way better?",
-        "What’s your weirdest habit?",
-        "If we were in a movie right now, what would the scene be?",
-        "What’s your go-to comfort show?",
-        "What’s something you could talk about for hours?"
-      ],
-      "Ambitious & Future-Focused": [
-        "If money was handled, what would you actually do?",
-        "What’s something you want to get ridiculously good at?",
-        "What would 10-year-old you think about your life now?",
-        "What’s a risk you’re glad you took?",
-        "What’s something bold you want to try this year?",
-        "If you had to reinvent yourself next year, what would change?",
-        "What’s the next level for you?",
-        "What’s one thing you are quietly working on?",
-        "What would make this year unforgettable?",
-        "What’s something you know you should do but keep delaying?"
-      ],
-      "Story-Based & Interesting": [
-        "What’s a story you always end up telling?",
-        "What’s the most spontaneous thing you’ve done?",
-        "What’s a moment that completely changed your mood?",
-        "What’s the funniest misunderstanding you’ve had?",
-        "What’s a small win you are proud of?",
-        "What’s a random memory that still makes you laugh?",
-        "What’s a time you surprised yourself?",
-        "What’s the best mistake you’ve made?",
-        "What’s something that looked scary but turned out amazing?",
-        "What’s a decision that shaped you more than you expected?"
-      ],
-      "Deep but Light": [
-        "What do people get wrong about you?",
-        "When do you feel most like yourself?",
-        "What kind of people do you instantly connect with?",
-        "What drains you fast?",
-        "What excites you right now?",
-        "What’s something you are trying to unlearn?",
-        "What makes you lose track of time?",
-        "What’s something you wish more people talked about?",
-        "What does a great day look like for you?",
-        "What makes someone instantly interesting to you?"
-      ],
-      "Unexpected & Creative": [
-        "If you had to teach a class tomorrow, what would it be about?",
-        "If your week had a title, what would it be?",
-        "What’s something you thought you would hate but actually loved?",
-        "What’s your “I cannot believe that happened” story?",
-        "If you had to live in one city forever, where?",
-        "What’s your hot take?",
-        "What’s something everyone should try once?",
-        "If you could upgrade one trait instantly, what would it be?",
-        "What’s something you changed your mind about recently?",
-        "What’s a question you love being asked?"
-      ]
-    };
+    // Conversation Practice - What If questions
+    const conversationQuestions = [
+      "If you could choose any superpower for a day, which would you pick and why?",
+      "If money did not exist, how would you choose to live?",
+      "If you could travel anywhere in the world right now, where would you go?",
+      "What if you could instantly learn any skill, what would it be?",
+      "If you could be reborn as anything, what would you choose?",
+      "If you had to invent a holiday, what would it celebrate?",
+      "What if everyone told the truth all the time, would life be better or worse?",
+      "If you could have dinner with anyone in history, who would it be and why?",
+      "What if you could see 10 years into your future, would you want to?",
+      "If you could step into any book or movie world for a day, which would it be?",
+      "If you woke up tomorrow able to speak one new language fluently, which would it be?",
+      "What if you could teleport anywhere instantly, where are you going first?",
+      "If you could solve one global problem immediately, what would it be?",
+      "What if you had endless energy for one week, how would you spend it?",
+      "If you could erase one regret from your life, would you?",
+      "What if you had to live without the internet or without music, which would you choose?",
+      "If you could trade places with someone for a week, who would it be?",
+      "What if you had to eat one meal for the rest of your life, what would it be?",
+      "If animals could talk, which one would be the funniest?",
+      "If you could time travel, would you go to the past or the future?",
+      "If you could live in any decade, which would you choose?",
+      "What if you discovered the world was a simulation, would it change how you live?",
+      "If you could speak to your 10 year old self, what would you say?",
+      "What if you could make one impossible thing socially acceptable, what would it be?",
+      "If you had to live on another planet, which would you choose?",
+      "What if you found a secret door in your house, where would it lead?",
+      "If you could instantly master any sport, which would you choose?",
+      "What if robots replaced teachers in school, would learning improve?",
+      "If you could keep only one memory forever, which one would you keep?",
+      "What if you could live forever, would you want to?",
+      "If you were forced to choose a completely new identity, what would your life look like?",
+      "What if you could ask one question to someone who passed away, what would it be?",
+      "If your desk could teleport you anywhere during work hours, where would it send you?",
+      "What if every job paid the same, what would you choose to do?",
+      "If you could create one new law that everyone had to follow, what would it be?",
+      "What if your dreams could be recorded and replayed, would you watch them?",
+      "If you could have any animal, real or imaginary, as a pet, what would you choose?",
+      "What if you had to live underwater for a year, what would you miss most?",
+      "If you could dramatically enhance one of your five senses, which one would you pick?",
+      "What if you had to wear the same outfit every day for a year, what would it be?",
+      "If you knew you could not fail, what would you start tomorrow?",
+      "What if your life had a theme song playing in the background, what would it be?",
+      "If you could invent something that would change the world, what would you create?",
+      "What if you could communicate telepathically with everyone, would you want that?",
+      "If you could design a perfect day with no limits, what would it include?",
+      "What if you had to redesign the education system, what would be the first change?",
+      "If you could witness any event in history in person, what would you choose?",
+      "What if you could eliminate one human fear permanently, which one would it be?",
+      "If you could live inside your favorite movie for one month, which one would it be?",
+      "What if everything you did today counted double toward your future, what would you focus on?"
+    ];
 
 // Rapid Fire word list for analogies (150+ words with grammar metadata)
     // Each word has: word, plural (true/false), article ('a', 'an', 'the', or null for no article)
@@ -2639,83 +2629,83 @@
       const structures = {
         'one-thing': `
           <div class="structure-section">
-            <h4>1. POINT (10-15 seconds)</h4>
-            <strong>${isConversationPrompt ? '"My clear answer is..."' : `"The one thing about ${topic} is..."`}</strong>
+            <h4>1. PICK YOUR ANSWER (10-15 seconds)</h4>
+            <strong>${isConversationPrompt ? '"Without hesitation, I would pick..."' : `"The one thing about ${topic} is..."`}</strong>
             <div class="example-box">
               ${isConversationPrompt
-                ? `• "My short answer is..."<br>
-              • "What stands out most is..."`
+                ? `• "If I had to choose right now, it would be..."<br>
+              • "My honest answer is... and here is why..."`
                 : `• "The one thing about ${topic} is that it's not what you think..."<br>
               • "The one thing about ${topic} is that everyone gets it wrong..."`
               }
             </div>
           </div>
           <div class="structure-section">
-            <h4>2. STORY (60-90 seconds)</h4>
-            <strong>Prove it with a personal moment:</strong>
-            <em>→ Set the scene: "I was... / Last week..."</em>
-            <em>→ The conflict: "But then... / The problem was..."</em>
-            <em>→ The resolution: "So I... / That's when..."</em>
+            <h4>2. PAINT THE PICTURE (60-90 seconds)</h4>
+            <strong>${isConversationPrompt ? 'Bring your answer to life with a story or vivid example:' : 'Prove it with a personal moment:'}</strong>
+            <em>→ Set the scene: "Imagine this... / Picture yourself..."</em>
+            <em>→ Make it personal: "I once experienced... / This reminds me of..."</em>
+            <em>→ Show the impact: "And that is when I realized... / That changed everything because..."</em>
           </div>
           <div class="structure-section">
-            <h4>3. TAKEAWAY (10-15 seconds)</h4>
-            <strong>What should they remember?</strong>
-            <em>→ "So remember, ${topic} is..."</em>
-            <em>→ "The next time you think about this question..."</em>
+            <h4>3. LAND THE MESSAGE (10-15 seconds)</h4>
+            <strong>${isConversationPrompt ? 'End with a memorable thought:' : 'What should they remember?'}</strong>
+            <em>→ "So if you ever get the chance to..."</em>
+            <em>→ "That is exactly why I believe..."</em>
           </div>
         `,
         'two-types': `
           <div class="structure-section">
-            <h4>1. POINT (10-15 seconds)</h4>
-            <strong>${isConversationPrompt ? '"I can answer this from two angles..."' : `"There are two types of ${topic}..."`}</strong>
+            <h4>1. SET UP THE CHOICE (10-15 seconds)</h4>
+            <strong>${isConversationPrompt ? '"There are two ways to look at this..."' : `"There are two types of ${topic}..."`}</strong>
             <div class="example-box">
               ${isConversationPrompt
-                ? `• "From my personal experience..." and "From a practical side..."<br>
-              • "Short-term..." and "Long-term..."`
+                ? `• "On one hand... but on the other hand..."<br>
+              • "The safe answer is... but the honest answer is..."`
                 : `• "There are two types of ${topic} - the kind that helps and the kind that hurts..."<br>
               • "There are two ways to think about ${topic}..."`
               }
             </div>
           </div>
           <div class="structure-section">
-            <h4>2. CONTRAST (60-90 seconds)</h4>
-            <strong>Show both types:</strong>
-            <em>→ Type 1: "The first type... For example..."</em>
-            <em>→ Type 2: "But the second type... In contrast..."</em>
-            <em>→ The insight: "The difference is..."</em>
+            <h4>2. EXPLORE BOTH SIDES (60-90 seconds)</h4>
+            <strong>${isConversationPrompt ? 'Show the tension between both perspectives:' : 'Show both types:'}</strong>
+            <em>→ Side 1: "Most people would say... because..."</em>
+            <em>→ Side 2: "But I actually think... For example..."</em>
+            <em>→ The twist: "The real answer is somewhere in between... / What surprised me is..."</em>
           </div>
           <div class="structure-section">
-            <h4>3. TAKEAWAY (10-15 seconds)</h4>
-            <strong>Which type should they choose?</strong>
-            <em>→ "The question is: which type are you?"</em>
-            <em>→ "Choose the right approach, and..."</em>
+            <h4>3. PICK YOUR SIDE (10-15 seconds)</h4>
+            <strong>${isConversationPrompt ? 'Commit to your answer:' : 'Which type should they choose?'}</strong>
+            <em>→ "At the end of the day, I would choose... because..."</em>
+            <em>→ "And that tells you a lot about what I value..."</em>
           </div>
         `,
         'three-steps': `
           <div class="structure-section">
-            <h4>1. POINT (10-15 seconds)</h4>
-            <strong>${isConversationPrompt ? '"I would answer this in three steps..."' : `"There are three steps to ${topic}..."`}</strong>
+            <h4>1. DROP YOUR ANSWER (10-15 seconds)</h4>
+            <strong>${isConversationPrompt ? '"I would break my answer into three parts..."' : `"There are three steps to ${topic}..."`}</strong>
             <div class="example-box">
               ${isConversationPrompt
-                ? `• "Step 1: direct answer" → "Step 2: quick example" → "Step 3: lesson"<br>
-              • "What happened" → "What I learned" → "Why it matters"`
+                ? `• "First, what I would pick" → "Second, why it matters" → "Third, what it says about me"<br>
+              • "The what" → "The why" → "The so-what"`
                 : `• "If you want real ${topic}, follow these three steps..."<br>
               • "I learned three steps to ${topic} the hard way..."`
               }
             </div>
           </div>
           <div class="structure-section">
-            <h4>2. THE STEPS (60-90 seconds)</h4>
-            <strong>Walk through each:</strong>
-            <em>→ "First, you must... This is crucial because..."</em>
-            <em>→ "Second, you need to... Without this..."</em>
-            <em>→ "Finally, you have to... This brings it together..."</em>
+            <h4>2. WALK THROUGH IT (60-90 seconds)</h4>
+            <strong>${isConversationPrompt ? 'Unpack each part with examples:' : 'Walk through each:'}</strong>
+            <em>→ "First, my answer is... because this has always resonated with me..."</em>
+            <em>→ "Second, the reason this matters is... Let me give you an example..."</em>
+            <em>→ "Finally, what this really says is... and that is the deeper point..."</em>
           </div>
           <div class="structure-section">
-            <h4>3. TAKEAWAY (10-15 seconds)</h4>
-            <strong>Why these steps matter:</strong>
-            <em>→ "Follow these three steps, and your answer becomes clear."</em>
-            <em>→ "Three steps - that's all it takes."</em>
+            <h4>3. CLOSE STRONG (10-15 seconds)</h4>
+            <strong>${isConversationPrompt ? 'Leave them thinking:' : 'Why these steps matter:'}</strong>
+            <em>→ "So next time someone asks you this, think about..."</em>
+            <em>→ "And that is why this question matters more than you think."</em>
           </div>
         `
       };
@@ -2725,7 +2715,7 @@
           <div class="structure-section">
             <h4>QUESTION</h4>
             <strong>${currentConversationQuestion.question}</strong>
-            <em>Give one clear answer, one supporting example, and one takeaway.</em>
+            <em>Pick your answer, back it up with a story or example, and end with a strong takeaway.</em>
           </div>
           ${structures[formula]}
         `;
@@ -2760,8 +2750,8 @@
     // Prompt Mode state (Random Words vs Conversation)
     let isConversationMode = localStorage.getItem('promptMode') === 'conversation';
     let currentConversationQuestion = null;
-    let currentConversationCategory = localStorage.getItem('conversationCategory') || 'Fun & Playful';
-    let categoryQuestionPool = {};
+    let currentConversationCategory = 'What If';
+    let conversationQuestionPool = [];
 
     // Rapid Fire state
     let rapidFireStats = JSON.parse(localStorage.getItem('rapidFireStats')) || {
@@ -2839,43 +2829,8 @@
     }
 
     function initConversationCategoryControls() {
-      const categories = Object.keys(conversationCategories);
-      if (!conversationCategories[currentConversationCategory]) {
-        currentConversationCategory = categories[0];
-      }
-
-      // Build category pill chips
-      const categoryIcons = {
-        'Fun & Playful': '🎉',
-        'Ambitious & Future-Focused': '🚀',
-        'Story-Based & Interesting': '📖',
-        'Deep but Light': '💡',
-        'Unexpected & Creative': '🎨'
-      };
-
-      categoryPillsContainer.innerHTML = categories.map(c => {
-        const icon = categoryIcons[c] || '💬';
-        const isActive = c === currentConversationCategory ? ' active' : '';
-        return `<button class="category-pill${isActive}" data-category="${c}">${icon} ${c}</button>`;
-      }).join('');
-
-      // Attach click handlers to pills
-      categoryPillsContainer.querySelectorAll('.category-pill').forEach(pill => {
-        pill.addEventListener('click', () => {
-          const category = pill.dataset.category;
-          currentConversationCategory = category;
-          localStorage.setItem('conversationCategory', category);
-
-          // Update active pill
-          categoryPillsContainer.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
-          pill.classList.add('active');
-
-          // Immediately show a question from this category
-          if (isConversationMode) {
-            nextConversationQuestion();
-          }
-        });
-      });
+      // Single "What If" category - no pills needed
+      categoryPillsContainer.innerHTML = '';
     }
 
     function updatePromptModeUI() {
@@ -2898,8 +2853,8 @@
       currentWord = null;
       currentConversationQuestion = null;
       wordEl.textContent = 'Ready?';
-      definitionEl.textContent = isConversationMode ? 'Tap a category to get started' : 'Click "New Word" to get started';
-      conversationQuestionText.textContent = 'Tap a category to get started';
+      definitionEl.textContent = isConversationMode ? 'Click "Next Question" to get started' : 'Click "New Word" to get started';
+      conversationQuestionText.textContent = 'Click "Next Question" to get started';
       structureBox.style.display = 'none';
       const toggleBtn = document.getElementById('toggleStructureBtn');
       toggleBtn.innerHTML = '<span class="btn-icon">✨</span><span>Structure Guide</span>';
@@ -2915,32 +2870,26 @@
       return arr;
     }
 
-    function reshuffleConversationCategory(category) {
-      categoryQuestionPool[category] = shuffleArray(conversationCategories[category]);
+    function reshuffleConversationQuestions() {
+      conversationQuestionPool = shuffleArray(conversationQuestions);
     }
 
-    function getNextConversationQuestion(category) {
-      if (!categoryQuestionPool[category] || categoryQuestionPool[category].length === 0) {
-        reshuffleConversationCategory(category);
+    function getNextConversationQuestion() {
+      if (!conversationQuestionPool || conversationQuestionPool.length === 0) {
+        reshuffleConversationQuestions();
       }
-      return categoryQuestionPool[category].pop();
+      return conversationQuestionPool.pop();
     }
 
     function nextConversationQuestion() {
       reset();
-      const category = currentConversationCategory;
-      const question = getNextConversationQuestion(category);
+      const question = getNextConversationQuestion();
 
-      currentConversationQuestion = { category, question };
+      currentConversationQuestion = { category: 'What If', question };
       conversationQuestionText.textContent = question;
 
-      // Update active pill to reflect current category
-      categoryPillsContainer.querySelectorAll('.category-pill').forEach(p => {
-        p.classList.toggle('active', p.dataset.category === category);
-      });
-
       currentWord = {
-        word: `Conversation • ${category}`,
+        word: 'What If',
         definition: question
       };
 
