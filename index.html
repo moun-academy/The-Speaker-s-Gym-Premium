@@ -1843,10 +1843,15 @@
       box-shadow: 0 0 60px rgba(250, 204, 21, 0.08), 0 24px 64px rgba(0,0,0,0.6);
     }
 
-    .login-logo {
-      font-size: 56px;
+    .login-logo-img {
+      width: 110px;
+      height: 110px;
+      border-radius: 24px;
+      object-fit: cover;
       margin-bottom: 16px;
-      line-height: 1;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .login-card h1 {
@@ -1908,7 +1913,7 @@
   <!-- Login Gate – shown until user authenticates -->
   <div id="loginGate" class="login-gate">
     <div class="login-card">
-      <div class="login-logo">🏋️</div>
+      <img src="logo.png" alt="The Speaker's Gym" class="login-logo-img">
       <h1>The Speaker's Gym</h1>
       <p class="login-subtitle">by MOUN Academy</p>
       <p class="login-desc">Sign in to start training your speaking skills and track your progress.</p>
@@ -2842,6 +2847,7 @@
     let elapsedSeconds = 0;
     let isRunning = false;
     let mediaRecorder = null;
+    let audioRecorder = null; // audio-only recorder used in video mode for API upload
     let recordedChunks = [];
     let stream = null;
     let isRequestingFeedback = false;
@@ -3436,13 +3442,19 @@
     }
 
     function stopMedia() {
+      if (audioRecorder && audioRecorder.state !== 'inactive') audioRecorder.stop();
+      audioRecorder = null;
       if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
     }
 
     function startAudioRecording() {
       if (!currentWord) { showAchievement(isConversationMode ? "Get a prompt first!" : "Generate a prompt first!"); return; }
       recordedChunks = [];
-      mediaRecorder = new MediaRecorder(stream);
+      // 32kbps Opus keeps files ~240KB/min — well under Vercel's 4.5MB body limit
+      const audioOptions = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 32000 }
+        : { audioBitsPerSecond: 32000 };
+      mediaRecorder = new MediaRecorder(stream, audioOptions);
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
       mediaRecorder.onstop = () => {
         const blob = new Blob(recordedChunks, { type: 'audio/webm' });
@@ -3482,19 +3494,33 @@
     function startVideoRecording() {
       if (!currentWord) { showAchievement(isConversationMode ? "Get a prompt first!" : "Generate a prompt first!"); return; }
       recordedChunks = [];
+
+      // Video recorder — full quality for download link
       mediaRecorder = new MediaRecorder(stream);
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
       mediaRecorder.onstop = () => {
-        const blob = new Blob(recordedChunks, { type: 'video/webm' });
-        currentAudioBlob = blob;
-        document.getElementById('videoDownloadLink').href = URL.createObjectURL(blob);
+        const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+        currentAudioBlob = videoBlob;
+        document.getElementById('videoDownloadLink').href = URL.createObjectURL(videoBlob);
         document.getElementById('videoDownload').classList.add('show');
-
-        // Send audio track to API for Whisper transcription + analysis
-        // Note: We send the whole video blob, backend will extract audio
-        requestFeedbackWithAudio(blob, elapsedSeconds);
       };
+
+      // Audio-only recorder — 32kbps Opus, tiny file for Whisper API upload
+      const audioTrack = stream.getAudioTracks()[0];
+      const audioOnlyStream = new MediaStream([audioTrack]);
+      const audioOptions = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 32000 }
+        : { audioBitsPerSecond: 32000 };
+      const audioChunks = [];
+      audioRecorder = new MediaRecorder(audioOnlyStream, audioOptions);
+      audioRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+      audioRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        requestFeedbackWithAudio(audioBlob, elapsedSeconds);
+      };
+
       mediaRecorder.start();
+      audioRecorder.start();
       document.getElementById('videoTimer').style.display = 'block';
       document.getElementById('startVideoBtn').style.display = 'none';
       document.getElementById('stopVideoBtn').style.display = 'block';
@@ -3510,6 +3536,7 @@
 
     function stopVideoRecording() {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      if (audioRecorder && audioRecorder.state !== 'inactive') audioRecorder.stop();
       clearInterval(timerInterval);
       isRunning = false;
       wordBox.classList.remove('active');
