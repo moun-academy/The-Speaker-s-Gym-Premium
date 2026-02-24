@@ -164,7 +164,7 @@ export default async function handler(req, res) {
 
       console.log('Metrics:', metrics);
 
-      // Step 3: Generate feedback with GPT-4o using enriched data
+      // Step 3: Generate feedback with GPT-4.1-mini using enriched data
       const metricsText = `
 Speech Metrics:
 - Speaking pace: ${metrics.wordsPerMinute} words per minute (${
@@ -180,7 +180,7 @@ Speech Metrics:
 `;
 
       const completion = await client.chat.completions.create({
-        model: 'gpt-5-nano',
+        model: 'gpt-4.1-mini',
         messages: [
           {
             role: 'system',
@@ -242,7 +242,7 @@ Speech Metrics:
       }
 
       const completion = await client.chat.completions.create({
-        model: 'gpt-5-nano',
+        model: 'gpt-4.1-mini',
         messages: [
           {
             role: 'system',
