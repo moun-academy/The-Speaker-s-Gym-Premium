@@ -1819,10 +1819,113 @@
         font-size: 20px;
       }
     }
+
+    /* ===== LOGIN GATE ===== */
+    .login-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0a0f1e 0%, #0f172a 50%, #131c33 100%);
+      padding: 24px;
+    }
+
+    .login-card {
+      background: rgba(17, 24, 39, 0.95);
+      border: 1px solid rgba(250, 204, 21, 0.2);
+      border-radius: 24px;
+      padding: 48px 36px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 0 60px rgba(250, 204, 21, 0.08), 0 24px 64px rgba(0,0,0,0.6);
+    }
+
+    .login-logo {
+      font-size: 56px;
+      margin-bottom: 16px;
+      line-height: 1;
+    }
+
+    .login-card h1 {
+      font-size: 26px;
+      font-weight: 800;
+      color: #facc15;
+      margin-bottom: 4px;
+    }
+
+    .login-subtitle {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 20px;
+    }
+
+    .login-desc {
+      font-size: 15px;
+      color: #9ca3af;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+
+    .login-google-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 14px 24px;
+      background: #fff;
+      color: #111;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+
+    .login-google-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+
+    .login-google-btn:active {
+      transform: translateY(0);
+    }
+
+    .login-error {
+      margin-top: 16px;
+      font-size: 13px;
+      color: #f87171;
+    }
   </style>
 </head>
 
 <body>
+  <!-- Login Gate – shown until user authenticates -->
+  <div id="loginGate" class="login-gate">
+    <div class="login-card">
+      <div class="login-logo">🏋️</div>
+      <h1>The Speaker's Gym</h1>
+      <p class="login-subtitle">by MOUN Academy</p>
+      <p class="login-desc">Sign in to start training your speaking skills and track your progress.</p>
+      <button id="loginGoogleBtn" class="login-google-btn">
+        <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          <path fill="none" d="M0 0h48v48H0z"/>
+        </svg>
+        Sign in with Google
+      </button>
+      <div id="loginError" class="login-error" style="display:none;"></div>
+    </div>
+  </div>
+
   <!-- Hamburger Menu Overlay -->
   <div class="menu-overlay" id="menuOverlay"></div>
 
@@ -2724,8 +2827,8 @@
       return structures[formula];
     }
 
-    // Version
-    const APP_VERSION = 'v3.0.0'; // Data Loss Fix - Firestore Source of Truth - January 11, 2026
+    // Last updated date
+    const LAST_UPDATED = 'February 24, 2026';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -2936,7 +3039,7 @@
     function updateVersionDisplay() {
       const versionEl = document.getElementById('appVersion');
       if (versionEl) {
-        versionEl.textContent = `Version ${APP_VERSION}`;
+        versionEl.textContent = `Last updated ${LAST_UPDATED}`;
       }
     }
 
@@ -3166,7 +3269,8 @@
       }
 
       isRequestingFeedback = true;
-      setAiStatus('Analyzing your speech with AI (transcription + vocal analysis)...');
+      aiFeedback.textContent = '✨ Your AI coaching feedback is on its way — sit tight while we listen back to your speech and put together your personalised report...';
+      setAiStatus('Transcribing and analysing your speech with AI...');
       console.log('[INFO] Starting AI analysis...');
 
       try {
@@ -3218,22 +3322,15 @@
         }
 
         aiFeedback.textContent = displayText;
-        setAiStatus('AI analysis complete!');
+        setAiStatus('AI analysis complete! Scroll down to read your feedback.');
         console.log('[SUCCESS] AI analysis complete');
 
-        // Show rating modal to complete the speech and update stats
-        if (duration >= 30) {
-          showRatingModal();
-        }
       } catch (err) {
         console.error('[ERROR] Failed to get feedback:', err);
         console.error('[ERROR] Error details:', err.message, err.stack);
-        setAiStatus(`Unable to analyze audio: ${err.message}. Check console for details.`, true);
+        setAiStatus(`Unable to analyze audio: ${err.message}`, true);
+        aiFeedback.textContent = 'AI feedback could not be generated for this session. Try again on your next speech.';
 
-        // Even if feedback fails, still show rating modal to update stats
-        if (duration >= 30) {
-          showRatingModal();
-        }
       } finally {
         isRequestingFeedback = false;
       }
@@ -3378,8 +3475,8 @@
       document.getElementById('audioVisualizer').classList.remove('recording');
       document.getElementById('startAudioBtn').style.display = 'block';
       document.getElementById('stopAudioBtn').style.display = 'none';
-      // Don't show rating modal here - wait for AI feedback to complete first
-      // Rating modal will be shown in requestFeedbackWithAudio() after analysis
+      // Show rating modal immediately — AI feedback continues in the background
+      if (elapsedSeconds >= 30) showRatingModal();
     }
 
     function startVideoRecording() {
@@ -3419,8 +3516,8 @@
       document.getElementById('videoTimer').style.display = 'none';
       document.getElementById('startVideoBtn').style.display = 'block';
       document.getElementById('stopVideoBtn').style.display = 'none';
-      // Don't show rating modal here - wait for AI feedback to complete first
-      // Rating modal will be shown in requestFeedbackWithAudio() after analysis
+      // Show rating modal immediately — AI feedback continues in the background
+      if (elapsedSeconds >= 30) showRatingModal();
     }
 
     // ========== RAPID FIRE FUNCTIONS ==========
@@ -4335,13 +4432,38 @@
         e.stopPropagation();
       });
 
+      const loginGate = document.getElementById('loginGate');
+      const loginError = document.getElementById('loginError');
+
+      // Wire up login-gate Google button
+      const loginGoogleBtn = document.getElementById('loginGoogleBtn');
+      if (loginGoogleBtn) {
+        loginGoogleBtn.addEventListener('click', async () => {
+          loginError.style.display = 'none';
+          loginGoogleBtn.disabled = true;
+          loginGoogleBtn.textContent = 'Signing in...';
+          try {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            await auth.signInWithPopup(provider);
+          } catch (err) {
+            console.error('[Auth] Login failed:', err);
+            loginError.textContent = 'Sign-in failed. Please try again.';
+            loginError.style.display = 'block';
+            loginGoogleBtn.disabled = false;
+            loginGoogleBtn.innerHTML = `<svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg> Sign in with Google`;
+          }
+        });
+      }
+
       auth.onAuthStateChanged(async (user) => {
         const profileSignedOut = document.getElementById('profileSignedOut');
         const profileSignedIn = document.getElementById('profileSignedIn');
         const profileUserEmail = document.getElementById('profileUserEmail');
 
         if (user) {
-          // User signed in
+          // User signed in — hide the login gate
+          if (loginGate) loginGate.style.display = 'none';
+
           currentUser = user;
           console.log('[Auth] User signed in:', user.email);
 
@@ -4373,7 +4495,9 @@
             });
 
         } else {
-          // User signed out
+          // User signed out — show the login gate
+          if (loginGate) loginGate.style.display = 'flex';
+
           currentUser = null;
           console.log('[Auth] User signed out');
 

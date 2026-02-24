@@ -164,7 +164,7 @@ export default async function handler(req, res) {
 
       console.log('Metrics:', metrics);
 
-      // Step 3: Generate feedback with GPT-4.1-mini using enriched data
+      // Step 3: Generate feedback with GPT-5.2 using enriched data
       const metricsText = `
 Speech Metrics:
 - Speaking pace: ${metrics.wordsPerMinute} words per minute (${
@@ -180,7 +180,8 @@ Speech Metrics:
 `;
 
       const completion = await client.chat.completions.create({
-        model: 'gpt-4.1-mini',
+        model: 'gpt-5.2',
+        reasoning_effort: 'none',
         messages: [
           {
             role: 'system',
@@ -222,8 +223,7 @@ Speech Metrics:
             role: 'user',
             content: `${metricsText}\n\nTranscript:\n${transcript}`
           }
-        ],
-        temperature: 0.5
+        ]
       });
 
       const feedback = completion.choices?.[0]?.message?.content?.trim() || 'No feedback generated.';
@@ -242,7 +242,8 @@ Speech Metrics:
       }
 
       const completion = await client.chat.completions.create({
-        model: 'gpt-4.1-mini',
+        model: 'gpt-5.2',
+        reasoning_effort: 'none',
         messages: [
           {
             role: 'system',
@@ -257,8 +258,7 @@ Speech Metrics:
             ].join(' '),
           },
           { role: 'user', content: text.trim() }
-        ],
-        temperature: 0.5
+        ]
       });
 
       const feedback = completion.choices?.[0]?.message?.content?.trim() || 'No feedback generated.';
