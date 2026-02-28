@@ -2047,7 +2047,7 @@
       </button>
       <button class="prompt-mode-btn" id="ieltsBtn">
         <span class="mode-icon">💬</span>
-        <span>Conversation Practice</span>
+        <span>Questions</span>
       </button>
     </div>
 
@@ -2475,8 +2475,8 @@
       { word: "Family", definition: "Group of related people" }
     ];
 
-    // Conversation Practice - What If questions
-    const conversationQuestions = [
+    // Questions — General Questions (What If scenarios)
+    const generalQuestions = [
       "If you could choose any superpower for a day, which would you pick and why?",
       "If money did not exist, how would you choose to live?",
       "If you could travel anywhere in the world right now, where would you go?",
@@ -2528,6 +2528,44 @@
       "If you could live inside your favorite movie for one month, which one would it be?",
       "What if everything you did today counted double toward your future, what would you focus on?"
     ];
+
+    // Questions — Would You Rather
+    const wouldYouRatherQuestions = [
+      "Would you rather have a never-ending supply of pizza or never-ending tacos?",
+      "Would you rather be able to fly or be invisible?",
+      "Would you rather have a robot that does your work or one that cleans your house?",
+      "Would you rather always be overdressed or always be underdressed?",
+      "Would you rather live in the future or in the past?",
+      "Would you rather have a mullet haircut forever or a ponytail haircut forever?",
+      "Would you rather speak every language in the world or play every instrument?",
+      "Would you rather be the best player on a losing team or the worst player on a winning team?",
+      "Would you rather always be 10 minutes late or always 30 minutes early?",
+      "Would you rather relive the same year forever or skip ahead 10 years?",
+      "Would you rather give up your phone for a month or coffee for a month?",
+      "Would you rather be famous for something embarrassing or unknown for something incredible?",
+      "Would you rather win the lottery but never travel again or travel the world but never get rich?",
+      "Would you rather read minds or be able to rewind moments?",
+      "Would you rather host every party or never attend one?",
+      "Would you rather always say what you think or never say what you feel?",
+      "Would you rather have unlimited confidence or unlimited energy?",
+      "Would you rather know how your story ends or be surprised?",
+      "Would you rather switch lives with your best friend for a week or with a stranger?",
+      "Would you rather lose your sense of taste or your sense of music?",
+      "Would you rather be extremely lucky or extremely skilled?",
+      "Would you rather live by the beach or in a big city penthouse?",
+      "Would you rather be the funniest person in the room or the smartest?",
+      "Would you rather always have the perfect comeback or always make the perfect first impression?",
+      "Would you rather redo one awkward moment or replay one perfect moment?",
+      "Would you rather have unlimited free time or unlimited money?",
+      "Would you rather be able to teleport anywhere or pause time for 10 minutes a day?",
+      "Would you rather be loved by everyone or deeply respected by a few?"
+    ];
+
+    // Combined categories object
+    const conversationCategories = {
+      'General Questions': generalQuestions,
+      'Would You Rather': wouldYouRatherQuestions
+    };
 
 // Rapid Fire word list for analogies (150+ words with grammar metadata)
     // Each word has: word, plural (true/false), article ('a', 'an', 'the', or null for no article)
@@ -2833,7 +2871,7 @@
     }
 
     // Last updated date
-    const LAST_UPDATED = 'February 24, 2026';
+    const LAST_UPDATED = 'February 28, 2026';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -2859,8 +2897,8 @@
     // Prompt Mode state (Random Words vs Conversation)
     let isConversationMode = localStorage.getItem('promptMode') === 'conversation';
     let currentConversationQuestion = null;
-    let currentConversationCategory = 'What If';
-    let conversationQuestionPool = [];
+    let currentConversationCategory = localStorage.getItem('conversationCategory') || 'General Questions';
+    let categoryQuestionPools = {}; // keyed by category name
 
     // Rapid Fire state
     let rapidFireStats = JSON.parse(localStorage.getItem('rapidFireStats')) || {
@@ -2938,8 +2976,27 @@
     }
 
     function initConversationCategoryControls() {
-      // Single "What If" category - no pills needed
-      categoryPillsContainer.innerHTML = '';
+      // Validate stored category still exists
+      if (!conversationCategories[currentConversationCategory]) {
+        currentConversationCategory = 'General Questions';
+      }
+
+      // Build a pill for each subsection
+      categoryPillsContainer.innerHTML = Object.keys(conversationCategories).map(c => {
+        const isActive = c === currentConversationCategory ? ' active' : '';
+        return `<button class="category-pill${isActive}" data-category="${c}">${c}</button>`;
+      }).join('');
+
+      // Clicking a pill switches category and immediately serves a question
+      categoryPillsContainer.querySelectorAll('.category-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          currentConversationCategory = pill.dataset.category;
+          localStorage.setItem('conversationCategory', currentConversationCategory);
+          categoryPillsContainer.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
+          pill.classList.add('active');
+          if (isConversationMode) nextConversationQuestion();
+        });
+      });
     }
 
     function updatePromptModeUI() {
@@ -2979,26 +3036,27 @@
       return arr;
     }
 
-    function reshuffleConversationQuestions() {
-      conversationQuestionPool = shuffleArray(conversationQuestions);
+    function reshuffleCategory(category) {
+      categoryQuestionPools[category] = shuffleArray(conversationCategories[category]);
     }
 
     function getNextConversationQuestion() {
-      if (!conversationQuestionPool || conversationQuestionPool.length === 0) {
-        reshuffleConversationQuestions();
+      const cat = currentConversationCategory;
+      if (!categoryQuestionPools[cat] || categoryQuestionPools[cat].length === 0) {
+        reshuffleCategory(cat);
       }
-      return conversationQuestionPool.pop();
+      return categoryQuestionPools[cat].pop();
     }
 
     function nextConversationQuestion() {
       reset();
       const question = getNextConversationQuestion();
 
-      currentConversationQuestion = { category: 'What If', question };
+      currentConversationQuestion = { category: currentConversationCategory, question };
       conversationQuestionText.textContent = question;
 
       currentWord = {
-        word: 'What If',
+        word: currentConversationCategory,
         definition: question
       };
 
