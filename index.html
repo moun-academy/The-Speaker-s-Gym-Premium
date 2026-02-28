@@ -1947,7 +1947,7 @@
       </div>
       <div class="menu-item" id="menuRapidFire" data-page="rapidfire">
         <span class="menu-item-icon">⚡</span>
-        <span>Rapid Fire</span>
+        <span>Think Fast</span>
       </div>
       <div class="menu-item" id="menuWarmUp" data-page="warmup">
         <span class="menu-item-icon">🎤</span>
@@ -2168,13 +2168,13 @@
   <!-- RAPID FIRE PAGE -->
   <div class="container page" id="rapidFirePage">
     <button class="back-btn" id="rapidFireBackBtn">← Back to Home</button>
-    <h2 style="font-size: 24px; color: #facc15; margin-bottom: 20px; text-align: center;">⚡ Rapid Fire Analogies</h2>
+    <h2 style="font-size: 24px; color: #facc15; margin-bottom: 20px; text-align: center;">⚡ Think Fast</h2>
 
     <!-- Rapid Fire Content moved here -->
     <div class="rapid-fire-section active" id="rapidFireSectionPage">
       <!-- Settings (shown before starting) -->
       <div id="rapidFireSettingsPage" class="rapid-fire-settings">
-        <h4>⚡ Rapid Fire Settings</h4>
+        <h4>⚡ Think Fast Settings</h4>
         <div class="rapid-fire-setting">
           <label>Time per Round</label>
           <select id="rapidFireTimePage">
@@ -3764,7 +3764,7 @@
       saveRapidFireStats();
 
       // Show completion message
-      showAchievement(`⚡ Session complete! ${rapidFireTotalRounds} analogies in ${sessionDuration}s`);
+      showAchievement(`⚡ Think Fast complete! ${rapidFireTotalRounds} rounds in ${sessionDuration}s`);
 
       // Reset UI
       resetRapidFireUI();
@@ -4865,7 +4865,7 @@
       document.getElementById('startRapidFireBtnPage').style.display = 'block';
       document.getElementById('stopRapidFireBtnPage').style.display = 'none';
 
-      showAchievement(`⚡ Session complete! ${rapidFirePageTotalRounds} analogies!`);
+      showAchievement(`⚡ Think Fast complete! ${rapidFirePageTotalRounds} rounds done!`);
     }
 
     function stopRapidFirePage() {
