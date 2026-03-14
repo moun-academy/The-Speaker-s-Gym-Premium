@@ -223,6 +223,267 @@
       display: block;
     }
 
+    /* ===== ANALYTICS DASHBOARD STYLES ===== */
+    .analytics-header {
+      text-align: center;
+      margin-bottom: 28px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .analytics-header h2 {
+      font-size: 26px;
+      background: linear-gradient(135deg, #facc15, #f59e0b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    .analytics-header p {
+      color: #9ca3af;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* Speaking Score Circle */
+    .speaking-score-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+    .score-ring {
+      position: relative;
+      width: 160px;
+      height: 160px;
+    }
+    .score-ring svg {
+      transform: rotate(-90deg);
+      width: 160px;
+      height: 160px;
+    }
+    .score-ring-bg {
+      fill: none;
+      stroke: rgba(55, 65, 81, 0.5);
+      stroke-width: 10;
+    }
+    .score-ring-progress {
+      fill: none;
+      stroke-width: 10;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s ease, stroke 0.5s ease;
+    }
+    .score-value {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+    .score-number {
+      font-size: 42px;
+      font-weight: 900;
+      color: #facc15;
+      line-height: 1;
+    }
+    .score-label {
+      font-size: 11px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 4px;
+    }
+    .score-breakdown {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      width: 100%;
+      margin-top: 20px;
+    }
+    .score-factor {
+      background: rgba(30, 41, 59, 0.6);
+      border-radius: 12px;
+      padding: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      text-align: center;
+    }
+    .score-factor-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #e5e7eb;
+      display: block;
+    }
+    .score-factor-label {
+      font-size: 10px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 2px;
+    }
+
+    /* Chart Containers */
+    .analytics-section {
+      margin-bottom: 24px;
+    }
+    .analytics-section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #e5e7eb;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chart-container {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 16px;
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+    }
+    .chart-canvas-wrap {
+      position: relative;
+      height: 180px;
+      width: 100%;
+    }
+    .chart-canvas-wrap canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+    .chart-period-btns {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .chart-period-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(55, 65, 81, 0.5);
+      background: rgba(30, 41, 59, 0.4);
+      color: #9ca3af;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chart-period-btn.active {
+      background: rgba(250, 204, 21, 0.15);
+      border-color: rgba(250, 204, 21, 0.4);
+      color: #facc15;
+    }
+    .chart-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+    .chart-empty-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    /* Weekly AI Insight */
+    .ai-insight-card {
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.08), rgba(250, 204, 21, 0.02));
+      border: 1px solid rgba(250, 204, 21, 0.15);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .ai-insight-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .ai-insight-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(250, 204, 21, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .ai-insight-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #facc15;
+    }
+    .ai-insight-subtitle {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+    .ai-insight-body {
+      font-size: 14px;
+      color: #d1d5db;
+      line-height: 1.6;
+    }
+    .ai-insight-generating {
+      color: #9ca3af;
+      font-style: italic;
+    }
+
+    /* Milestone Badges */
+    .badges-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .badge-card {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 14px;
+      padding: 16px 10px;
+      border: 1px solid rgba(55, 65, 81, 0.3);
+      text-align: center;
+      transition: all 0.3s ease;
+      opacity: 0.4;
+    }
+    .badge-card.earned {
+      opacity: 1;
+      border-color: rgba(250, 204, 21, 0.3);
+      background: rgba(30, 41, 59, 0.7);
+    }
+    .badge-card.earned .badge-icon {
+      transform: scale(1);
+    }
+    .badge-icon {
+      font-size: 28px;
+      display: block;
+      margin-bottom: 6px;
+      transform: scale(0.8);
+      transition: transform 0.3s ease;
+    }
+    .badge-name {
+      font-size: 11px;
+      font-weight: 700;
+      color: #e5e7eb;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .badge-desc {
+      font-size: 9px;
+      color: #6b7280;
+      line-height: 1.3;
+    }
+    .badge-card.earned .badge-name {
+      color: #facc15;
+    }
+
+    /* Analytics login prompt */
+    .analytics-login-prompt {
+      text-align: center;
+      padding: 40px 20px;
+      color: #9ca3af;
+    }
+    .analytics-login-prompt p {
+      margin-bottom: 16px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
     /* Back button for sub-pages */
     .back-btn {
       display: inline-flex;
@@ -2176,6 +2437,10 @@
         <span class="menu-item-icon">🎤</span>
         <span>Warm Up</span>
       </div>
+      <div class="menu-item" id="menuAnalytics" data-page="analytics">
+        <span class="menu-item-icon">📊</span>
+        <span>Analytics</span>
+      </div>
       <div class="menu-divider"></div>
       <div class="menu-item" id="menuSettings" data-page="settings">
         <span class="menu-item-icon">⚙️</span>
@@ -2910,6 +3175,129 @@
   </div>
   <!-- END WARM UP PAGE -->
 
+  <!-- ANALYTICS PAGE -->
+  <div class="container page" id="analyticsPage">
+    <button class="back-btn" id="analyticsBackBtn">← Back to Home</button>
+    <div class="analytics-header">
+      <h2>Progress Analytics</h2>
+      <p>Track your speaking improvement over time</p>
+    </div>
+
+    <!-- Content shown when signed in -->
+    <div id="analyticsContent" style="display: none;">
+
+      <!-- Speaking Score -->
+      <div class="speaking-score-container">
+        <div class="score-ring">
+          <svg viewBox="0 0 160 160">
+            <circle class="score-ring-bg" cx="80" cy="80" r="70"></circle>
+            <circle class="score-ring-progress" id="scoreRingProgress" cx="80" cy="80" r="70"
+              stroke-dasharray="439.82" stroke-dashoffset="439.82" stroke="#facc15"></circle>
+          </svg>
+          <div class="score-value">
+            <span class="score-number" id="speakingScoreValue">--</span>
+            <div class="score-label">Speaking Score</div>
+          </div>
+        </div>
+        <div class="score-breakdown">
+          <div class="score-factor">
+            <span class="score-factor-value" id="sfConsistency">--</span>
+            <span class="score-factor-label">Consistency</span>
+          </div>
+          <div class="score-factor">
+            <span class="score-factor-value" id="sfPacing">--</span>
+            <span class="score-factor-label">Pacing</span>
+          </div>
+          <div class="score-factor">
+            <span class="score-factor-value" id="sfClarity">--</span>
+            <span class="score-factor-label">Clarity</span>
+          </div>
+          <div class="score-factor">
+            <span class="score-factor-value" id="sfConfidence">--</span>
+            <span class="score-factor-label">Confidence</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly AI Insight -->
+      <div class="ai-insight-card" id="aiInsightCard">
+        <div class="ai-insight-header">
+          <div class="ai-insight-icon">💡</div>
+          <div>
+            <div class="ai-insight-title">Weekly Insight</div>
+            <div class="ai-insight-subtitle" id="aiInsightDate">This week's analysis</div>
+          </div>
+        </div>
+        <div class="ai-insight-body" id="aiInsightBody">
+          <span class="ai-insight-generating">Complete a few more speeches to unlock your weekly AI insight...</span>
+        </div>
+      </div>
+
+      <!-- WPM Trend Chart -->
+      <div class="analytics-section">
+        <div class="analytics-section-title">📈 Words Per Minute</div>
+        <div class="chart-container">
+          <div class="chart-period-btns" data-chart="wpm">
+            <button class="chart-period-btn active" data-period="7">7 days</button>
+            <button class="chart-period-btn" data-period="30">30 days</button>
+            <button class="chart-period-btn" data-period="all">All time</button>
+          </div>
+          <div class="chart-canvas-wrap" id="wpmChartWrap">
+            <canvas id="wpmChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filler Words Trend Chart -->
+      <div class="analytics-section">
+        <div class="analytics-section-title">🚫 Filler Words</div>
+        <div class="chart-container">
+          <div class="chart-period-btns" data-chart="filler">
+            <button class="chart-period-btn active" data-period="7">7 days</button>
+            <button class="chart-period-btn" data-period="30">30 days</button>
+            <button class="chart-period-btn" data-period="all">All time</button>
+          </div>
+          <div class="chart-canvas-wrap" id="fillerChartWrap">
+            <canvas id="fillerChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rating Trend Chart -->
+      <div class="analytics-section">
+        <div class="analytics-section-title">⭐ Confidence Rating</div>
+        <div class="chart-container">
+          <div class="chart-period-btns" data-chart="rating">
+            <button class="chart-period-btn active" data-period="7">7 days</button>
+            <button class="chart-period-btn" data-period="30">30 days</button>
+            <button class="chart-period-btn" data-period="all">All time</button>
+          </div>
+          <div class="chart-canvas-wrap" id="ratingChartWrap">
+            <canvas id="ratingChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Milestone Badges -->
+      <div class="analytics-section">
+        <div class="analytics-section-title">🏆 Milestones</div>
+        <div class="badges-grid" id="badgesGrid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Shown when not signed in -->
+    <div id="analyticsLoginPrompt">
+      <div class="analytics-login-prompt">
+        <span style="font-size: 48px; display: block; margin-bottom: 16px;">📊</span>
+        <p>Sign in to unlock your personalized progress analytics, speaking score, and AI-powered weekly insights.</p>
+        <p style="font-size: 12px; color: #6b7280;">Your speech data is used to track trends and generate improvement insights.</p>
+      </div>
+    </div>
+  </div>
+  <!-- END ANALYTICS PAGE -->
+
   <!-- SETTINGS PAGE -->
   <div class="container page" id="settingsPage">
     <button class="back-btn" id="settingsBackBtn">← Back to Home</button>
@@ -3484,6 +3872,7 @@
     let recognitionActive = false;
     let liveTranscript = '';
     let currentAudioBlob = null;
+    let lastSpeechMetrics = null; // Store metrics from last AI analysis for Firebase sync
 
     // Prompt Mode state (Random Words vs Conversation)
     let isConversationMode = localStorage.getItem('promptMode') === 'conversation';
@@ -3954,6 +4343,7 @@
         const feedbackText = feedbackData.feedback?.trim() || 'No feedback generated.';
         const transcript = feedbackData.transcript || '';
         const metrics = feedbackData.metrics || {};
+        lastSpeechMetrics = metrics; // Save for Firebase sync
 
         console.log('[INFO] Transcript length:', transcript.length);
         console.log('[INFO] Metrics:', metrics);
@@ -5240,8 +5630,10 @@
           transcript: transcript,
           feedback: feedback,
           rating: stats.ratings[stats.ratings.length - 1] || null,
-          mode: currentMode
+          mode: currentMode,
+          metrics: lastSpeechMetrics || null
         });
+        lastSpeechMetrics = null; // Clear after sync
       }
     };
 
@@ -5309,6 +5701,9 @@
         document.getElementById('warmUpPage').classList.add('active');
         setRandomWarmupQuote();
         updateWarmupStats();
+      } else if (pageName === 'analytics') {
+        document.getElementById('analyticsPage').classList.add('active');
+        loadAnalyticsDashboard();
       } else if (pageName === 'settings') {
         document.getElementById('settingsPage').classList.add('active');
         updateSettingsPageUI();
@@ -5351,6 +5746,434 @@
     document.getElementById('rapidFireBackBtn').addEventListener('click', () => navigateToPage('main'));
     document.getElementById('warmUpBackBtn').addEventListener('click', () => navigateToPage('main'));
     document.getElementById('settingsBackBtn').addEventListener('click', () => navigateToPage('main'));
+    document.getElementById('analyticsBackBtn').addEventListener('click', () => navigateToPage('main'));
+
+    // ===== ANALYTICS DASHBOARD =====
+
+    let analyticsSpeeches = [];
+    let analyticsCharts = { wpm: null, filler: null, rating: null };
+
+    // Badge definitions — tied to real metric improvements
+    const MILESTONE_BADGES = [
+      { id: 'first_speech', icon: '🎙️', name: 'First Words', desc: 'Complete your first speech', check: s => s.length >= 1 },
+      { id: 'ten_speeches', icon: '🔟', name: 'Getting Started', desc: 'Complete 10 speeches', check: s => s.length >= 10 },
+      { id: 'fifty_speeches', icon: '🏅', name: 'Dedicated', desc: 'Complete 50 speeches', check: s => s.length >= 50 },
+      { id: 'streak_7', icon: '🔥', name: 'Week Warrior', desc: '7-day practice streak', check: (s, ctx) => ctx.streak >= 7 },
+      { id: 'streak_30', icon: '💎', name: 'Monthly Master', desc: '30-day practice streak', check: (s, ctx) => ctx.streak >= 30 },
+      { id: 'low_filler', icon: '🤫', name: 'Clean Speaker', desc: 'Zero filler words in a speech', check: s => s.some(sp => sp.metrics && sp.metrics.fillerWordCount === 0) },
+      { id: 'filler_drop', icon: '📉', name: 'Filler Buster', desc: 'Cut filler words by 50%+', check: (s, ctx) => ctx.fillerDrop >= 50 },
+      { id: 'steady_pace', icon: '⏱️', name: 'Steady Pacer', desc: 'Hit 120-150 WPM range 5 times', check: s => s.filter(sp => sp.metrics && sp.metrics.wordsPerMinute >= 120 && sp.metrics.wordsPerMinute <= 150).length >= 5 },
+      { id: 'high_rating', icon: '⭐', name: 'Confident', desc: 'Rate yourself 5 stars', check: s => s.some(sp => sp.rating === 5) },
+      { id: 'avg_rating_up', icon: '📈', name: 'Rising Star', desc: 'Average rating improved by 1+', check: (s, ctx) => ctx.ratingImprovement >= 1 },
+      { id: 'wpm_improve', icon: '🚀', name: 'Pace Master', desc: 'Improve WPM consistency over 10 sessions', check: (s, ctx) => ctx.wpmImproved },
+      { id: 'long_session', icon: '🎯', name: 'Deep Diver', desc: 'Complete a 2+ minute speech', check: s => s.some(sp => sp.duration >= 120) },
+    ];
+
+    async function loadAnalyticsDashboard() {
+      const content = document.getElementById('analyticsContent');
+      const loginPrompt = document.getElementById('analyticsLoginPrompt');
+
+      if (!syncEnabled || !currentUser) {
+        content.style.display = 'none';
+        loginPrompt.style.display = 'block';
+        return;
+      }
+
+      content.style.display = 'block';
+      loginPrompt.style.display = 'none';
+
+      try {
+        const snapshot = await db.collection('users').doc(currentUser.uid)
+          .collection('speeches')
+          .orderBy('createdAt', 'asc')
+          .get();
+
+        analyticsSpeeches = [];
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          if (data.createdAt) {
+            data._date = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+          }
+          analyticsSpeeches.push(data);
+        });
+
+        calculateSpeakingScore();
+        renderCharts('wpm', 7);
+        renderCharts('filler', 7);
+        renderCharts('rating', 7);
+        renderBadges();
+        generateWeeklyInsight();
+        setupChartPeriodButtons();
+      } catch (error) {
+        console.error('[Analytics] Error loading data:', error);
+      }
+    }
+
+    function calculateSpeakingScore() {
+      const speeches = analyticsSpeeches;
+      if (speeches.length === 0) {
+        document.getElementById('speakingScoreValue').textContent = '--';
+        document.getElementById('sfConsistency').textContent = '--';
+        document.getElementById('sfPacing').textContent = '--';
+        document.getElementById('sfClarity').textContent = '--';
+        document.getElementById('sfConfidence').textContent = '--';
+        return;
+      }
+
+      // Consistency: based on practice frequency (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const recentSpeeches = speeches.filter(s => s._date && s._date >= thirtyDaysAgo);
+      const uniqueDays = new Set(recentSpeeches.map(s => s._date?.toDateString())).size;
+      const consistencyScore = Math.min(100, Math.round((uniqueDays / 30) * 100 * 1.5));
+
+      // Pacing: how close to ideal 120-150 WPM range
+      const metricsSpeeches = recentSpeeches.filter(s => s.metrics && s.metrics.wordsPerMinute);
+      let pacingScore = 50;
+      if (metricsSpeeches.length > 0) {
+        const avgWpm = metricsSpeeches.reduce((sum, s) => sum + s.metrics.wordsPerMinute, 0) / metricsSpeeches.length;
+        if (avgWpm >= 120 && avgWpm <= 150) pacingScore = 100;
+        else if (avgWpm >= 100 && avgWpm <= 170) pacingScore = 75;
+        else if (avgWpm >= 80 && avgWpm <= 200) pacingScore = 50;
+        else pacingScore = 25;
+      }
+
+      // Clarity: inverse of filler word frequency
+      let clarityScore = 70;
+      if (metricsSpeeches.length > 0) {
+        const avgFillers = metricsSpeeches.reduce((sum, s) => sum + (s.metrics.fillerWordCount || 0), 0) / metricsSpeeches.length;
+        if (avgFillers === 0) clarityScore = 100;
+        else if (avgFillers <= 1) clarityScore = 90;
+        else if (avgFillers <= 3) clarityScore = 75;
+        else if (avgFillers <= 5) clarityScore = 55;
+        else clarityScore = 35;
+      }
+
+      // Confidence: average self-rating
+      const ratedSpeeches = recentSpeeches.filter(s => s.rating);
+      let confidenceScore = 50;
+      if (ratedSpeeches.length > 0) {
+        const avgRating = ratedSpeeches.reduce((sum, s) => sum + s.rating, 0) / ratedSpeeches.length;
+        confidenceScore = Math.round((avgRating / 5) * 100);
+      }
+
+      // Weighted composite
+      const overall = Math.round(
+        consistencyScore * 0.25 +
+        pacingScore * 0.25 +
+        clarityScore * 0.25 +
+        confidenceScore * 0.25
+      );
+
+      // Update UI
+      document.getElementById('speakingScoreValue').textContent = overall;
+      document.getElementById('sfConsistency').textContent = consistencyScore;
+      document.getElementById('sfPacing').textContent = pacingScore;
+      document.getElementById('sfClarity').textContent = clarityScore;
+      document.getElementById('sfConfidence').textContent = confidenceScore;
+
+      // Animate ring
+      const circumference = 2 * Math.PI * 70; // r=70
+      const offset = circumference - (overall / 100) * circumference;
+      const ring = document.getElementById('scoreRingProgress');
+      ring.style.strokeDashoffset = offset;
+
+      // Color based on score
+      if (overall >= 80) ring.setAttribute('stroke', '#22c55e');
+      else if (overall >= 60) ring.setAttribute('stroke', '#facc15');
+      else if (overall >= 40) ring.setAttribute('stroke', '#f59e0b');
+      else ring.setAttribute('stroke', '#ef4444');
+    }
+
+    function filterSpeechesByPeriod(period) {
+      if (period === 'all') return analyticsSpeeches;
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - parseInt(period));
+      return analyticsSpeeches.filter(s => s._date && s._date >= cutoff);
+    }
+
+    function renderCharts(type, period) {
+      const speeches = filterSpeechesByPeriod(period);
+      const canvas = document.getElementById(type + 'Chart');
+      const ctx = canvas.getContext('2d');
+
+      // Set canvas resolution
+      const wrap = canvas.parentElement;
+      canvas.width = wrap.clientWidth * 2;
+      canvas.height = wrap.clientHeight * 2;
+      ctx.scale(2, 2);
+      const w = wrap.clientWidth;
+      const h = wrap.clientHeight;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Extract data points
+      let dataPoints = [];
+      if (type === 'wpm') {
+        dataPoints = speeches.filter(s => s.metrics && s.metrics.wordsPerMinute)
+          .map(s => ({ date: s._date, value: s.metrics.wordsPerMinute }));
+      } else if (type === 'filler') {
+        dataPoints = speeches.filter(s => s.metrics && s.metrics.fillerWordCount !== undefined)
+          .map(s => ({ date: s._date, value: s.metrics.fillerWordCount }));
+      } else if (type === 'rating') {
+        dataPoints = speeches.filter(s => s.rating)
+          .map(s => ({ date: s._date, value: s.rating }));
+      }
+
+      if (dataPoints.length < 2) {
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '14px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Need more data points to show trend', w / 2, h / 2 - 10);
+        ctx.font = '12px Inter, sans-serif';
+        ctx.fillText(`${dataPoints.length} session${dataPoints.length !== 1 ? 's' : ''} recorded`, w / 2, h / 2 + 12);
+        return;
+      }
+
+      // Aggregate by day (average)
+      const dailyMap = {};
+      dataPoints.forEach(dp => {
+        const key = dp.date.toDateString();
+        if (!dailyMap[key]) dailyMap[key] = { sum: 0, count: 0, date: dp.date };
+        dailyMap[key].sum += dp.value;
+        dailyMap[key].count++;
+      });
+      const daily = Object.values(dailyMap)
+        .map(d => ({ date: d.date, value: d.sum / d.count }))
+        .sort((a, b) => a.date - b.date);
+
+      if (daily.length < 1) return;
+
+      const values = daily.map(d => d.value);
+      const minVal = Math.min(...values);
+      const maxVal = Math.max(...values);
+      const range = maxVal - minVal || 1;
+
+      const padL = 40, padR = 16, padT = 16, padB = 28;
+      const chartW = w - padL - padR;
+      const chartH = h - padT - padB;
+
+      // Draw grid lines
+      ctx.strokeStyle = 'rgba(55, 65, 81, 0.4)';
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i <= 4; i++) {
+        const y = padT + (chartH / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(w - padR, y);
+        ctx.stroke();
+
+        // Y-axis labels
+        const label = (maxVal - (range / 4) * i).toFixed(type === 'rating' ? 1 : 0);
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '10px Inter, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(label, padL - 6, y + 4);
+      }
+
+      // Draw line
+      const colors = { wpm: '#3b82f6', filler: '#ef4444', rating: '#facc15' };
+      const color = colors[type];
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+
+      daily.forEach((d, i) => {
+        const x = padL + (i / (daily.length - 1 || 1)) * chartW;
+        const y = padT + chartH - ((d.value - minVal) / range) * chartH;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Draw gradient fill under line
+      const gradient = ctx.createLinearGradient(0, padT, 0, h - padB);
+      gradient.addColorStop(0, color + '30');
+      gradient.addColorStop(1, color + '05');
+      ctx.lineTo(padL + chartW, h - padB);
+      ctx.lineTo(padL, h - padB);
+      ctx.closePath();
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      // Draw data points
+      daily.forEach((d, i) => {
+        const x = padL + (i / (daily.length - 1 || 1)) * chartW;
+        const y = padT + chartH - ((d.value - minVal) / range) * chartH;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = '#111827';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+
+      // X-axis date labels (first and last)
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '10px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      const fmtDate = d => `${d.getMonth() + 1}/${d.getDate()}`;
+      ctx.fillText(fmtDate(daily[0].date), padL, h - 4);
+      ctx.textAlign = 'right';
+      ctx.fillText(fmtDate(daily[daily.length - 1].date), w - padR, h - 4);
+
+      // Trend indicator
+      if (daily.length >= 2) {
+        const firstHalf = daily.slice(0, Math.ceil(daily.length / 2));
+        const secondHalf = daily.slice(Math.ceil(daily.length / 2));
+        const avgFirst = firstHalf.reduce((s, d) => s + d.value, 0) / firstHalf.length;
+        const avgSecond = secondHalf.reduce((s, d) => s + d.value, 0) / secondHalf.length;
+        const trendUp = avgSecond > avgFirst;
+        const trendText = type === 'filler' ? (trendUp ? '↑' : '↓ Improving') : (trendUp ? '↑ Improving' : '↓');
+        const trendColor = type === 'filler' ? (trendUp ? '#ef4444' : '#22c55e') : (trendUp ? '#22c55e' : '#ef4444');
+        ctx.fillStyle = trendColor;
+        ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(trendText, w / 2, h - 4);
+      }
+    }
+
+    function setupChartPeriodButtons() {
+      document.querySelectorAll('.chart-period-btns').forEach(group => {
+        const chartType = group.getAttribute('data-chart');
+        group.querySelectorAll('.chart-period-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            group.querySelectorAll('.chart-period-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderCharts(chartType, btn.getAttribute('data-period'));
+          });
+        });
+      });
+    }
+
+    function renderBadges() {
+      const grid = document.getElementById('badgesGrid');
+      const speeches = analyticsSpeeches;
+
+      // Compute context for badge checks
+      const ctx = { streak: stats.streak, fillerDrop: 0, ratingImprovement: 0, wpmImproved: false };
+
+      // Filler word drop: compare first 5 vs last 5 sessions with metrics
+      const withFillers = speeches.filter(s => s.metrics && s.metrics.fillerWordCount !== undefined);
+      if (withFillers.length >= 6) {
+        const first5 = withFillers.slice(0, 5);
+        const last5 = withFillers.slice(-5);
+        const avgFirst = first5.reduce((s, sp) => s + sp.metrics.fillerWordCount, 0) / 5;
+        const avgLast = last5.reduce((s, sp) => s + sp.metrics.fillerWordCount, 0) / 5;
+        if (avgFirst > 0) ctx.fillerDrop = ((avgFirst - avgLast) / avgFirst) * 100;
+      }
+
+      // Rating improvement: compare first 5 vs last 5 rated sessions
+      const withRatings = speeches.filter(s => s.rating);
+      if (withRatings.length >= 6) {
+        const first5 = withRatings.slice(0, 5);
+        const last5 = withRatings.slice(-5);
+        const avgFirst = first5.reduce((s, sp) => s + sp.rating, 0) / 5;
+        const avgLast = last5.reduce((s, sp) => s + sp.rating, 0) / 5;
+        ctx.ratingImprovement = avgLast - avgFirst;
+      }
+
+      // WPM consistency improvement
+      const withWpm = speeches.filter(s => s.metrics && s.metrics.wordsPerMinute);
+      if (withWpm.length >= 10) {
+        const first5 = withWpm.slice(0, 5).map(s => s.metrics.wordsPerMinute);
+        const last5 = withWpm.slice(-5).map(s => s.metrics.wordsPerMinute);
+        const stdDev = arr => {
+          const avg = arr.reduce((a, b) => a + b, 0) / arr.length;
+          return Math.sqrt(arr.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / arr.length);
+        };
+        ctx.wpmImproved = stdDev(last5) < stdDev(first5);
+      }
+
+      grid.innerHTML = MILESTONE_BADGES.map(badge => {
+        const earned = badge.check(speeches, ctx);
+        return `
+          <div class="badge-card ${earned ? 'earned' : ''}">
+            <span class="badge-icon">${badge.icon}</span>
+            <span class="badge-name">${badge.name}</span>
+            <span class="badge-desc">${badge.desc}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function generateWeeklyInsight() {
+      const speeches = analyticsSpeeches;
+      const body = document.getElementById('aiInsightBody');
+      const dateEl = document.getElementById('aiInsightDate');
+
+      // Need at least 3 speeches to generate insight
+      if (speeches.length < 3) {
+        body.innerHTML = '<span class="ai-insight-generating">Complete a few more speeches to unlock your weekly AI insight...</span>';
+        return;
+      }
+
+      // Get this week's and last week's speeches
+      const now = new Date();
+      const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+      const twoWeeksAgo = new Date(now); twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
+      const thisWeek = speeches.filter(s => s._date && s._date >= weekAgo);
+      const lastWeek = speeches.filter(s => s._date && s._date >= twoWeeksAgo && s._date < weekAgo);
+
+      dateEl.textContent = `Week of ${weekAgo.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+
+      const insights = [];
+
+      // Filler word comparison
+      const thisWeekFillers = thisWeek.filter(s => s.metrics && s.metrics.fillerWordCount !== undefined);
+      const lastWeekFillers = lastWeek.filter(s => s.metrics && s.metrics.fillerWordCount !== undefined);
+      if (thisWeekFillers.length > 0 && lastWeekFillers.length > 0) {
+        const avgThis = thisWeekFillers.reduce((s, sp) => s + sp.metrics.fillerWordCount, 0) / thisWeekFillers.length;
+        const avgLast = lastWeekFillers.reduce((s, sp) => s + sp.metrics.fillerWordCount, 0) / lastWeekFillers.length;
+        if (avgLast > 0) {
+          const change = Math.round(((avgLast - avgThis) / avgLast) * 100);
+          if (change > 0) insights.push(`Your filler words dropped ${change}% this week — great progress!`);
+          else if (change < -20) insights.push(`Filler words increased ${Math.abs(change)}% this week. Try pausing instead of filling silence — silence is powerful.`);
+        }
+        if (avgThis === 0) insights.push(`Zero filler words this week — exceptional clarity!`);
+      }
+
+      // WPM trend
+      const thisWeekWpm = thisWeek.filter(s => s.metrics && s.metrics.wordsPerMinute);
+      if (thisWeekWpm.length > 0) {
+        const avgWpm = Math.round(thisWeekWpm.reduce((s, sp) => s + sp.metrics.wordsPerMinute, 0) / thisWeekWpm.length);
+        if (avgWpm > 160) insights.push(`Your average pace is ${avgWpm} WPM — still a bit rushed. Try the 4-4-4 breathing warm-up before your next session.`);
+        else if (avgWpm < 110) insights.push(`Your pace is ${avgWpm} WPM — quite slow. Try to keep energy up and aim for 120-150 WPM for dynamic delivery.`);
+        else insights.push(`Your pacing is ${avgWpm} WPM — right in the sweet spot for engaging delivery.`);
+      }
+
+      // Rating trend
+      const thisWeekRated = thisWeek.filter(s => s.rating);
+      const lastWeekRated = lastWeek.filter(s => s.rating);
+      if (thisWeekRated.length > 0 && lastWeekRated.length > 0) {
+        const avgThis = thisWeekRated.reduce((s, sp) => s + sp.rating, 0) / thisWeekRated.length;
+        const avgLast = lastWeekRated.reduce((s, sp) => s + sp.rating, 0) / lastWeekRated.length;
+        if (avgThis > avgLast) insights.push(`Your confidence rating improved from ${avgLast.toFixed(1)} to ${avgThis.toFixed(1)} — you're feeling the growth!`);
+      }
+
+      // Practice frequency
+      if (thisWeek.length > 0) {
+        insights.push(`You completed ${thisWeek.length} session${thisWeek.length !== 1 ? 's' : ''} this week${thisWeek.length >= 5 ? ' — outstanding dedication!' : '. Aim for 5+ sessions to build momentum.'}`);
+      }
+
+      // Fallback insight based on all-time data
+      if (insights.length === 0) {
+        const withMetrics = speeches.filter(s => s.metrics);
+        if (withMetrics.length > 0) {
+          const latestWpm = withMetrics[withMetrics.length - 1].metrics.wordsPerMinute;
+          insights.push(`Keep going! Your latest pace was ${latestWpm} WPM. Record more sessions this week to unlock deeper trend analysis.`);
+        } else {
+          insights.push(`You have ${speeches.length} sessions recorded. Use audio or video mode to unlock detailed speech metrics and trend analysis.`);
+        }
+      }
+
+      body.textContent = insights.join(' ');
+    }
 
     // ===== RAPID FIRE PAGE FUNCTIONS =====
     let rapidFirePageInterval = null;
