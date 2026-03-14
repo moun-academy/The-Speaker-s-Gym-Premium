@@ -350,6 +350,38 @@
       width: 100% !important;
       height: 100% !important;
     }
+    .chart-summary {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .chart-summary-main {
+      font-size: 28px;
+      font-weight: 800;
+      color: #e5e7eb;
+      line-height: 1;
+    }
+    .chart-summary-unit {
+      font-size: 13px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+    .chart-summary-change {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .chart-summary-change.positive { color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+    .chart-summary-change.negative { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+    .chart-summary-change.neutral { color: #9ca3af; background: rgba(156, 163, 175, 0.1); }
+    .chart-summary-detail {
+      font-size: 11px;
+      color: #6b7280;
+      width: 100%;
+    }
     .chart-period-btns {
       display: flex;
       gap: 6px;
@@ -3237,6 +3269,7 @@
       <div class="analytics-section">
         <div class="analytics-section-title">📈 Words Per Minute</div>
         <div class="chart-container">
+          <div class="chart-summary" id="wpmSummary"></div>
           <div class="chart-period-btns" data-chart="wpm">
             <button class="chart-period-btn active" data-period="7">7 days</button>
             <button class="chart-period-btn" data-period="30">30 days</button>
@@ -3252,6 +3285,7 @@
       <div class="analytics-section">
         <div class="analytics-section-title">🚫 Filler Words</div>
         <div class="chart-container">
+          <div class="chart-summary" id="fillerSummary"></div>
           <div class="chart-period-btns" data-chart="filler">
             <button class="chart-period-btn active" data-period="7">7 days</button>
             <button class="chart-period-btn" data-period="30">30 days</button>
@@ -3267,6 +3301,7 @@
       <div class="analytics-section">
         <div class="analytics-section-title">⭐ Confidence Rating</div>
         <div class="chart-container">
+          <div class="chart-summary" id="ratingSummary"></div>
           <div class="chart-period-btns" data-chart="rating">
             <button class="chart-period-btn active" data-period="7">7 days</button>
             <button class="chart-period-btn" data-period="30">30 days</button>
@@ -5794,6 +5829,21 @@
           if (data.createdAt) {
             data._date = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
           }
+          // Extract metrics from feedback text for legacy speeches without structured metrics
+          if (!data.metrics && data.feedback) {
+            const extracted = {};
+            const wpmMatch = data.feedback.match(/(\d+)\s*WPM/);
+            if (wpmMatch) extracted.wordsPerMinute = parseInt(wpmMatch[1]);
+            const fillerMatch = data.feedback.match(/Filler words:\s*(\d+)/i);
+            if (fillerMatch) extracted.fillerWordCount = parseInt(fillerMatch[1]);
+            const pauseCountMatch = data.feedback.match(/(\d+)\s*pause/i);
+            if (pauseCountMatch) extracted.pauseCount = parseInt(pauseCountMatch[1]);
+            const pacingMatch = data.feedback.match(/\((\w+)\)/);
+            if (pacingMatch && ['steady', 'halting', 'rushed'].includes(pacingMatch[1])) {
+              extracted.pacingVariation = pacingMatch[1];
+            }
+            if (Object.keys(extracted).length > 0) data.metrics = extracted;
+          }
           analyticsSpeeches.push(data);
         });
 
@@ -5920,13 +5970,23 @@
           .map(s => ({ date: s._date, value: s.rating }));
       }
 
-      if (dataPoints.length < 2) {
+      // Update summary stats above chart
+      updateChartSummary(type, dataPoints);
+
+      // Show helpful message when no data
+      if (dataPoints.length === 0) {
         ctx.fillStyle = '#6b7280';
         ctx.font = '14px Inter, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Need more data points to show trend', w / 2, h / 2 - 10);
-        ctx.font = '12px Inter, sans-serif';
-        ctx.fillText(`${dataPoints.length} session${dataPoints.length !== 1 ? 's' : ''} recorded`, w / 2, h / 2 + 12);
+        if (type === 'rating') {
+          ctx.fillText('Rate your speeches to see trends', w / 2, h / 2 - 10);
+          ctx.font = '12px Inter, sans-serif';
+          ctx.fillText('Ratings appear after each speech', w / 2, h / 2 + 12);
+        } else {
+          ctx.fillText('Record in audio or video mode', w / 2, h / 2 - 10);
+          ctx.font = '12px Inter, sans-serif';
+          ctx.fillText('to unlock speech metrics', w / 2, h / 2 + 12);
+        }
         return;
       }
 
@@ -5945,8 +6005,15 @@
       if (daily.length < 1) return;
 
       const values = daily.map(d => d.value);
-      const minVal = Math.min(...values);
-      const maxVal = Math.max(...values);
+      let minVal = Math.min(...values);
+      let maxVal = Math.max(...values);
+
+      // For single data points, create meaningful range
+      if (daily.length === 1) {
+        if (type === 'rating') { minVal = 0; maxVal = 5; }
+        else if (type === 'filler') { minVal = 0; maxVal = Math.max(maxVal * 1.5, 5); }
+        else { minVal = Math.max(0, maxVal - 40); maxVal = maxVal + 40; }
+      }
       const range = maxVal - minVal || 1;
 
       const padL = 40, padR = 16, padT = 16, padB = 28;
@@ -5971,10 +6038,45 @@
         ctx.fillText(label, padL - 6, y + 4);
       }
 
-      // Draw line
       const colors = { wpm: '#3b82f6', filler: '#ef4444', rating: '#facc15' };
       const color = colors[type];
 
+      // Single data point — show as a prominent dot with value label
+      if (daily.length === 1) {
+        const x = padL + chartW / 2;
+        const y = padT + chartH - ((daily[0].value - minVal) / range) * chartH;
+
+        // Glow
+        const glow = ctx.createRadialGradient(x, y, 0, x, y, 30);
+        glow.addColorStop(0, color + '40');
+        glow.addColorStop(1, color + '00');
+        ctx.fillStyle = glow;
+        ctx.fillRect(x - 30, y - 30, 60, 60);
+
+        // Dot
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = '#111827';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Value label
+        ctx.fillStyle = '#e5e7eb';
+        ctx.font = 'bold 13px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(daily[0].value.toFixed(type === 'rating' ? 1 : 0), x, y - 14);
+
+        // Date label
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '10px Inter, sans-serif';
+        const fmtDate = d => `${d.getMonth() + 1}/${d.getDate()}`;
+        ctx.fillText(fmtDate(daily[0].date), x, h - 4);
+        return;
+      }
+
+      // Draw line
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
       ctx.lineJoin = 'round';
@@ -6035,6 +6137,75 @@
         ctx.textAlign = 'center';
         ctx.fillText(trendText, w / 2, h - 4);
       }
+    }
+
+    function updateChartSummary(type, dataPoints) {
+      const summaryEl = document.getElementById(type + 'Summary');
+      if (!summaryEl) return;
+
+      if (dataPoints.length === 0) {
+        const labels = { wpm: 'WPM', filler: 'filler words', rating: 'rating' };
+        summaryEl.innerHTML = `<span class="chart-summary-detail">No ${labels[type]} data yet — use audio/video mode to track</span>`;
+        return;
+      }
+
+      const values = dataPoints.map(d => d.value);
+      const avg = values.reduce((a, b) => a + b, 0) / values.length;
+      const latest = values[values.length - 1];
+
+      let mainValue, unit, changeHtml = '', detailHtml = '';
+
+      if (type === 'wpm') {
+        mainValue = Math.round(latest);
+        unit = 'WPM';
+        detailHtml = `Avg: ${Math.round(avg)} WPM across ${dataPoints.length} session${dataPoints.length !== 1 ? 's' : ''}`;
+        if (dataPoints.length >= 3) {
+          const older = values.slice(0, Math.ceil(values.length / 2));
+          const newer = values.slice(Math.ceil(values.length / 2));
+          const avgOlder = older.reduce((a, b) => a + b, 0) / older.length;
+          const avgNewer = newer.reduce((a, b) => a + b, 0) / newer.length;
+          const diff = Math.round(avgNewer - avgOlder);
+          if (diff > 0) changeHtml = `<span class="chart-summary-change positive">+${diff}</span>`;
+          else if (diff < 0) changeHtml = `<span class="chart-summary-change negative">${diff}</span>`;
+          else changeHtml = `<span class="chart-summary-change neutral">steady</span>`;
+        }
+      } else if (type === 'filler') {
+        mainValue = latest.toFixed(1);
+        unit = 'per session';
+        detailHtml = `Avg: ${avg.toFixed(1)} fillers across ${dataPoints.length} session${dataPoints.length !== 1 ? 's' : ''}`;
+        if (dataPoints.length >= 3) {
+          const older = values.slice(0, Math.ceil(values.length / 2));
+          const newer = values.slice(Math.ceil(values.length / 2));
+          const avgOlder = older.reduce((a, b) => a + b, 0) / older.length;
+          const avgNewer = newer.reduce((a, b) => a + b, 0) / newer.length;
+          const diff = avgNewer - avgOlder;
+          // For fillers, down is good
+          if (diff < -0.5) changeHtml = `<span class="chart-summary-change positive">${diff.toFixed(1)}</span>`;
+          else if (diff > 0.5) changeHtml = `<span class="chart-summary-change negative">+${diff.toFixed(1)}</span>`;
+          else changeHtml = `<span class="chart-summary-change neutral">steady</span>`;
+        }
+      } else if (type === 'rating') {
+        mainValue = latest.toFixed(1);
+        unit = '/ 5';
+        detailHtml = `Avg: ${avg.toFixed(1)} across ${dataPoints.length} rated session${dataPoints.length !== 1 ? 's' : ''}`;
+        if (dataPoints.length >= 3) {
+          const older = values.slice(0, Math.ceil(values.length / 2));
+          const newer = values.slice(Math.ceil(values.length / 2));
+          const avgOlder = older.reduce((a, b) => a + b, 0) / older.length;
+          const avgNewer = newer.reduce((a, b) => a + b, 0) / newer.length;
+          const diff = avgNewer - avgOlder;
+          if (diff > 0.2) changeHtml = `<span class="chart-summary-change positive">+${diff.toFixed(1)}</span>`;
+          else if (diff < -0.2) changeHtml = `<span class="chart-summary-change negative">${diff.toFixed(1)}</span>`;
+          else changeHtml = `<span class="chart-summary-change neutral">steady</span>`;
+        }
+      }
+
+      summaryEl.innerHTML = `
+        <span class="chart-summary-main">${mainValue}</span>
+        <span class="chart-summary-unit">${unit}</span>
+        ${changeHtml}
+        <span class="chart-summary-detail">${detailHtml}</span>
+      `;
     }
 
     function setupChartPeriodButtons() {
