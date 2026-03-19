@@ -75,13 +75,15 @@ function analyzeMetrics(words, duration) {
 
   const fillerWords = ['um', 'uh', 'like', 'you know', 'so', 'basically', 'actually', 'literally'];
   let fillerCount = 0;
+  const fillerWordsUsed = {};
   const pauses = [];
 
-  // Count filler words
+  // Count filler words and track which ones were used
   words.forEach(word => {
     const wordText = word.word.toLowerCase().trim();
     if (fillerWords.includes(wordText)) {
       fillerCount++;
+      fillerWordsUsed[wordText] = (fillerWordsUsed[wordText] || 0) + 1;
     }
   });
 
@@ -109,6 +111,7 @@ function analyzeMetrics(words, duration) {
     averagePauseDuration: pauses.length > 0 ? (pauses.reduce((a, b) => a + b, 0) / pauses.length).toFixed(2) : 0,
     longestPause: pauses.length > 0 ? Math.max(...pauses).toFixed(2) : 0,
     fillerWordCount: fillerCount,
+    fillerWordsUsed,
     pauseCount: pauses.length,
     pacingVariation
   };
@@ -176,7 +179,7 @@ Speech Metrics:
 - Pauses: ${metrics.pauseCount} notable pauses detected
 - Average pause: ${metrics.averagePauseDuration}s
 - Longest pause: ${metrics.longestPause}s
-- Filler words detected: ${metrics.fillerWordCount} ("um", "uh", "like", etc.)
+- Filler words detected: ${metrics.fillerWordCount}${Object.keys(metrics.fillerWordsUsed).length > 0 ? ` — specifically: ${Object.entries(metrics.fillerWordsUsed).map(([word, count]) => `"${word}" (${count}x)`).join(', ')}` : ''}
 `;
 
       const completion = await client.chat.completions.create({
@@ -194,7 +197,7 @@ Speech Metrics:
               '',
               'Format your feedback as follows:',
               '',
-              'Summary: [One sentence overall assessment]',
+              'Summary: [One sentence overall assessment. MUST list the specific filler words/sounds the speaker used (e.g. "um", "uh", "like") with how many times each was detected.]',
               '',
               'What you did well:',
               '• [Strength with QUOTED EXAMPLE: "exact phrase they said" - explain why this worked]',
