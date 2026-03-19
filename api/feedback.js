@@ -164,7 +164,7 @@ export default async function handler(req, res) {
 
       console.log('Metrics:', metrics);
 
-      // Step 3: Generate feedback with GPT-5.2 using enriched data
+      // Step 3: Generate feedback with ChatGPT 5.4 Mini using enriched data
       const metricsText = `
 Speech Metrics:
 - Speaking pace: ${metrics.wordsPerMinute} words per minute (${
@@ -180,7 +180,7 @@ Speech Metrics:
 `;
 
       const completion = await client.chat.completions.create({
-        model: 'gpt-5.2',
+        model: 'chatgpt-5.4-mini',
         reasoning_effort: 'none',
         messages: [
           {
@@ -242,7 +242,7 @@ Speech Metrics:
       }
 
       const completion = await client.chat.completions.create({
-        model: 'gpt-5.2',
+        model: 'chatgpt-5.4-mini',
         reasoning_effort: 'none',
         messages: [
           {
