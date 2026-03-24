@@ -2422,6 +2422,353 @@
       font-size: 13px;
       color: #f87171;
     }
+
+    /* ===== VOCABULARY GAME STYLES ===== */
+    .vocab-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .vocab-header h2 {
+      font-size: 24px;
+      color: #facc15;
+      margin-bottom: 6px;
+    }
+    .vocab-header p {
+      color: #9ca3af;
+      font-size: 14px;
+    }
+    .vocab-stats-bar {
+      display: flex;
+      justify-content: space-around;
+      background: rgba(17, 24, 39, 0.7);
+      border: 1px solid rgba(250, 204, 21, 0.12);
+      border-radius: 14px;
+      padding: 14px 8px;
+      margin-bottom: 20px;
+    }
+    .vocab-stat {
+      text-align: center;
+    }
+    .vocab-stat-value {
+      font-size: 22px;
+      font-weight: 800;
+      color: #facc15;
+    }
+    .vocab-stat-label {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+    .vocab-mode-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .vocab-mode-tab {
+      flex: 1;
+      padding: 10px 6px;
+      border-radius: 10px;
+      border: 1px solid rgba(250, 204, 21, 0.2);
+      background: rgba(17, 24, 39, 0.6);
+      color: #9ca3af;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.25s;
+    }
+    .vocab-mode-tab.active {
+      background: linear-gradient(135deg, #facc15, #f59e0b);
+      color: #0a0f1e;
+      border-color: #facc15;
+    }
+    .vocab-game-card {
+      background: rgba(17, 24, 39, 0.85);
+      border: 1px solid rgba(250, 204, 21, 0.15);
+      border-radius: 18px;
+      padding: 28px 20px;
+      text-align: center;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+      min-height: 260px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .vocab-game-card.correct-flash {
+      animation: correctFlash 0.5s ease;
+    }
+    .vocab-game-card.wrong-flash {
+      animation: wrongFlash 0.5s ease;
+    }
+    @keyframes correctFlash {
+      0% { border-color: rgba(250, 204, 21, 0.15); }
+      30% { border-color: #22c55e; box-shadow: 0 0 30px rgba(34, 197, 94, 0.3); }
+      100% { border-color: rgba(250, 204, 21, 0.15); }
+    }
+    @keyframes wrongFlash {
+      0% { border-color: rgba(250, 204, 21, 0.15); }
+      30% { border-color: #ef4444; box-shadow: 0 0 30px rgba(239, 68, 68, 0.3); }
+      100% { border-color: rgba(250, 204, 21, 0.15); }
+    }
+    .vocab-category-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 14px;
+    }
+    .vocab-category-badge.very { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
+    .vocab-category-badge.overused { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .vocab-category-badge.weak-verb { background: rgba(236, 72, 153, 0.2); color: #f472b6; }
+    .vocab-mundane-word {
+      font-size: 16px;
+      color: #9ca3af;
+      margin-bottom: 4px;
+    }
+    .vocab-mundane-word span {
+      text-decoration: line-through;
+      color: #ef4444;
+      opacity: 0.7;
+    }
+    .vocab-prompt-word {
+      font-size: 36px;
+      font-weight: 900;
+      color: #fff;
+      margin-bottom: 18px;
+      line-height: 1.2;
+    }
+    .vocab-prompt-word .highlight {
+      color: #facc15;
+    }
+    .vocab-hint {
+      font-size: 13px;
+      color: #6b7280;
+      font-style: italic;
+      margin-bottom: 16px;
+    }
+    .vocab-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .vocab-option {
+      padding: 14px 10px;
+      border-radius: 12px;
+      border: 2px solid rgba(250, 204, 21, 0.15);
+      background: rgba(17, 24, 39, 0.7);
+      color: #e5e7eb;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .vocab-option:hover {
+      border-color: rgba(250, 204, 21, 0.5);
+      background: rgba(250, 204, 21, 0.08);
+    }
+    .vocab-option:active {
+      transform: scale(0.97);
+    }
+    .vocab-option.correct {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+    .vocab-option.wrong {
+      border-color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+    }
+    .vocab-option.reveal {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+    }
+    .vocab-option.disabled {
+      pointer-events: none;
+      opacity: 0.5;
+    }
+    .vocab-progress-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .vocab-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #facc15, #22c55e);
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+    .vocab-timer-bar {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 2px;
+      margin-top: 14px;
+      overflow: hidden;
+    }
+    .vocab-timer-fill {
+      height: 100%;
+      background: #facc15;
+      border-radius: 2px;
+      transition: width 0.1s linear;
+    }
+    .vocab-timer-fill.urgent {
+      background: #ef4444;
+    }
+    .vocab-result-card {
+      background: rgba(17, 24, 39, 0.85);
+      border: 1px solid rgba(250, 204, 21, 0.15);
+      border-radius: 18px;
+      padding: 28px 20px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .vocab-result-score {
+      font-size: 56px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #facc15, #22c55e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .vocab-result-label {
+      font-size: 14px;
+      color: #9ca3af;
+      margin-bottom: 20px;
+    }
+    .vocab-result-stats {
+      display: flex;
+      justify-content: space-around;
+      margin: 20px 0;
+    }
+    .vocab-result-stat {
+      text-align: center;
+    }
+    .vocab-result-stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #e5e7eb;
+    }
+    .vocab-result-stat-label {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+    .vocab-words-learned {
+      margin-top: 20px;
+      text-align: left;
+    }
+    .vocab-words-learned h4 {
+      color: #facc15;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    .vocab-learned-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      margin-bottom: 6px;
+    }
+    .vocab-learned-item .mundane {
+      color: #ef4444;
+      text-decoration: line-through;
+      font-size: 13px;
+      opacity: 0.7;
+    }
+    .vocab-learned-item .arrow {
+      color: #6b7280;
+      font-size: 12px;
+    }
+    .vocab-learned-item .upgrade {
+      color: #22c55e;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .vocab-learned-item .status-icon {
+      font-size: 16px;
+    }
+    .vocab-settings {
+      background: rgba(17, 24, 39, 0.7);
+      border: 1px solid rgba(250, 204, 21, 0.12);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .vocab-settings h4 {
+      color: #facc15;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+    .vocab-setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .vocab-setting-row label {
+      color: #9ca3af;
+      font-size: 13px;
+    }
+    .vocab-setting-row select {
+      background: rgba(17, 24, 39, 0.9);
+      color: #e5e7eb;
+      border: 1px solid rgba(250, 204, 21, 0.2);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+    .vocab-btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 14px;
+      border: none;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+    .vocab-btn-primary {
+      background: linear-gradient(135deg, #facc15, #f59e0b);
+      color: #0a0f1e;
+    }
+    .vocab-btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(250, 204, 21, 0.3);
+    }
+    .vocab-btn-secondary {
+      background: rgba(250, 204, 21, 0.1);
+      color: #facc15;
+      border: 1px solid rgba(250, 204, 21, 0.2);
+      margin-top: 10px;
+    }
+    .vocab-streak-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(250, 204, 21, 0.12);
+      color: #facc15;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
   </style>
 </head>
 
@@ -2468,6 +2815,10 @@
       <div class="menu-item" id="menuWarmUp" data-page="warmup">
         <span class="menu-item-icon">🎤</span>
         <span>Warm Up</span>
+      </div>
+      <div class="menu-item" id="menuVocab" data-page="vocab">
+        <span class="menu-item-icon">📚</span>
+        <span>Word Upgrade</span>
       </div>
       <div class="menu-item" id="menuAnalytics" data-page="analytics">
         <span class="menu-item-icon">📊</span>
@@ -3332,6 +3683,129 @@
     </div>
   </div>
   <!-- END ANALYTICS PAGE -->
+
+  <!-- VOCABULARY GAME PAGE -->
+  <div class="container page" id="vocabPage">
+    <button class="back-btn" id="vocabBackBtn">← Back to Home</button>
+    <div class="vocab-header">
+      <h2>📚 Word Upgrade</h2>
+      <p>Replace mundane words with powerful vocabulary</p>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="vocab-stats-bar">
+      <div class="vocab-stat">
+        <div class="vocab-stat-value" id="vocabTotalPlayed">0</div>
+        <div class="vocab-stat-label">Played</div>
+      </div>
+      <div class="vocab-stat">
+        <div class="vocab-stat-value" id="vocabBestStreak">0</div>
+        <div class="vocab-stat-label">Best Streak</div>
+      </div>
+      <div class="vocab-stat">
+        <div class="vocab-stat-value" id="vocabWordsLearned">0</div>
+        <div class="vocab-stat-label">Words Learned</div>
+      </div>
+      <div class="vocab-stat">
+        <div class="vocab-stat-value" id="vocabAccuracy">0%</div>
+        <div class="vocab-stat-label">Accuracy</div>
+      </div>
+    </div>
+
+    <!-- Mode Tabs -->
+    <div class="vocab-mode-tabs">
+      <button class="vocab-mode-tab active" data-vocab-mode="very">🚫 "Very"</button>
+      <button class="vocab-mode-tab" data-vocab-mode="overused">💬 Overused</button>
+      <button class="vocab-mode-tab" data-vocab-mode="weak-verb">💪 Weak Verbs</button>
+    </div>
+
+    <!-- Setup Screen -->
+    <div id="vocabSetup">
+      <div class="vocab-settings">
+        <h4>⚙️ Game Settings</h4>
+        <div class="vocab-setting-row">
+          <label>Questions per round</label>
+          <select id="vocabRoundSize">
+            <option value="5">5 (Quick)</option>
+            <option value="10" selected>10 (Standard)</option>
+            <option value="15">15 (Extended)</option>
+            <option value="20">20 (Marathon)</option>
+          </select>
+        </div>
+        <div class="vocab-setting-row">
+          <label>Time limit</label>
+          <select id="vocabTimeLimit">
+            <option value="0">No limit</option>
+            <option value="10" selected>10 seconds</option>
+            <option value="7">7 seconds</option>
+            <option value="5">5 seconds (Hard)</option>
+          </select>
+        </div>
+      </div>
+      <button class="vocab-btn vocab-btn-primary" id="vocabStartBtn">▶️ Start Round</button>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="vocabGameArea" style="display: none;">
+      <div class="vocab-progress-bar">
+        <div class="vocab-progress-fill" id="vocabProgressFill" style="width: 0%"></div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <span style="color: #6b7280; font-size: 13px;" id="vocabQuestionNum">1 / 10</span>
+        <div class="vocab-streak-badge" id="vocabStreakBadge" style="display: none;">🔥 <span id="vocabCurrentStreak">0</span> streak</div>
+        <span style="color: #e5e7eb; font-size: 14px; font-weight: 700;" id="vocabScore">0 pts</span>
+      </div>
+
+      <div class="vocab-game-card" id="vocabGameCard">
+        <div class="vocab-category-badge very" id="vocabCategoryBadge">REPLACE "VERY"</div>
+        <div class="vocab-mundane-word" id="vocabMundaneLabel">Instead of saying</div>
+        <div class="vocab-prompt-word" id="vocabPromptWord">"Very <span class="highlight">happy</span>"</div>
+        <div class="vocab-hint" id="vocabHint">Choose the best single-word replacement</div>
+        <div class="vocab-timer-bar" id="vocabTimerBarWrap">
+          <div class="vocab-timer-fill" id="vocabTimerFill" style="width: 100%"></div>
+        </div>
+      </div>
+
+      <div class="vocab-options" id="vocabOptions">
+        <button class="vocab-option">Ecstatic</button>
+        <button class="vocab-option">Elated</button>
+        <button class="vocab-option">Joyful</button>
+        <button class="vocab-option">Content</button>
+      </div>
+    </div>
+
+    <!-- Results Screen -->
+    <div id="vocabResults" style="display: none;">
+      <div class="vocab-result-card">
+        <div class="vocab-result-score" id="vocabFinalScore">8/10</div>
+        <div class="vocab-result-label" id="vocabResultMessage">Great job! Your vocabulary is expanding!</div>
+
+        <div class="vocab-result-stats">
+          <div class="vocab-result-stat">
+            <div class="vocab-result-stat-value" id="vocabResultAccuracy">80%</div>
+            <div class="vocab-result-stat-label">Accuracy</div>
+          </div>
+          <div class="vocab-result-stat">
+            <div class="vocab-result-stat-value" id="vocabResultStreak">5</div>
+            <div class="vocab-result-stat-label">Best Streak</div>
+          </div>
+          <div class="vocab-result-stat">
+            <div class="vocab-result-stat-value" id="vocabResultTime">--</div>
+            <div class="vocab-result-stat-label">Avg Time</div>
+          </div>
+        </div>
+
+        <div class="vocab-words-learned" id="vocabWordsLearnedList">
+          <h4>📝 Words from this round</h4>
+        </div>
+      </div>
+
+      <button class="vocab-btn vocab-btn-primary" id="vocabPlayAgainBtn">🔄 Play Again</button>
+      <button class="vocab-btn vocab-btn-secondary" id="vocabBackToSetupBtn">⚙️ Change Settings</button>
+    </div>
+  </div>
+  <!-- END VOCABULARY GAME PAGE -->
 
   <!-- SETTINGS PAGE -->
   <div class="container page" id="settingsPage">
@@ -5739,6 +6213,9 @@
       } else if (pageName === 'analytics') {
         document.getElementById('analyticsPage').classList.add('active');
         loadAnalyticsDashboard();
+      } else if (pageName === 'vocab') {
+        document.getElementById('vocabPage').classList.add('active');
+        updateVocabStats();
       } else if (pageName === 'settings') {
         document.getElementById('settingsPage').classList.add('active');
         updateSettingsPageUI();
@@ -5782,6 +6259,7 @@
     document.getElementById('warmUpBackBtn').addEventListener('click', () => navigateToPage('main'));
     document.getElementById('settingsBackBtn').addEventListener('click', () => navigateToPage('main'));
     document.getElementById('analyticsBackBtn').addEventListener('click', () => navigateToPage('main'));
+    document.getElementById('vocabBackBtn').addEventListener('click', () => navigateToPage('main'));
 
     // ===== ANALYTICS DASHBOARD =====
 
@@ -6756,6 +7234,396 @@
       } catch (error) {
         showAchievement('❌ Sync failed');
       }
+    });
+
+    // ===== VOCABULARY GAME =====
+
+    const VOCAB_DATA = {
+      very: [
+        { mundane: 'very happy', answer: 'Ecstatic', options: ['Ecstatic', 'Mediocre', 'Passive', 'Cautious'], hint: 'Overwhelmingly joyful' },
+        { mundane: 'very tired', answer: 'Exhausted', options: ['Exhausted', 'Reluctant', 'Modest', 'Candid'], hint: 'Completely drained of energy' },
+        { mundane: 'very sad', answer: 'Devastated', options: ['Gloomy', 'Devastated', 'Flustered', 'Reserved'], hint: 'Deeply affected emotionally' },
+        { mundane: 'very big', answer: 'Enormous', options: ['Visible', 'Adequate', 'Enormous', 'Distinct'], hint: 'Extraordinarily large' },
+        { mundane: 'very small', answer: 'Minuscule', options: ['Minuscule', 'Marginal', 'Remote', 'Fleeting'], hint: 'Extremely tiny' },
+        { mundane: 'very angry', answer: 'Furious', options: ['Furious', 'Cautious', 'Weary', 'Puzzled'], hint: 'Intensely enraged' },
+        { mundane: 'very scared', answer: 'Terrified', options: ['Startled', 'Terrified', 'Anxious', 'Hesitant'], hint: 'Overwhelmed by fear' },
+        { mundane: 'very cold', answer: 'Frigid', options: ['Brisk', 'Frigid', 'Chilly', 'Bland'], hint: 'Intensely icy cold' },
+        { mundane: 'very hot', answer: 'Scorching', options: ['Tepid', 'Balmy', 'Scorching', 'Radiant'], hint: 'Burning with intense heat' },
+        { mundane: 'very smart', answer: 'Brilliant', options: ['Brilliant', 'Capable', 'Studious', 'Logical'], hint: 'Exceptionally intelligent' },
+        { mundane: 'very hungry', answer: 'Ravenous', options: ['Peckish', 'Ravenous', 'Famished', 'Greedy'], hint: 'Extremely and urgently hungry' },
+        { mundane: 'very beautiful', answer: 'Stunning', options: ['Pleasant', 'Stunning', 'Decent', 'Refined'], hint: 'Strikingly gorgeous' },
+        { mundane: 'very ugly', answer: 'Hideous', options: ['Hideous', 'Plain', 'Drab', 'Blunt'], hint: 'Shockingly unpleasant to look at' },
+        { mundane: 'very fast', answer: 'Blazing', options: ['Hasty', 'Blazing', 'Prompt', 'Brisk'], hint: 'Moving at incredible speed' },
+        { mundane: 'very slow', answer: 'Sluggish', options: ['Gradual', 'Delayed', 'Sluggish', 'Steady'], hint: 'Moving with painful slowness' },
+        { mundane: 'very strong', answer: 'Mighty', options: ['Mighty', 'Sturdy', 'Tough', 'Solid'], hint: 'Possessing great power' },
+        { mundane: 'very weak', answer: 'Feeble', options: ['Feeble', 'Mild', 'Soft', 'Passive'], hint: 'Lacking any strength' },
+        { mundane: 'very rich', answer: 'Affluent', options: ['Wealthy', 'Affluent', 'Lavish', 'Prosperous'], hint: 'Having abundant wealth' },
+        { mundane: 'very poor', answer: 'Destitute', options: ['Humble', 'Destitute', 'Modest', 'Sparse'], hint: 'Completely without resources' },
+        { mundane: 'very important', answer: 'Crucial', options: ['Crucial', 'Notable', 'Useful', 'Relevant'], hint: 'Absolutely essential' },
+        { mundane: 'very boring', answer: 'Tedious', options: ['Dull', 'Bland', 'Tedious', 'Simple'], hint: 'Painfully uninteresting' },
+        { mundane: 'very funny', answer: 'Hilarious', options: ['Hilarious', 'Amusing', 'Witty', 'Playful'], hint: 'Extremely and irresistibly comedic' },
+        { mundane: 'very quiet', answer: 'Hushed', options: ['Hushed', 'Muted', 'Faint', 'Still'], hint: 'Almost completely silent' },
+        { mundane: 'very loud', answer: 'Deafening', options: ['Booming', 'Shrill', 'Deafening', 'Blaring'], hint: 'Overwhelmingly noisy' },
+        { mundane: 'very old', answer: 'Ancient', options: ['Ancient', 'Aged', 'Mature', 'Vintage'], hint: 'Belonging to a distant past' },
+        { mundane: 'very new', answer: 'Novel', options: ['Recent', 'Novel', 'Fresh', 'Modern'], hint: 'Entirely original and unprecedented' },
+        { mundane: 'very bright', answer: 'Dazzling', options: ['Vivid', 'Dazzling', 'Gleaming', 'Radiant'], hint: 'Blindingly luminous' },
+        { mundane: 'very dark', answer: 'Pitch-black', options: ['Pitch-black', 'Dim', 'Murky', 'Gloomy'], hint: 'Completely devoid of light' },
+        { mundane: 'very easy', answer: 'Effortless', options: ['Simple', 'Effortless', 'Basic', 'Routine'], hint: 'Requiring no effort at all' },
+        { mundane: 'very hard', answer: 'Grueling', options: ['Tough', 'Grueling', 'Rigid', 'Stern'], hint: 'Exhaustingly difficult' },
+        { mundane: 'very clean', answer: 'Spotless', options: ['Spotless', 'Tidy', 'Neat', 'Pure'], hint: 'Absolutely without a mark' },
+        { mundane: 'very dirty', answer: 'Filthy', options: ['Messy', 'Filthy', 'Grimy', 'Dusty'], hint: 'Disgustingly unclean' },
+        { mundane: 'very afraid', answer: 'Petrified', options: ['Nervous', 'Petrified', 'Timid', 'Uneasy'], hint: 'Frozen with fear' },
+        { mundane: 'very exciting', answer: 'Exhilarating', options: ['Thrilling', 'Exhilarating', 'Engaging', 'Lively'], hint: 'Breathtakingly stimulating' },
+        { mundane: 'very confused', answer: 'Bewildered', options: ['Bewildered', 'Puzzled', 'Uncertain', 'Lost'], hint: 'Completely disoriented' },
+        { mundane: 'very calm', answer: 'Serene', options: ['Relaxed', 'Peaceful', 'Serene', 'Composed'], hint: 'Deeply and perfectly tranquil' },
+        { mundane: 'very rude', answer: 'Contemptuous', options: ['Contemptuous', 'Impolite', 'Brash', 'Blunt'], hint: 'Showing scornful disrespect' },
+        { mundane: 'very short', answer: 'Fleeting', options: ['Brief', 'Fleeting', 'Quick', 'Compact'], hint: 'Lasting only a moment' },
+        { mundane: 'very long', answer: 'Interminable', options: ['Extended', 'Lengthy', 'Interminable', 'Enduring'], hint: 'Seeming to last forever' },
+        { mundane: 'very nervous', answer: 'Apprehensive', options: ['Jittery', 'Apprehensive', 'Tense', 'Fidgety'], hint: 'Filled with anxious dread' },
+      ],
+      overused: [
+        { mundane: 'good', answer: 'Exceptional', options: ['Exceptional', 'Standard', 'Routine', 'Common'], hint: 'Far surpassing average quality' },
+        { mundane: 'bad', answer: 'Dreadful', options: ['Dreadful', 'Lacking', 'Flawed', 'Basic'], hint: 'Causing shock or dismay' },
+        { mundane: 'nice', answer: 'Delightful', options: ['Pleasant', 'Delightful', 'Decent', 'Fair'], hint: 'Causing great pleasure' },
+        { mundane: 'thing', answer: 'Phenomenon', options: ['Phenomenon', 'Object', 'Element', 'Matter'], hint: 'A remarkable occurrence or fact' },
+        { mundane: 'stuff', answer: 'Essentials', options: ['Essentials', 'Material', 'Items', 'Goods'], hint: 'The most important components' },
+        { mundane: 'interesting', answer: 'Captivating', options: ['Notable', 'Captivating', 'Curious', 'Unusual'], hint: 'Irresistibly attracting attention' },
+        { mundane: 'a lot', answer: 'Abundantly', options: ['Frequently', 'Greatly', 'Abundantly', 'Often'], hint: 'In plentiful quantities' },
+        { mundane: 'really', answer: 'Remarkably', options: ['Remarkably', 'Truly', 'Somewhat', 'Simply'], hint: 'To a striking degree' },
+        { mundane: 'amazing', answer: 'Extraordinary', options: ['Extraordinary', 'Impressive', 'Cool', 'Special'], hint: 'Beyond what is ordinary' },
+        { mundane: 'awesome', answer: 'Magnificent', options: ['Great', 'Magnificent', 'Fine', 'Solid'], hint: 'Inspiring overwhelming admiration' },
+        { mundane: 'terrible', answer: 'Catastrophic', options: ['Catastrophic', 'Awful', 'Poor', 'Weak'], hint: 'Causing devastating damage' },
+        { mundane: 'pretty (adv)', answer: 'Considerably', options: ['Somewhat', 'Considerably', 'Slightly', 'Rather'], hint: 'To a significant extent' },
+        { mundane: 'get', answer: 'Acquire', options: ['Acquire', 'Grab', 'Take', 'Fetch'], hint: 'To gain possession formally' },
+        { mundane: 'big (impact)', answer: 'Profound', options: ['Profound', 'Major', 'Large', 'Wide'], hint: 'Very deep and far-reaching' },
+        { mundane: 'small (issue)', answer: 'Trivial', options: ['Minor', 'Trivial', 'Tiny', 'Slim'], hint: 'Of little significance' },
+        { mundane: 'show', answer: 'Demonstrate', options: ['Display', 'Demonstrate', 'Reveal', 'Present'], hint: 'To clearly prove or illustrate' },
+        { mundane: 'help', answer: 'Facilitate', options: ['Assist', 'Facilitate', 'Support', 'Aid'], hint: 'To make a process easier' },
+        { mundane: 'give', answer: 'Bestow', options: ['Bestow', 'Offer', 'Provide', 'Hand'], hint: 'To confer as a gift or honor' },
+        { mundane: 'change', answer: 'Transform', options: ['Transform', 'Adjust', 'Modify', 'Shift'], hint: 'To alter completely in form' },
+        { mundane: 'problem', answer: 'Dilemma', options: ['Issue', 'Dilemma', 'Trouble', 'Setback'], hint: 'A situation requiring a difficult choice' },
+      ],
+      'weak-verb': [
+        { mundane: 'said', answer: 'Declared', options: ['Declared', 'Told', 'Spoke', 'Mentioned'], hint: 'Stated firmly and with authority' },
+        { mundane: 'walked', answer: 'Strode', options: ['Moved', 'Strode', 'Stepped', 'Paced'], hint: 'Walked with long, confident steps' },
+        { mundane: 'looked', answer: 'Scrutinized', options: ['Glanced', 'Scrutinized', 'Noticed', 'Viewed'], hint: 'Examined with intense attention' },
+        { mundane: 'ran', answer: 'Sprinted', options: ['Sprinted', 'Jogged', 'Hurried', 'Rushed'], hint: 'Ran at maximum speed' },
+        { mundane: 'ate', answer: 'Devoured', options: ['Consumed', 'Devoured', 'Munched', 'Tasted'], hint: 'Ate hungrily and eagerly' },
+        { mundane: 'went', answer: 'Ventured', options: ['Traveled', 'Ventured', 'Headed', 'Proceeded'], hint: 'Dared to go somewhere risky' },
+        { mundane: 'thought', answer: 'Contemplated', options: ['Contemplated', 'Wondered', 'Figured', 'Guessed'], hint: 'Reflected on deeply' },
+        { mundane: 'wanted', answer: 'Craved', options: ['Wished', 'Desired', 'Craved', 'Hoped'], hint: 'Felt an intense longing for' },
+        { mundane: 'liked', answer: 'Cherished', options: ['Enjoyed', 'Cherished', 'Favored', 'Appreciated'], hint: 'Held dear to one\'s heart' },
+        { mundane: 'made', answer: 'Crafted', options: ['Crafted', 'Built', 'Created', 'Formed'], hint: 'Skillfully constructed' },
+        { mundane: 'told', answer: 'Asserted', options: ['Informed', 'Asserted', 'Mentioned', 'Shared'], hint: 'Stated confidently as fact' },
+        { mundane: 'asked', answer: 'Inquired', options: ['Inquired', 'Questioned', 'Requested', 'Wondered'], hint: 'Sought information formally' },
+        { mundane: 'tried', answer: 'Endeavored', options: ['Attempted', 'Endeavored', 'Tested', 'Aimed'], hint: 'Made a determined effort' },
+        { mundane: 'came', answer: 'Emerged', options: ['Arrived', 'Emerged', 'Appeared', 'Showed'], hint: 'Came into view or existence' },
+        { mundane: 'saw', answer: 'Witnessed', options: ['Observed', 'Witnessed', 'Spotted', 'Caught'], hint: 'Saw an event firsthand' },
+        { mundane: 'felt', answer: 'Sensed', options: ['Noticed', 'Sensed', 'Experienced', 'Touched'], hint: 'Perceived through intuition' },
+        { mundane: 'knew', answer: 'Recognized', options: ['Understood', 'Recognized', 'Realized', 'Grasped'], hint: 'Identified from prior knowledge' },
+        { mundane: 'started', answer: 'Launched', options: ['Began', 'Launched', 'Initiated', 'Opened'], hint: 'Set something into vigorous motion' },
+        { mundane: 'ended', answer: 'Concluded', options: ['Concluded', 'Stopped', 'Finished', 'Closed'], hint: 'Brought to a formal close' },
+        { mundane: 'used', answer: 'Wielded', options: ['Applied', 'Wielded', 'Employed', 'Handled'], hint: 'Used with skill and power' },
+      ]
+    };
+
+    const VOCAB_CATEGORY_LABELS = {
+      very: { badge: 'REPLACE "VERY"', label: 'Instead of saying', format: w => `"Very <span class="highlight">${w.split('very ')[1]}</span>"` },
+      overused: { badge: 'OVERUSED WORD', label: 'Upgrade this word', format: w => `"<span class="highlight">${w.charAt(0).toUpperCase() + w.slice(1)}</span>"` },
+      'weak-verb': { badge: 'WEAK VERB', label: 'Find a stronger verb for', format: w => `"<span class="highlight">${w.charAt(0).toUpperCase() + w.slice(1)}</span>"` }
+    };
+
+    let vocabStats = JSON.parse(localStorage.getItem('vocabStats')) || {
+      totalPlayed: 0, bestStreak: 0, wordsLearned: [], totalCorrect: 0, totalAnswered: 0
+    };
+
+    let vocabGame = {
+      mode: 'very',
+      questions: [],
+      currentIndex: 0,
+      score: 0,
+      streak: 0,
+      bestStreakThisRound: 0,
+      roundSize: 10,
+      timeLimit: 10,
+      timerInterval: null,
+      timeRemaining: 0,
+      answers: [],
+      totalTimeSpent: 0
+    };
+
+    function updateVocabStats() {
+      document.getElementById('vocabTotalPlayed').textContent = vocabStats.totalPlayed;
+      document.getElementById('vocabBestStreak').textContent = vocabStats.bestStreak;
+      document.getElementById('vocabWordsLearned').textContent = vocabStats.wordsLearned.length;
+      const accuracy = vocabStats.totalAnswered > 0
+        ? Math.round((vocabStats.totalCorrect / vocabStats.totalAnswered) * 100) + '%'
+        : '0%';
+      document.getElementById('vocabAccuracy').textContent = accuracy;
+    }
+
+    function saveVocabStats() {
+      localStorage.setItem('vocabStats', JSON.stringify(vocabStats));
+    }
+
+    // Mode tabs
+    document.querySelectorAll('.vocab-mode-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.vocab-mode-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        vocabGame.mode = tab.getAttribute('data-vocab-mode');
+      });
+    });
+
+    // Shuffle array (Fisher-Yates)
+    function shuffleArray(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    // Start game
+    document.getElementById('vocabStartBtn').addEventListener('click', () => {
+      vocabGame.roundSize = parseInt(document.getElementById('vocabRoundSize').value);
+      vocabGame.timeLimit = parseInt(document.getElementById('vocabTimeLimit').value);
+
+      const pool = VOCAB_DATA[vocabGame.mode];
+      vocabGame.questions = shuffleArray(pool).slice(0, vocabGame.roundSize);
+      vocabGame.currentIndex = 0;
+      vocabGame.score = 0;
+      vocabGame.streak = 0;
+      vocabGame.bestStreakThisRound = 0;
+      vocabGame.answers = [];
+      vocabGame.totalTimeSpent = 0;
+
+      document.getElementById('vocabSetup').style.display = 'none';
+      document.getElementById('vocabResults').style.display = 'none';
+      document.getElementById('vocabGameArea').style.display = 'block';
+      document.getElementById('vocabTimerBarWrap').style.display = vocabGame.timeLimit > 0 ? 'block' : 'none';
+
+      showVocabQuestion();
+    });
+
+    function showVocabQuestion() {
+      const q = vocabGame.questions[vocabGame.currentIndex];
+      const catConfig = VOCAB_CATEGORY_LABELS[vocabGame.mode];
+      const total = vocabGame.questions.length;
+      const current = vocabGame.currentIndex + 1;
+
+      // Update progress
+      document.getElementById('vocabProgressFill').style.width = `${((current - 1) / total) * 100}%`;
+      document.getElementById('vocabQuestionNum').textContent = `${current} / ${total}`;
+      document.getElementById('vocabScore').textContent = `${vocabGame.score} pts`;
+
+      // Update streak badge
+      const streakBadge = document.getElementById('vocabStreakBadge');
+      if (vocabGame.streak >= 2) {
+        streakBadge.style.display = 'inline-flex';
+        document.getElementById('vocabCurrentStreak').textContent = vocabGame.streak;
+      } else {
+        streakBadge.style.display = 'none';
+      }
+
+      // Update card
+      const badge = document.getElementById('vocabCategoryBadge');
+      badge.textContent = catConfig.badge;
+      badge.className = `vocab-category-badge ${vocabGame.mode}`;
+      document.getElementById('vocabMundaneLabel').textContent = catConfig.label;
+      document.getElementById('vocabPromptWord').innerHTML = catConfig.format(q.mundane);
+      document.getElementById('vocabHint').textContent = q.hint;
+
+      // Shuffle options for this question
+      const shuffledOptions = shuffleArray(q.options);
+
+      // Update options
+      const optionsContainer = document.getElementById('vocabOptions');
+      optionsContainer.innerHTML = '';
+      shuffledOptions.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'vocab-option';
+        btn.textContent = opt;
+        btn.addEventListener('click', () => handleVocabAnswer(btn, opt, q));
+        optionsContainer.appendChild(btn);
+      });
+
+      // Remove flashes
+      const card = document.getElementById('vocabGameCard');
+      card.classList.remove('correct-flash', 'wrong-flash');
+
+      // Start timer if applicable
+      if (vocabGame.timeLimit > 0) {
+        startVocabTimer();
+      }
+    }
+
+    function startVocabTimer() {
+      clearInterval(vocabGame.timerInterval);
+      vocabGame.timeRemaining = vocabGame.timeLimit;
+      const fill = document.getElementById('vocabTimerFill');
+      fill.style.width = '100%';
+      fill.classList.remove('urgent');
+
+      vocabGame.timerInterval = setInterval(() => {
+        vocabGame.timeRemaining -= 0.1;
+        const pct = Math.max(0, (vocabGame.timeRemaining / vocabGame.timeLimit) * 100);
+        fill.style.width = `${pct}%`;
+
+        if (pct < 30) fill.classList.add('urgent');
+
+        if (vocabGame.timeRemaining <= 0) {
+          clearInterval(vocabGame.timerInterval);
+          handleVocabTimeout();
+        }
+      }, 100);
+    }
+
+    function handleVocabTimeout() {
+      const q = vocabGame.questions[vocabGame.currentIndex];
+      vocabGame.streak = 0;
+      vocabGame.answers.push({ question: q, correct: false, timedOut: true });
+      vocabStats.totalAnswered++;
+
+      // Show correct answer
+      const card = document.getElementById('vocabGameCard');
+      card.classList.add('wrong-flash');
+      document.querySelectorAll('.vocab-option').forEach(btn => {
+        btn.classList.add('disabled');
+        if (btn.textContent === q.answer) btn.classList.add('reveal');
+      });
+
+      setTimeout(() => advanceVocabQuestion(), 1200);
+    }
+
+    function handleVocabAnswer(btn, selected, q) {
+      clearInterval(vocabGame.timerInterval);
+      const timeSpent = vocabGame.timeLimit > 0 ? (vocabGame.timeLimit - vocabGame.timeRemaining) : 0;
+      vocabGame.totalTimeSpent += timeSpent;
+      const isCorrect = selected === q.answer;
+      const card = document.getElementById('vocabGameCard');
+
+      // Disable all buttons
+      document.querySelectorAll('.vocab-option').forEach(b => b.classList.add('disabled'));
+
+      if (isCorrect) {
+        btn.classList.add('correct');
+        card.classList.add('correct-flash');
+        vocabGame.streak++;
+        const streakBonus = vocabGame.streak >= 3 ? vocabGame.streak : 0;
+        vocabGame.score += 10 + streakBonus;
+        if (vocabGame.streak > vocabGame.bestStreakThisRound) vocabGame.bestStreakThisRound = vocabGame.streak;
+        vocabStats.totalCorrect++;
+
+        // Track learned word
+        const wordKey = `${vocabGame.mode}:${q.mundane}`;
+        if (!vocabStats.wordsLearned.includes(wordKey)) {
+          vocabStats.wordsLearned.push(wordKey);
+        }
+      } else {
+        btn.classList.add('wrong');
+        card.classList.add('wrong-flash');
+        vocabGame.streak = 0;
+        // Reveal correct
+        document.querySelectorAll('.vocab-option').forEach(b => {
+          if (b.textContent === q.answer) b.classList.add('reveal');
+        });
+      }
+
+      vocabStats.totalAnswered++;
+      vocabGame.answers.push({ question: q, selected, correct: isCorrect, time: timeSpent });
+
+      setTimeout(() => advanceVocabQuestion(), 1000);
+    }
+
+    function advanceVocabQuestion() {
+      vocabGame.currentIndex++;
+      if (vocabGame.currentIndex < vocabGame.questions.length) {
+        showVocabQuestion();
+      } else {
+        showVocabResults();
+      }
+    }
+
+    function showVocabResults() {
+      clearInterval(vocabGame.timerInterval);
+      document.getElementById('vocabGameArea').style.display = 'none';
+      document.getElementById('vocabResults').style.display = 'block';
+
+      const total = vocabGame.questions.length;
+      const correct = vocabGame.answers.filter(a => a.correct).length;
+      const accuracy = Math.round((correct / total) * 100);
+
+      // Update global stats
+      vocabStats.totalPlayed++;
+      if (vocabGame.bestStreakThisRound > vocabStats.bestStreak) {
+        vocabStats.bestStreak = vocabGame.bestStreakThisRound;
+      }
+      saveVocabStats();
+      updateVocabStats();
+
+      // Score display
+      document.getElementById('vocabFinalScore').textContent = `${correct}/${total}`;
+      document.getElementById('vocabResultAccuracy').textContent = `${accuracy}%`;
+      document.getElementById('vocabResultStreak').textContent = vocabGame.bestStreakThisRound;
+
+      const timedAnswers = vocabGame.answers.filter(a => a.time > 0);
+      const avgTime = timedAnswers.length > 0
+        ? (timedAnswers.reduce((s, a) => s + a.time, 0) / timedAnswers.length).toFixed(1) + 's'
+        : '--';
+      document.getElementById('vocabResultTime').textContent = avgTime;
+
+      // Message
+      const messages = {
+        perfect: 'Flawless! You have an incredible vocabulary!',
+        great: 'Impressive! Your word power is growing fast!',
+        good: 'Well done! Keep building that vocabulary!',
+        ok: 'Good effort! Practice makes perfect!',
+        low: 'Keep going! Every round makes you stronger!'
+      };
+      const msgKey = accuracy === 100 ? 'perfect' : accuracy >= 80 ? 'great' : accuracy >= 60 ? 'good' : accuracy >= 40 ? 'ok' : 'low';
+      document.getElementById('vocabResultMessage').textContent = messages[msgKey];
+
+      // Words learned list
+      const listContainer = document.getElementById('vocabWordsLearnedList');
+      listContainer.innerHTML = '<h4>📝 Words from this round</h4>';
+      vocabGame.answers.forEach(a => {
+        const item = document.createElement('div');
+        item.className = 'vocab-learned-item';
+        const statusIcon = a.correct ? '✅' : a.timedOut ? '⏰' : '❌';
+        item.innerHTML = `
+          <span class="mundane">${a.question.mundane}</span>
+          <span class="arrow">→</span>
+          <span class="upgrade">${a.question.answer}</span>
+          <span class="status-icon">${statusIcon}</span>
+        `;
+        listContainer.appendChild(item);
+      });
+    }
+
+    // Play again (same settings)
+    document.getElementById('vocabPlayAgainBtn').addEventListener('click', () => {
+      const pool = VOCAB_DATA[vocabGame.mode];
+      vocabGame.questions = shuffleArray(pool).slice(0, vocabGame.roundSize);
+      vocabGame.currentIndex = 0;
+      vocabGame.score = 0;
+      vocabGame.streak = 0;
+      vocabGame.bestStreakThisRound = 0;
+      vocabGame.answers = [];
+      vocabGame.totalTimeSpent = 0;
+
+      document.getElementById('vocabResults').style.display = 'none';
+      document.getElementById('vocabGameArea').style.display = 'block';
+      document.getElementById('vocabTimerBarWrap').style.display = vocabGame.timeLimit > 0 ? 'block' : 'none';
+
+      showVocabQuestion();
+    });
+
+    // Back to setup
+    document.getElementById('vocabBackToSetupBtn').addEventListener('click', () => {
+      document.getElementById('vocabResults').style.display = 'none';
+      document.getElementById('vocabSetup').style.display = 'block';
     });
 
   </script>
