@@ -2120,32 +2120,88 @@
     /* Speech Chat */
     .speech-chat {
       margin-top: 14px;
-      display: none;
-    }
-
-    .speech-chat.visible {
-      display: block;
     }
 
     .speech-chat-toggle {
       width: 100%;
-      padding: 12px 16px;
-      border-radius: 12px;
-      border: 1px solid rgba(250, 204, 21, 0.2);
-      background: rgba(250, 204, 21, 0.06);
-      color: #facc15;
+      padding: 14px 18px;
+      border-radius: 14px;
+      border: 1px solid rgba(250, 204, 21, 0.15);
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.06) 0%, rgba(234, 179, 8, 0.03) 100%);
+      color: #e5e7eb;
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .speech-chat-toggle::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(250, 204, 21, 0.15), transparent);
     }
 
     .speech-chat-toggle:hover {
-      background: rgba(250, 204, 21, 0.12);
-      border-color: rgba(250, 204, 21, 0.35);
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.1) 0%, rgba(234, 179, 8, 0.06) 100%);
+      border-color: rgba(250, 204, 21, 0.3);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .speech-chat-toggle .chat-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.15), rgba(234, 179, 8, 0.08));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .speech-chat-toggle .chat-label {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1px;
+    }
+
+    .speech-chat-toggle .chat-label-title {
+      color: #facc15;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .speech-chat-toggle .chat-label-sub {
+      color: #6b7280;
+      font-size: 11px;
+      font-weight: 400;
+    }
+
+    .speech-chat-toggle.active {
+      border-color: rgba(250, 204, 21, 0.25);
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.1) 0%, rgba(234, 179, 8, 0.05) 100%);
+    }
+
+    .speech-chat-toggle .chat-arrow {
+      margin-left: auto;
+      font-size: 12px;
+      color: #6b7280;
+      transition: transform 0.25s ease;
+    }
+
+    .speech-chat-toggle.active .chat-arrow {
+      transform: rotate(180deg);
     }
 
     .speech-chat-messages {
@@ -3184,7 +3240,12 @@
       <!-- Speech Feedback Chat -->
       <div class="speech-chat" id="speechChat">
         <button class="speech-chat-toggle" id="speechChatToggle">
-          💬 Ask AI about your speech
+          <span class="chat-icon">💬</span>
+          <span class="chat-label">
+            <span class="chat-label-title">Ask AI about your speech</span>
+            <span class="chat-label-sub" id="chatLabelSub">Complete a speech to start chatting</span>
+          </span>
+          <span class="chat-arrow">▼</span>
         </button>
         <div id="speechChatBody" style="display: none;">
           <div class="chat-suggestions" id="chatSuggestions">
@@ -4533,7 +4594,7 @@
     }
 
     // Last updated date
-    const LAST_UPDATED = 'March 19, 2026';
+    const LAST_UPDATED = 'March 30, 2026';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -5117,34 +5178,53 @@
     let isChatSending = false;
     let chatOpen = false;
 
+    const chatLabelSub = document.getElementById('chatLabelSub');
+    let chatReady = false;
+
     // Show chat panel after AI feedback is received
     function showSpeechChat(transcript, feedback, metrics) {
       chatTranscript = transcript || '';
       chatFeedback = feedback || '';
       chatMetrics = metrics || null;
       chatHistory = [];
+      chatReady = true;
       speechChatMessages.innerHTML = '';
-      speechChat.classList.add('visible');
       speechChatBody.style.display = 'none';
       chatOpen = false;
-      speechChatToggle.textContent = '💬 Ask AI about your speech';
+      speechChatToggle.classList.remove('active');
+      chatLabelSub.textContent = 'Ask follow-up questions about your speech';
       chatSuggestions.style.display = 'flex';
     }
 
     function hideSpeechChat() {
-      speechChat.classList.remove('visible');
       speechChatBody.style.display = 'none';
       chatOpen = false;
+      chatReady = false;
       chatHistory = [];
       speechChatMessages.innerHTML = '';
+      speechChatToggle.classList.remove('active');
+      chatLabelSub.textContent = 'Complete a speech to start chatting';
     }
 
     speechChatToggle.addEventListener('click', () => {
+      if (!chatReady) {
+        // Show inline message if no speech done yet
+        speechChatBody.style.display = 'block';
+        chatOpen = true;
+        speechChatToggle.classList.add('active');
+        speechChatMessages.innerHTML = '';
+        appendChatMessage('assistant', 'Record a speech and get your AI feedback first — then come back here to ask me anything about it!');
+        speechChatInput.disabled = true;
+        speechChatSend.disabled = true;
+        return;
+      }
       chatOpen = !chatOpen;
       speechChatBody.style.display = chatOpen ? 'block' : 'none';
-      speechChatToggle.textContent = chatOpen ? '💬 Close chat' : '💬 Ask AI about your speech';
-      if (chatOpen && chatHistory.length === 0) {
-        speechChatInput.focus();
+      speechChatToggle.classList.toggle('active', chatOpen);
+      if (chatOpen) {
+        speechChatInput.disabled = false;
+        speechChatSend.disabled = false;
+        if (chatHistory.length === 0) speechChatInput.focus();
       }
     });
 
