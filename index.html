@@ -2117,6 +2117,158 @@
 
     .ai-feedback-box { background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 14px; padding: 16px; color: #e2e8f0; font-size: 14px; white-space: pre-wrap; line-height: 1.6; }
 
+    /* Speech Chat */
+    .speech-chat {
+      margin-top: 14px;
+      display: none;
+    }
+
+    .speech-chat.visible {
+      display: block;
+    }
+
+    .speech-chat-toggle {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(250, 204, 21, 0.2);
+      background: rgba(250, 204, 21, 0.06);
+      color: #facc15;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.25s ease;
+    }
+
+    .speech-chat-toggle:hover {
+      background: rgba(250, 204, 21, 0.12);
+      border-color: rgba(250, 204, 21, 0.35);
+    }
+
+    .speech-chat-messages {
+      max-height: 400px;
+      overflow-y: auto;
+      margin: 12px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scroll-behavior: smooth;
+    }
+
+    .speech-chat-messages::-webkit-scrollbar { width: 4px; }
+    .speech-chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .speech-chat-messages::-webkit-scrollbar-thumb { background: rgba(250, 204, 21, 0.2); border-radius: 4px; }
+
+    .chat-msg {
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      max-width: 88%;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .chat-msg.user {
+      background: rgba(250, 204, 21, 0.12);
+      border: 1px solid rgba(250, 204, 21, 0.2);
+      color: #fde68a;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    .chat-msg.assistant {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      color: #e2e8f0;
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+
+    .chat-msg.typing {
+      color: #9ca3af;
+      font-style: italic;
+    }
+
+    .speech-chat-input-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .speech-chat-input-row input {
+      flex: 1;
+      padding: 11px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.6);
+      color: #e5e7eb;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .speech-chat-input-row input:focus {
+      border-color: rgba(250, 204, 21, 0.4);
+    }
+
+    .speech-chat-input-row input::placeholder {
+      color: #6b7280;
+    }
+
+    .speech-chat-send {
+      padding: 11px 16px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #facc15, #eab308);
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .speech-chat-send:hover {
+      transform: scale(1.03);
+      box-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+    }
+
+    .speech-chat-send:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .chat-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .chat-suggestion-pill {
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(30, 41, 59, 0.4);
+      color: #94a3b8;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .chat-suggestion-pill:hover {
+      background: rgba(250, 204, 21, 0.08);
+      border-color: rgba(250, 204, 21, 0.25);
+      color: #fde68a;
+    }
+
     /* Notification Settings */
     .notification-settings {
       background: rgba(30, 41, 59, 0.6);
@@ -3027,6 +3179,27 @@
       <textarea id="manualTranscript" class="transcript-input" placeholder="Transcript will appear here automatically after recording. You can also paste text for manual analysis."></textarea>
       <div class="ai-status" id="aiStatus">Waiting for your next recording.</div>
       <div class="ai-feedback-box" id="aiFeedback">Your detailed feedback will appear here after your speech.</div>
+
+      <!-- Speech Feedback Chat -->
+      <div class="speech-chat" id="speechChat">
+        <button class="speech-chat-toggle" id="speechChatToggle">
+          💬 Ask AI about your speech
+        </button>
+        <div id="speechChatBody" style="display: none;">
+          <div class="chat-suggestions" id="chatSuggestions">
+            <button class="chat-suggestion-pill" data-q="How could I have structured this speech better?">Structure tips</button>
+            <button class="chat-suggestion-pill" data-q="What was the strongest part of my speech and why?">Best moment</button>
+            <button class="chat-suggestion-pill" data-q="How can I reduce my filler words?">Filler words</button>
+            <button class="chat-suggestion-pill" data-q="Can you suggest a better opening for this speech?">Better opening</button>
+            <button class="chat-suggestion-pill" data-q="How was my pacing and what should I change?">Pacing advice</button>
+          </div>
+          <div class="speech-chat-messages" id="speechChatMessages"></div>
+          <div class="speech-chat-input-row">
+            <input type="text" id="speechChatInput" placeholder="Ask anything about your speech..." autocomplete="off">
+            <button class="speech-chat-send" id="speechChatSend">Send</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- App Version -->
@@ -4539,6 +4712,7 @@
 
     function nextConversationQuestion() {
       reset();
+      hideSpeechChat();
       const question = getNextConversationQuestion();
 
       currentConversationQuestion = { category: currentConversationCategory, question };
@@ -4666,6 +4840,7 @@
       }
 
       reset();
+      hideSpeechChat();
       currentWord = words[Math.floor(Math.random() * words.length)];
       wordEl.textContent = currentWord.word;
       definitionEl.textContent = currentWord.definition;
@@ -4879,6 +5054,9 @@
         setAiStatus('AI analysis complete! Scroll down to read your feedback.');
         console.log('[SUCCESS] AI analysis complete');
 
+        // Show chat panel for follow-up questions
+        showSpeechChat(transcript, feedbackText, metrics);
+
       } catch (err) {
         console.error('[ERROR] Failed to get feedback:', err);
         console.error('[ERROR] Error details:', err.message, err.stack);
@@ -4911,12 +5089,151 @@
 
         aiFeedback.textContent = feedbackText;
         setAiStatus('Feedback ready!');
+
+        // Show chat panel for follow-up questions
+        showSpeechChat(trimmed, feedbackText, null);
       } catch (err) {
         console.error(err);
         setAiStatus('Unable to fetch feedback right now.', true);
       } finally {
         isRequestingFeedback = false;
       }
+    }
+
+    // ===== SPEECH FEEDBACK CHAT =====
+    const speechChat = document.getElementById('speechChat');
+    const speechChatToggle = document.getElementById('speechChatToggle');
+    const speechChatBody = document.getElementById('speechChatBody');
+    const speechChatMessages = document.getElementById('speechChatMessages');
+    const speechChatInput = document.getElementById('speechChatInput');
+    const speechChatSend = document.getElementById('speechChatSend');
+    const chatSuggestions = document.getElementById('chatSuggestions');
+
+    let chatHistory = [];
+    let chatTranscript = '';
+    let chatFeedback = '';
+    let chatMetrics = null;
+    let isChatSending = false;
+    let chatOpen = false;
+
+    // Show chat panel after AI feedback is received
+    function showSpeechChat(transcript, feedback, metrics) {
+      chatTranscript = transcript || '';
+      chatFeedback = feedback || '';
+      chatMetrics = metrics || null;
+      chatHistory = [];
+      speechChatMessages.innerHTML = '';
+      speechChat.classList.add('visible');
+      speechChatBody.style.display = 'none';
+      chatOpen = false;
+      speechChatToggle.textContent = '💬 Ask AI about your speech';
+      chatSuggestions.style.display = 'flex';
+    }
+
+    function hideSpeechChat() {
+      speechChat.classList.remove('visible');
+      speechChatBody.style.display = 'none';
+      chatOpen = false;
+      chatHistory = [];
+      speechChatMessages.innerHTML = '';
+    }
+
+    speechChatToggle.addEventListener('click', () => {
+      chatOpen = !chatOpen;
+      speechChatBody.style.display = chatOpen ? 'block' : 'none';
+      speechChatToggle.textContent = chatOpen ? '💬 Close chat' : '💬 Ask AI about your speech';
+      if (chatOpen && chatHistory.length === 0) {
+        speechChatInput.focus();
+      }
+    });
+
+    // Suggestion pills
+    chatSuggestions.addEventListener('click', (e) => {
+      const pill = e.target.closest('.chat-suggestion-pill');
+      if (pill) {
+        const q = pill.dataset.q;
+        speechChatInput.value = q;
+        sendChatMessage();
+      }
+    });
+
+    speechChatSend.addEventListener('click', sendChatMessage);
+    speechChatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChatMessage();
+      }
+    });
+
+    async function sendChatMessage() {
+      const message = speechChatInput.value.trim();
+      if (!message || isChatSending) return;
+
+      if (!chatTranscript) {
+        appendChatMessage('assistant', 'Please complete a speech with AI analysis first so I can answer questions about it.');
+        return;
+      }
+
+      // Hide suggestions after first message
+      chatSuggestions.style.display = 'none';
+
+      // Add user message to UI
+      appendChatMessage('user', message);
+      speechChatInput.value = '';
+      speechChatInput.focus();
+
+      // Show typing indicator
+      const typingEl = appendChatMessage('assistant', 'Thinking...', true);
+
+      isChatSending = true;
+      speechChatSend.disabled = true;
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message,
+            transcript: chatTranscript,
+            feedback: chatFeedback,
+            metrics: chatMetrics,
+            history: chatHistory,
+          }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to get response');
+        }
+
+        const data = await res.json();
+        const reply = data.reply || 'Sorry, I couldn\'t generate a response.';
+
+        // Remove typing indicator and add real response
+        typingEl.remove();
+        appendChatMessage('assistant', reply);
+
+        // Update history
+        chatHistory.push({ role: 'user', content: message });
+        chatHistory.push({ role: 'assistant', content: reply });
+
+      } catch (err) {
+        typingEl.remove();
+        appendChatMessage('assistant', 'Sorry, something went wrong. Please try again.');
+        console.error('Chat error:', err);
+      } finally {
+        isChatSending = false;
+        speechChatSend.disabled = false;
+      }
+    }
+
+    function appendChatMessage(role, text, isTyping) {
+      const el = document.createElement('div');
+      el.className = `chat-msg ${role}${isTyping ? ' typing' : ''}`;
+      el.textContent = text;
+      speechChatMessages.appendChild(el);
+      speechChatMessages.scrollTop = speechChatMessages.scrollHeight;
+      return el;
     }
 
     function updateTimerDisplay() {
