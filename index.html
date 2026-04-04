@@ -1050,6 +1050,103 @@
       border-color: rgba(250, 204, 21, 0.5);
     }
 
+    /* Call Audio Mode */
+    .call-audio-description {
+      color: #9ca3af;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-top: 4px;
+    }
+
+    .call-audio-note {
+      color: #6b7280;
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: rgba(55, 65, 81, 0.2);
+      border-radius: 8px;
+    }
+
+    .call-audio-indicator {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: rgba(139, 92, 246, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 8px;
+      font-size: 13px;
+      color: #c4b5fd;
+      margin-bottom: 8px;
+      text-align: center;
+      justify-content: center;
+    }
+
+    .call-audio-indicator.active {
+      display: flex;
+    }
+
+    .call-audio-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .call-audio-modal {
+      background: #1e293b;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 420px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      color: #e5e7eb;
+    }
+
+    .call-audio-modal h3 {
+      color: #c4b5fd;
+      font-size: 18px;
+      margin-bottom: 16px;
+    }
+
+    .call-audio-modal p, .call-audio-modal li {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #d1d5db;
+    }
+
+    .call-audio-modal ol, .call-audio-modal ul {
+      padding-left: 20px;
+      margin: 10px 0;
+    }
+
+    .call-audio-modal .compat-yes { color: #6ee7b7; }
+    .call-audio-modal .compat-no { color: #fca5a5; }
+
+    .call-audio-modal .got-it-btn {
+      width: 100%;
+      padding: 12px;
+      margin-top: 16px;
+      background: rgba(139, 92, 246, 0.3);
+      border: 1px solid rgba(139, 92, 246, 0.5);
+      color: #c4b5fd;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .call-audio-modal .got-it-btn:hover {
+      background: rgba(139, 92, 246, 0.45);
+    }
+
     /* Profile Icon Button */
     .profile-btn {
       position: absolute;
@@ -3195,6 +3292,7 @@
 
     <!-- Audio Section -->
     <div class="audio-section" id="audioSection">
+      <div id="callAudioIndicator" class="call-audio-indicator">📞 Recording from call tab</div>
       <div class="audio-visualizer" id="audioVisualizer">🎙️</div>
       <div id="audioTimer" style="font-size: 28px; font-weight: bold;">0:00</div>
       <div class="timer-legend">Audio recording • 2.5 min max</div>
@@ -3210,6 +3308,7 @@
 
     <!-- Camera Section -->
     <div class="camera-section" id="cameraSection">
+      <div id="callAudioIndicatorVideo" class="call-audio-indicator">📞 Recording audio from call tab</div>
       <div class="video-container">
         <video id="videoElement" autoplay muted playsinline></video>
         <div class="video-timer" id="videoTimer"><span class="rec"></span><span id="videoTimerDisplay">0:00</span></div>
@@ -4096,6 +4195,53 @@
       </p>
     </div>
 
+    <!-- Video Call Audio Capture Section -->
+    <div class="settings-section">
+      <h3>📞 Video Call Audio</h3>
+      <div class="settings-row">
+        <div style="flex: 1;">
+          <span class="settings-row-label">Capture Audio from Video Calls</span>
+          <div class="call-audio-description">Record audio from browser-based video calls instead of your microphone. Useful for analyzing student speeches during live sessions.</div>
+        </div>
+        <label class="notification-toggle" style="margin-left: 12px; flex-shrink: 0;">
+          <input type="checkbox" id="callAudioToggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="call-audio-note">
+        Note: Only works with browser-based calls (not desktop apps). You'll select the call tab when you start recording.
+        <br>Compatible: Google Meet, Zoom web, Teams web, Discord web.
+      </div>
+    </div>
+
+    <!-- Call Audio Info Modal -->
+    <div id="callAudioInfoModal" class="call-audio-modal-overlay" style="display: none;">
+      <div class="call-audio-modal">
+        <h3>📞 Video Call Audio Capture Enabled</h3>
+        <p><strong>How it works:</strong></p>
+        <ol>
+          <li>Open your video call in a browser tab (Google Meet, Zoom web, etc.)</li>
+          <li>Open Speaker's Gym in another tab</li>
+          <li>When you click "Start Speaking", you'll be asked to select the call tab</li>
+          <li>The app will record audio from that tab for transcription and AI feedback</li>
+        </ol>
+        <p><strong>Compatible with:</strong></p>
+        <ul>
+          <li class="compat-yes">✓ Google Meet</li>
+          <li class="compat-yes">✓ Zoom (web version)</li>
+          <li class="compat-yes">✓ Microsoft Teams (web)</li>
+          <li class="compat-yes">✓ Discord (web)</li>
+          <li class="compat-yes">✓ Any browser-based video call</li>
+        </ul>
+        <p><strong>Not compatible with:</strong></p>
+        <ul>
+          <li class="compat-no">✗ Desktop apps (Zoom desktop, Teams desktop, etc.)</li>
+        </ul>
+        <p style="margin-top: 12px; color: #facc15; font-size: 13px;">Tip: Make sure to check "Share audio" when selecting the tab!</p>
+        <button class="got-it-btn" id="callAudioInfoGotIt">Got it</button>
+      </div>
+    </div>
+
     <!-- Daily Notifications Section -->
     <div class="settings-section">
       <h3>🔔 Daily Notifications</h3>
@@ -4693,6 +4839,10 @@
     // Audio Input Device state
     let selectedAudioDeviceId = localStorage.getItem('selectedAudioDeviceId') || '';
     let selectedAudioDeviceLabel = localStorage.getItem('selectedAudioDeviceLabel') || 'Default Microphone';
+
+    // Call Audio Capture state
+    let callAudioMode = localStorage.getItem('callAudioMode') === 'true';
+    let callAudioStream = null; // separate stream from getDisplayMedia
 
     // Elements
     const wordEl = document.getElementById('word');
@@ -5459,6 +5609,58 @@
       return { audio: true };
     }
 
+    async function captureCallAudio() {
+      try {
+        // getDisplayMedia requires video: true in most browsers, we'll discard the video track
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
+
+        // Stop the video track immediately — we only need audio
+        displayStream.getVideoTracks().forEach(t => t.stop());
+
+        const audioTracks = displayStream.getAudioTracks();
+        if (audioTracks.length === 0) {
+          showAchievement("⚠️ No audio detected. Make sure 'Share audio' is checked when selecting the tab.");
+          return null;
+        }
+
+        // Create audio-only stream
+        callAudioStream = new MediaStream(audioTracks);
+
+        // Handle tab close / audio stop
+        audioTracks[0].addEventListener('ended', () => {
+          showAchievement("📞 Call audio stopped — tab may have been closed");
+          if (isRunning) {
+            if (currentMode === 'audio') stopAudioRecording();
+            else if (currentMode === 'video') stopVideoRecording();
+          }
+        });
+
+        return callAudioStream;
+      } catch (error) {
+        if (error.name === 'NotAllowedError') {
+          showAchievement("⚠️ Screen share cancelled");
+        } else {
+          console.error('Error capturing call audio:', error);
+          showAchievement("⚠️ Could not capture call audio");
+        }
+        return null;
+      }
+    }
+
+    function updateCallAudioIndicators(active) {
+      const ind = document.getElementById('callAudioIndicator');
+      const indV = document.getElementById('callAudioIndicatorVideo');
+      if (ind) ind.classList.toggle('active', active);
+      if (indV) indV.classList.toggle('active', active);
+    }
+
     async function initCamera() {
       try {
         const audioConstraint = selectedAudioDeviceId
@@ -5466,7 +5668,7 @@
           : true;
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user" },
-          audio: audioConstraint
+          audio: callAudioMode ? false : audioConstraint
         });
         document.getElementById('videoElement').srcObject = stream;
       } catch (e) {
@@ -5475,7 +5677,7 @@
           console.warn('Selected audio device unavailable, falling back to default');
           clearSelectedAudioDevice();
           try {
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: callAudioMode ? false : true });
             document.getElementById('videoElement').srcObject = stream;
             showAchievement("⚠️ Selected mic unavailable, using default");
             return;
@@ -5486,6 +5688,11 @@
     }
 
     async function initAudio() {
+      // In call audio mode, we don't need a mic stream up front — it's captured at record time
+      if (callAudioMode) {
+        stream = null;
+        return;
+      }
       try {
         const constraints = getAudioConstraints();
         stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -5508,16 +5715,33 @@
       if (audioRecorder && audioRecorder.state !== 'inactive') audioRecorder.stop();
       audioRecorder = null;
       if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      if (callAudioStream) { callAudioStream.getTracks().forEach(t => t.stop()); callAudioStream = null; }
+      updateCallAudioIndicators(false);
     }
 
-    function startAudioRecording() {
+    async function startAudioRecording() {
       if (!currentWord) { showAchievement(isConversationMode ? "Get a prompt first!" : "Generate a prompt first!"); return; }
+
+      // In call audio mode, capture from tab via getDisplayMedia
+      let recordingStream = stream;
+      if (callAudioMode) {
+        const callStream = await captureCallAudio();
+        if (!callStream) return; // user cancelled or error
+        recordingStream = callStream;
+        updateCallAudioIndicators(true);
+      }
+
+      if (!recordingStream) {
+        showAchievement("⚠️ No audio source available");
+        return;
+      }
+
       recordedChunks = [];
       // 32kbps Opus keeps files ~240KB/min — well under Vercel's 4.5MB body limit
       const audioOptions = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 32000 }
         : { audioBitsPerSecond: 32000 };
-      mediaRecorder = new MediaRecorder(stream, audioOptions);
+      mediaRecorder = new MediaRecorder(recordingStream, audioOptions);
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
       mediaRecorder.onstop = () => {
         const blob = new Blob(recordedChunks, { type: 'audio/webm' });
@@ -5532,7 +5756,7 @@
       document.getElementById('audioVisualizer').classList.add('recording');
       document.getElementById('startAudioBtn').style.display = 'none';
       document.getElementById('stopAudioBtn').style.display = 'block';
-      setAiStatus('Recording audio... Will analyze with AI when done.');
+      setAiStatus(callAudioMode ? 'Recording from call tab... Will analyze with AI when done.' : 'Recording audio... Will analyze with AI when done.');
       isRunning = true;
       wordBox.classList.add('active');
       timerInterval = setInterval(() => {
@@ -5550,12 +5774,24 @@
       document.getElementById('audioVisualizer').classList.remove('recording');
       document.getElementById('startAudioBtn').style.display = 'block';
       document.getElementById('stopAudioBtn').style.display = 'none';
+      // Clean up call audio stream
+      if (callAudioStream) { callAudioStream.getTracks().forEach(t => t.stop()); callAudioStream = null; }
+      updateCallAudioIndicators(false);
       // Show rating modal immediately — AI feedback continues in the background
       if (elapsedSeconds >= 30) showRatingModal();
     }
 
-    function startVideoRecording() {
+    async function startVideoRecording() {
       if (!currentWord) { showAchievement(isConversationMode ? "Get a prompt first!" : "Generate a prompt first!"); return; }
+
+      // In call audio mode, capture call audio for the audio-only track
+      let callStream = null;
+      if (callAudioMode) {
+        callStream = await captureCallAudio();
+        if (!callStream) return;
+        updateCallAudioIndicators(true);
+      }
+
       recordedChunks = [];
 
       // Video recorder — full quality for download link
@@ -5569,7 +5805,14 @@
       };
 
       // Audio-only recorder — 32kbps Opus, tiny file for Whisper API upload
-      const audioTrack = stream.getAudioTracks()[0];
+      // Use call audio stream if in call mode, otherwise use camera stream audio
+      const audioSourceStream = callStream || stream;
+      const audioTrack = audioSourceStream.getAudioTracks()[0];
+      if (!audioTrack) {
+        showAchievement("⚠️ No audio track available");
+        if (callStream) { callStream.getTracks().forEach(t => t.stop()); callAudioStream = null; }
+        return;
+      }
       const audioOnlyStream = new MediaStream([audioTrack]);
       const audioOptions = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 32000 }
@@ -5587,7 +5830,7 @@
       document.getElementById('videoTimer').style.display = 'block';
       document.getElementById('startVideoBtn').style.display = 'none';
       document.getElementById('stopVideoBtn').style.display = 'block';
-      setAiStatus('Recording video... Will analyze audio with AI when done.');
+      setAiStatus(callAudioMode ? 'Recording from call tab... Will analyze audio with AI when done.' : 'Recording video... Will analyze audio with AI when done.');
       isRunning = true;
       wordBox.classList.add('active');
       timerInterval = setInterval(() => {
@@ -5606,6 +5849,9 @@
       document.getElementById('videoTimer').style.display = 'none';
       document.getElementById('startVideoBtn').style.display = 'block';
       document.getElementById('stopVideoBtn').style.display = 'none';
+      // Clean up call audio stream
+      if (callAudioStream) { callAudioStream.getTracks().forEach(t => t.stop()); callAudioStream = null; }
+      updateCallAudioIndicators(false);
       // Show rating modal immediately — AI feedback continues in the background
       if (elapsedSeconds >= 30) showRatingModal();
     }
@@ -6104,6 +6350,50 @@
         // Check immediately when app opens
         setTimeout(triggerNotificationCheck, 2000);
       }
+    }
+
+    // ========== VIDEO CALL AUDIO CAPTURE TOGGLE ==========
+    const callAudioToggle = document.getElementById('callAudioToggle');
+    const callAudioInfoModal = document.getElementById('callAudioInfoModal');
+    const callAudioInfoGotIt = document.getElementById('callAudioInfoGotIt');
+
+    if (callAudioToggle) {
+      callAudioToggle.checked = callAudioMode;
+
+      callAudioToggle.addEventListener('change', () => {
+        callAudioMode = callAudioToggle.checked;
+        localStorage.setItem('callAudioMode', callAudioMode ? 'true' : 'false');
+
+        if (callAudioMode) {
+          // Show info modal on first enable
+          if (!localStorage.getItem('callAudioInfoShown')) {
+            callAudioInfoModal.style.display = 'flex';
+            localStorage.setItem('callAudioInfoShown', 'true');
+          }
+          showAchievement("📞 Call audio mode enabled");
+        } else {
+          showAchievement("🎙️ Switched back to microphone");
+        }
+
+        // Reinitialize stream if in audio/video mode and not recording
+        if ((currentMode === 'audio' || currentMode === 'video') && !isRunning) {
+          stopMedia();
+          if (currentMode === 'audio') initAudio();
+          else initCamera();
+        }
+      });
+    }
+
+    if (callAudioInfoGotIt) {
+      callAudioInfoGotIt.addEventListener('click', () => {
+        callAudioInfoModal.style.display = 'none';
+      });
+    }
+
+    if (callAudioInfoModal) {
+      callAudioInfoModal.addEventListener('click', (e) => {
+        if (e.target === callAudioInfoModal) callAudioInfoModal.style.display = 'none';
+      });
     }
 
     // ========== AUDIO INPUT DEVICE SELECTOR ==========
