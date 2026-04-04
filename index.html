@@ -993,6 +993,63 @@
       color: #9ca3af;
     }
 
+    /* Audio Input Selector */
+    .audio-input-select {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid #374151;
+      background: #0f172a;
+      color: #e5e7eb;
+      font-size: 14px;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+
+    .audio-input-select:focus {
+      outline: none;
+      border-color: rgba(250, 204, 21, 0.5);
+    }
+
+    .audio-input-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 10px;
+      font-size: 13px;
+      color: #6ee7b7;
+    }
+
+    .audio-input-status.error {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+    }
+
+    .audio-input-refresh-btn {
+      background: none;
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      color: #facc15;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .audio-input-refresh-btn:hover {
+      background: rgba(250, 204, 21, 0.1);
+      border-color: rgba(250, 204, 21, 0.5);
+    }
+
     /* Profile Icon Button */
     .profile-btn {
       position: absolute;
@@ -4021,6 +4078,24 @@
     <button class="back-btn" id="settingsBackBtn">← Back to Home</button>
     <h2 style="font-size: 24px; color: #facc15; margin-bottom: 20px; text-align: center;">⚙️ Settings</h2>
 
+    <!-- Audio Input Section -->
+    <div class="settings-section">
+      <h3>🎙️ Audio Input</h3>
+      <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: 10px;">
+        <span class="settings-row-label">Input Device</span>
+        <select id="audioInputSelect" class="audio-input-select">
+          <option value="">Default Microphone</option>
+        </select>
+      </div>
+      <div id="audioInputStatus" class="audio-input-status" style="display: none;"></div>
+      <button id="audioInputRefreshBtn" class="audio-input-refresh-btn" style="width: 100%; margin-top: 10px;">
+        🔄 Refresh Devices
+      </button>
+      <p style="color: #6b7280; font-size: 12px; margin-top: 10px; line-height: 1.5;">
+        Select a microphone or virtual audio device. To capture Zoom/Meet audio, route it through a virtual audio device first.
+      </p>
+    </div>
+
     <!-- Daily Notifications Section -->
     <div class="settings-section">
       <h3>🔔 Daily Notifications</h3>
@@ -4614,6 +4689,10 @@
 
     // AI Feedback Settings
     let aiEnabled = localStorage.getItem('aiEnabled') !== 'false'; // Default ON
+
+    // Audio Input Device state
+    let selectedAudioDeviceId = localStorage.getItem('selectedAudioDeviceId') || '';
+    let selectedAudioDeviceLabel = localStorage.getItem('selectedAudioDeviceLabel') || 'Default Microphone';
 
     // Elements
     const wordEl = document.getElementById('word');
@@ -5373,20 +5452,56 @@
       reset();
     }
 
+    function getAudioConstraints() {
+      if (selectedAudioDeviceId) {
+        return { audio: { deviceId: { exact: selectedAudioDeviceId } } };
+      }
+      return { audio: true };
+    }
+
     async function initCamera() {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: "user" }, 
-          audio: true 
+        const audioConstraint = selectedAudioDeviceId
+          ? { deviceId: { exact: selectedAudioDeviceId } }
+          : true;
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" },
+          audio: audioConstraint
         });
         document.getElementById('videoElement').srcObject = stream;
-      } catch (e) { showAchievement("⚠️ Camera access denied"); setMode('timer'); }
+      } catch (e) {
+        // If selected device fails, fall back to default
+        if (selectedAudioDeviceId) {
+          console.warn('Selected audio device unavailable, falling back to default');
+          clearSelectedAudioDevice();
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
+            document.getElementById('videoElement').srcObject = stream;
+            showAchievement("⚠️ Selected mic unavailable, using default");
+            return;
+          } catch (e2) { /* fall through */ }
+        }
+        showAchievement("⚠️ Camera access denied"); setMode('timer');
+      }
     }
 
     async function initAudio() {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (e) { showAchievement("⚠️ Mic access denied"); setMode('timer'); }
+        const constraints = getAudioConstraints();
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (e) {
+        // If selected device fails, fall back to default
+        if (selectedAudioDeviceId) {
+          console.warn('Selected audio device unavailable, falling back to default');
+          clearSelectedAudioDevice();
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            showAchievement("⚠️ Selected mic unavailable, using default");
+            return;
+          } catch (e2) { /* fall through */ }
+        }
+        showAchievement("⚠️ Mic access denied"); setMode('timer');
+      }
     }
 
     function stopMedia() {
@@ -5990,6 +6105,122 @@
         setTimeout(triggerNotificationCheck, 2000);
       }
     }
+
+    // ========== AUDIO INPUT DEVICE SELECTOR ==========
+    const audioInputSelect = document.getElementById('audioInputSelect');
+    const audioInputStatus = document.getElementById('audioInputStatus');
+    const audioInputRefreshBtn = document.getElementById('audioInputRefreshBtn');
+
+    function clearSelectedAudioDevice() {
+      selectedAudioDeviceId = '';
+      selectedAudioDeviceLabel = 'Default Microphone';
+      localStorage.removeItem('selectedAudioDeviceId');
+      localStorage.removeItem('selectedAudioDeviceLabel');
+      if (audioInputSelect) audioInputSelect.value = '';
+      updateAudioInputStatus();
+    }
+
+    function updateAudioInputStatus(message, isError) {
+      if (!audioInputStatus) return;
+      if (message) {
+        audioInputStatus.style.display = 'flex';
+        audioInputStatus.textContent = message;
+        audioInputStatus.className = 'audio-input-status' + (isError ? ' error' : '');
+      } else {
+        const label = selectedAudioDeviceLabel || 'Default Microphone';
+        audioInputStatus.style.display = 'flex';
+        audioInputStatus.textContent = 'Using: ' + label;
+        audioInputStatus.className = 'audio-input-status';
+      }
+    }
+
+    async function loadAudioInputDevices() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        updateAudioInputStatus('Browser does not support device enumeration', true);
+        return;
+      }
+
+      try {
+        // Request permission first so device labels are populated
+        const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        tempStream.getTracks().forEach(t => t.stop());
+
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = devices.filter(d => d.kind === 'audioinput');
+
+        audioInputSelect.innerHTML = '<option value="">Default Microphone</option>';
+        audioInputs.forEach((device, i) => {
+          const option = document.createElement('option');
+          option.value = device.deviceId;
+          option.textContent = device.label || ('Microphone ' + (i + 1));
+          audioInputSelect.appendChild(option);
+        });
+
+        // Restore saved selection if still available
+        const savedId = localStorage.getItem('selectedAudioDeviceId');
+        if (savedId) {
+          const stillExists = audioInputs.some(d => d.deviceId === savedId);
+          if (stillExists) {
+            audioInputSelect.value = savedId;
+          } else {
+            clearSelectedAudioDevice();
+            updateAudioInputStatus('Previously selected device no longer available, using default', true);
+            return;
+          }
+        }
+
+        if (audioInputs.length === 0) {
+          updateAudioInputStatus('No audio input devices found', true);
+        } else {
+          updateAudioInputStatus();
+        }
+      } catch (e) {
+        if (e.name === 'NotAllowedError') {
+          updateAudioInputStatus('Microphone permission denied — enable it in browser settings', true);
+        } else {
+          updateAudioInputStatus('Could not list audio devices: ' + e.message, true);
+        }
+      }
+    }
+
+    if (audioInputSelect) {
+      audioInputSelect.addEventListener('change', () => {
+        selectedAudioDeviceId = audioInputSelect.value;
+        const selectedOption = audioInputSelect.options[audioInputSelect.selectedIndex];
+        selectedAudioDeviceLabel = selectedOption.textContent;
+
+        if (selectedAudioDeviceId) {
+          localStorage.setItem('selectedAudioDeviceId', selectedAudioDeviceId);
+          localStorage.setItem('selectedAudioDeviceLabel', selectedAudioDeviceLabel);
+        } else {
+          localStorage.removeItem('selectedAudioDeviceId');
+          localStorage.removeItem('selectedAudioDeviceLabel');
+        }
+
+        updateAudioInputStatus();
+
+        // If currently in audio/video mode, reinitialize with new device
+        if (stream && (currentMode === 'audio' || currentMode === 'video') && !isRunning) {
+          stopMedia();
+          if (currentMode === 'audio') initAudio();
+          else initCamera();
+        }
+      });
+    }
+
+    if (audioInputRefreshBtn) {
+      audioInputRefreshBtn.addEventListener('click', () => loadAudioInputDevices());
+    }
+
+    // Listen for device changes (plug/unplug)
+    if (navigator.mediaDevices) {
+      navigator.mediaDevices.addEventListener('devicechange', () => {
+        loadAudioInputDevices();
+      });
+    }
+
+    // Load devices on first visit to settings
+    loadAudioInputDevices();
 
     // Update IndexedDB when stats change (hook into completeSpeech)
     const originalCompleteSpeech = completeSpeech;
