@@ -8355,8 +8355,32 @@
 
     function stopSpotRecording() {
       return new Promise((resolve) => {
-        if (!spotMediaRecorder || spotMediaRecorder.state === 'inactive') return resolve();
+        if (!spotMediaRecorder || spotMediaRecorder.state === 'inactive') {
+          if (spotMediaStream) {
+            spotMediaStream.getTracks().forEach(t => t.stop());
+            spotMediaStream = null;
+          }
+          return resolve();
+        }
+
+        let resolved = false;
+        const safeResolve = () => {
+          if (resolved) return;
+          resolved = true;
+          resolve();
+        };
+
+        const stopTimeout = setTimeout(() => {
+          if (spotMediaStream) {
+            spotMediaStream.getTracks().forEach(t => t.stop());
+            spotMediaStream = null;
+          }
+          spotMediaRecorder = null;
+          safeResolve();
+        }, 800);
+
         spotMediaRecorder.onstop = () => {
+          clearTimeout(stopTimeout);
           const blob = new Blob(spotRecordingChunks, { type: 'audio/webm' });
           if (spotRecordingUrl) URL.revokeObjectURL(spotRecordingUrl);
           if (blob.size > 0) {
@@ -8365,12 +8389,34 @@
             dl.href = spotRecordingUrl;
             dl.style.display = 'inline-block';
           }
-          if (spotMediaStream) spotMediaStream.getTracks().forEach(t => t.stop());
+          if (spotMediaStream) {
+            spotMediaStream.getTracks().forEach(t => t.stop());
+            spotMediaStream = null;
+          }
           spotMediaRecorder = null;
-          resolve();
+          safeResolve();
         };
-        spotMediaRecorder.stop();
+
+        try {
+          spotMediaRecorder.stop();
+        } catch (err) {
+          clearTimeout(stopTimeout);
+          if (spotMediaStream) {
+            spotMediaStream.getTracks().forEach(t => t.stop());
+            spotMediaStream = null;
+          }
+          spotMediaRecorder = null;
+          safeResolve();
+        }
       });
+    }
+
+    function hardResetSpotRuntime() {
+      clearInterval(spotMainInterval);
+      clearInterval(spotWordInterval);
+      clearInterval(spotThinkInterval);
+      stopSpotRecognition();
+      document.getElementById('spotGameShell').classList.remove('spot-border-danger');
     }
 
     function renderSpotWords() {
@@ -8441,8 +8487,11 @@
     }
 
     async function startSpotChallenge() {
-      await stopSpotChallenge(true);
-      const settings = getSpotSettings();
+      try {
+        hardResetSpotRuntime();
+        await stopSpotRecording();
+        spotSession = null;
+        const settings = getSpotSettings();
       const question = SPOT_CHALLENGE_QUESTIONS[Math.floor(Math.random() * SPOT_CHALLENGE_QUESTIONS.length)];
       spotSession = {
         settings,
@@ -8496,6 +8545,11 @@
           }, 1000);
         }
       }, 1000);
+      } catch (error) {
+        console.error('Failed to start Speak on the Spot challenge:', error);
+        showAchievement('⚠️ Could not start challenge. Please try again.');
+        setSpotPhase('spotSetupPhase');
+      }
     }
 
     function calculateSpotScore(session) {
@@ -8541,18 +8595,14 @@
     }
 
     async function stopSpotChallenge(silent = false) {
-      clearInterval(spotMainInterval);
-      clearInterval(spotWordInterval);
-      clearInterval(spotThinkInterval);
-      stopSpotRecognition();
+      hardResetSpotRuntime();
       await stopSpotRecording();
-      document.getElementById('spotGameShell').classList.remove('spot-border-danger');
       if (spotSession && !silent) {
         spotSession.earlyStopped = true;
         await finishSpotChallenge();
-      } else if (silent) {
+      } else {
         spotSession = null;
-        setSpotPhase('spotSetupPhase');
+        if (silent) setSpotPhase('spotSetupPhase');
       }
     }
 
