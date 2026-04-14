@@ -3106,6 +3106,171 @@
       font-weight: 700;
       margin-bottom: 12px;
     }
+
+
+    /* ===== SPEAK ON THE SPOT CHALLENGE ===== */
+    .spot-header { text-align: center; margin-bottom: 16px; }
+    .spot-header h2 { font-size: 26px; color: #facc15; margin-bottom: 6px; }
+    .spot-header p { color: #9ca3af; font-size: 14px; }
+    .spot-settings-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 14px 0 16px;
+    }
+    .spot-setting-card {
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(250, 204, 21, 0.18);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .spot-setting-card label { display: block; font-size: 12px; color: #facc15; margin-bottom: 8px; }
+    .spot-setting-card select {
+      width: 100%;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: #e5e7eb;
+      border-radius: 10px;
+      padding: 8px;
+      font-weight: 600;
+    }
+    .spot-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .spot-stat {
+      background: rgba(30, 41, 59, 0.45);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 10px;
+      text-align: center;
+      padding: 10px 8px;
+    }
+    .spot-stat-value { font-size: 20px; font-weight: 800; color: #facc15; }
+    .spot-stat-label { font-size: 11px; color: #9ca3af; text-transform: uppercase; }
+    .spot-game-shell {
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.75), rgba(8, 15, 30, 0.85));
+      border: 1px solid rgba(250, 204, 21, 0.18);
+      border-radius: 20px;
+      padding: 18px;
+      min-height: 420px;
+      position: relative;
+    }
+    .spot-phase { display: none; animation: fadeIn 0.35s ease; }
+    .spot-phase.active { display: block; }
+    .spot-think-banner {
+      text-align: center;
+      color: #facc15;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+    .spot-question {
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 1.25;
+      text-align: center;
+      margin: 14px 0;
+      color: #fef3c7;
+    }
+    .spot-think-count {
+      text-align: center;
+      font-size: 78px;
+      font-weight: 900;
+      color: #facc15;
+      animation: pulseThink 0.85s infinite;
+      text-shadow: 0 0 22px rgba(250, 204, 21, 0.4);
+    }
+    @keyframes pulseThink {
+      0% { transform: scale(0.95); opacity: 0.9; }
+      50% { transform: scale(1.08); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.9; }
+    }
+    .spot-go { text-align: center; margin-top: 14px; font-size: 24px; font-weight: 900; color: #22c55e; }
+    .spot-timers {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .spot-timer-box {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+    }
+    .spot-timer-label { font-size: 12px; color: #cbd5e1; }
+    .spot-timer-value { font-size: 34px; font-weight: 900; color: #facc15; }
+    .spot-word-card {
+      background: #ffffff;
+      border: 3px solid #facc15;
+      border-radius: 16px;
+      color: #0f172a;
+      text-align: center;
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+      animation: wordFlipIn 0.45s ease;
+    }
+    @keyframes wordFlipIn {
+      from { transform: translateY(-20px) rotateX(-65deg); opacity: 0; }
+      to { transform: translateY(0) rotateX(0deg); opacity: 1; }
+    }
+    .spot-word-title { font-size: 12px; letter-spacing: 0.12em; font-weight: 700; color: #6b7280; }
+    .spot-word-value { font-size: 40px; font-weight: 900; margin-top: 8px; }
+    .spot-word-timer {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 800;
+      color: #f97316;
+      margin-bottom: 12px;
+    }
+    .spot-word-timer.danger { color: #ef4444; animation: pulseThink 0.6s infinite; }
+    .spot-words-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .spot-word-list {
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 12px;
+      padding: 10px;
+    }
+    .spot-word-list h4 { font-size: 12px; margin-bottom: 8px; color: #cbd5e1; text-transform: uppercase; letter-spacing: 0.08em; }
+    .spot-chip { font-size: 13px; margin-bottom: 6px; padding: 8px 10px; border-radius: 8px; background: rgba(30, 41, 59, 0.6); }
+    .spot-chip.used { background: rgba(34, 197, 94, 0.18); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.45); }
+    .spot-chip.missed { background: rgba(239, 68, 68, 0.16); color: #fda4af; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .spot-chip.locked { color: #94a3b8; }
+    .spot-border-danger { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.45) inset; animation: pulseThink 1s infinite; }
+    .spot-results-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin: 14px 0; }
+    .spot-result-card { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; text-align: center; padding: 12px 10px; }
+    .spot-result-card .v { font-size: 24px; font-weight: 900; color: #facc15; }
+    .spot-result-card .l { font-size: 12px; color: #cbd5e1; }
+    .spot-transcript {
+      margin-top: 12px;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13px;
+      line-height: 1.45;
+      max-height: 130px;
+      overflow-y: auto;
+    }
+    .spot-controls { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; }
+    .spot-btn { border: none; border-radius: 10px; padding: 11px 14px; font-weight: 700; cursor: pointer; }
+    .spot-btn.primary { background: linear-gradient(135deg, #facc15, #f59e0b); color: #0f172a; }
+    .spot-btn.stop { background: #ef4444; color: #fff; }
+    .spot-btn.alt { background: rgba(51, 65, 85, 0.8); color: #e5e7eb; border: 1px solid rgba(148, 163, 184, 0.3); }
+
+    @media (max-width: 680px) {
+      .spot-settings-grid, .spot-stats-grid, .spot-timers, .spot-words-row, .spot-results-grid { grid-template-columns: 1fr; }
+      .spot-question { font-size: 24px; }
+      .spot-word-value { font-size: 34px; }
+      .spot-think-count { font-size: 64px; }
+      .spot-btn { width: 100%; }
+    }
+
   </style>
 </head>
 
@@ -3152,6 +3317,10 @@
       <div class="menu-item" id="menuWarmUp" data-page="warmup">
         <span class="menu-item-icon">🎤</span>
         <span>Warm Up</span>
+      </div>
+      <div class="menu-item" id="menuSpot" data-page="spot">
+        <span class="menu-item-icon">🎯</span>
+        <span>Speak on the Spot</span>
       </div>
       <div class="menu-item" id="menuVocab" data-page="vocab">
         <span class="menu-item-icon">📚</span>
@@ -3474,6 +3643,127 @@
     </div>
   </div>
   <!-- END RAPID FIRE PAGE -->
+
+  <!-- SPEAK ON THE SPOT PAGE -->
+  <div class="container page" id="spotChallengePage">
+    <button class="back-btn" id="spotBackBtn">← Back to Home</button>
+    <div class="spot-header">
+      <h2>🎯 Speak on the Spot Challenge</h2>
+      <p>Answer a simple question while weaving random words into your 60-second response.</p>
+    </div>
+
+    <div class="spot-stats-grid">
+      <div class="spot-stat"><div class="spot-stat-value" id="spotTotalGames">0</div><div class="spot-stat-label">Games</div></div>
+      <div class="spot-stat"><div class="spot-stat-value" id="spotBestScore">0</div><div class="spot-stat-label">Best Score</div></div>
+      <div class="spot-stat"><div class="spot-stat-value" id="spotAvgWords">0.0</div><div class="spot-stat-label">Avg Words</div></div>
+      <div class="spot-stat"><div class="spot-stat-value" id="spotFastest">--</div><div class="spot-stat-label">Fastest</div></div>
+    </div>
+
+    <div class="spot-settings-grid" id="spotSettingsBox">
+      <div class="spot-setting-card">
+        <label>Thinking Time</label>
+        <select id="spotThinkTime">
+          <option value="3">3 seconds</option>
+          <option value="5" selected>5 seconds</option>
+          <option value="10">10 seconds</option>
+        </select>
+      </div>
+      <div class="spot-setting-card">
+        <label>Speech Duration</label>
+        <select id="spotSpeechDuration">
+          <option value="30">30 seconds</option>
+          <option value="60" selected>60 seconds</option>
+          <option value="90">90 seconds</option>
+        </select>
+      </div>
+      <div class="spot-setting-card">
+        <label>Word Interval</label>
+        <select id="spotWordInterval">
+          <option value="5">5 seconds</option>
+          <option value="10" selected>10 seconds</option>
+          <option value="15">15 seconds</option>
+        </select>
+      </div>
+      <div class="spot-setting-card">
+        <label>Number of Words</label>
+        <select id="spotNumWords">
+          <option value="3">3 words</option>
+          <option value="5">5 words</option>
+          <option value="6" selected>6 words</option>
+          <option value="8">8 words</option>
+          <option value="10">10 words</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="spot-game-shell" id="spotGameShell">
+      <div class="spot-phase active" id="spotSetupPhase">
+        <div class="spot-question" id="spotPreviewQuestion">Tap Start Challenge to get a random question.</div>
+        <div class="spot-controls">
+          <button class="spot-btn primary" id="spotStartBtn">▶ Start Challenge</button>
+        </div>
+      </div>
+
+      <div class="spot-phase" id="spotThinkPhase">
+        <div class="spot-think-banner">THINK FAST!</div>
+        <div class="spot-question" id="spotQuestionText">Question</div>
+        <div class="spot-think-count" id="spotThinkCountdown">5</div>
+        <div class="spot-go" id="spotGoText">5...4...3...2...1...GO!</div>
+      </div>
+
+      <div class="spot-phase" id="spotSpeakPhase">
+        <div class="spot-timers">
+          <div class="spot-timer-box">
+            <div class="spot-timer-label">Main Timer</div>
+            <div class="spot-timer-value" id="spotMainTimer">60</div>
+          </div>
+          <div class="spot-timer-box">
+            <div class="spot-timer-label">Word Timer</div>
+            <div class="spot-timer-value" id="spotWordTimer">10</div>
+          </div>
+        </div>
+        <div class="spot-word-card" id="spotWordCard">
+          <div class="spot-word-title">Current Word</div>
+          <div class="spot-word-value" id="spotCurrentWord">READY</div>
+        </div>
+        <div class="spot-word-timer" id="spotWordTimerInline">10s to use this word</div>
+        <div class="spot-words-row">
+          <div class="spot-word-list">
+            <h4>Words Used</h4>
+            <div id="spotUsedWordsList"></div>
+          </div>
+          <div class="spot-word-list">
+            <h4>Upcoming Words</h4>
+            <div id="spotUpcomingWordsList"></div>
+          </div>
+        </div>
+        <div class="spot-transcript" id="spotLiveTranscript">Live transcript will appear here...</div>
+        <div class="spot-controls">
+          <button class="spot-btn stop" id="spotStopBtn">⏹ Stop Early</button>
+        </div>
+      </div>
+
+      <div class="spot-phase" id="spotResultsPhase">
+        <div class="spot-question" style="font-size:26px;">Challenge Complete!</div>
+        <div class="spot-results-grid">
+          <div class="spot-result-card"><div class="v" id="spotScoreValue">0</div><div class="l">Score</div></div>
+          <div class="spot-result-card"><div class="v" id="spotWordsUsedValue">0/0</div><div class="l">Words Used</div></div>
+          <div class="spot-result-card"><div class="v" id="spotTimeValue">0s</div><div class="l">Time</div></div>
+        </div>
+        <div class="spot-word-list">
+          <h4>Word Results</h4>
+          <div id="spotWordResultsList"></div>
+        </div>
+        <div class="spot-transcript" id="spotFinalTranscript">Transcript appears here after your run.</div>
+        <div class="spot-controls">
+          <button class="spot-btn primary" id="spotPlayAgainBtn">🔁 Play Again</button>
+          <button class="spot-btn alt" id="spotViewRecordingBtn">▶ View Recording</button>
+          <a class="spot-btn alt" id="spotDownloadRecordingBtn" download="speak-on-the-spot.webm" style="display:none; text-decoration:none;">⬇ Download</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- END SPEAK ON THE SPOT PAGE -->
 
   <!-- WARM UP PAGE -->
   <div class="container page" id="warmUpPage">
@@ -4788,6 +5078,38 @@
       return structures[formula];
     }
 
+    const SPOT_CHALLENGE_QUESTIONS = [
+      'Is coffee overrated?', 'Are cats better than dogs?', 'Is breakfast the most important meal?', 'Should everyone learn to cook?',
+      'Is social media good or bad?', 'Are books better than movies?', 'Is money important for happiness?', 'Should students wear uniforms?',
+      'Is online shopping better than in-store?', 'Are video games a waste of time?', 'Is working from home better?', 'Should everyone exercise daily?',
+      'Are smartphones making us lazy?', 'Is winter better than summer?', 'Should everyone learn a musical instrument?', 'Is television educational?',
+      'Are weekends too short?', 'Should everyone travel abroad?', 'Is fast food unhealthy?', 'Are electric cars the future?',
+      'Do you prefer tea or coffee?', 'Would you rather be rich or famous?', 'Is it better to be early or on time?', 'Do you like rainy days?',
+      'Would you live in the city or countryside?', 'Is it important to be fashionable?', 'Do you believe in luck?', 'Should schools have longer holidays?',
+      'Is it better to save or spend money?', 'Do you prefer hot or cold weather?', 'Would you rather read or watch TV?', 'Is it important to speak multiple languages?',
+      'Do you like spicy food?', 'Would you rather work alone or in a team?', 'Is it better to plan or be spontaneous?', 'Do you prefer morning or night?',
+      'Would you rather have more time or more money?', 'Is it important to follow trends?', 'Do you believe in fate?', 'Would you rather be smart or attractive?',
+      'What do you think about pizza?', 'How do you feel about Mondays?', 'What is your opinion on chocolate?', 'Do you like public speaking?',
+      'What do you think about homework?', 'How do you feel about birthdays?', 'What is your view on gossip?', 'Do you enjoy waiting in line?',
+      'What do you think about selfies?', 'How do you feel about surprises?', 'Should naps be mandatory?', 'Is silence underrated?',
+      'Is taking risks worth it?', 'Are hobbies necessary for a happy life?', 'Should people unplug from phones more often?', 'Is competition healthy?'
+    ];
+
+    const SPOT_CHALLENGE_WORDS = [
+      'Coffee', 'Mountain', 'Elephant', 'Guitar', 'Spaceship', 'Rainbow', 'Pizza', 'Dinosaur', 'Ocean', 'Laptop',
+      'Bicycle', 'Thunder', 'Cactus', 'Penguin', 'Balloon', 'Camera', 'Violin', 'Tornado', 'Lighthouse', 'Chocolate',
+      'Dragon', 'Waterfall', 'Rocket', 'Umbrella', 'Butterfly', 'Castle', 'Microphone', 'Volcano', 'Treasure', 'Sunset',
+      'Robot', 'Carousel', 'Constellation', 'Pyramid', 'Phoenix', 'Hurricane', 'Fountain', 'Telescope', 'Labyrinth', 'Crystal',
+      'Sandwich', 'Glacier', 'Compass', 'Lantern', 'Comet', 'Jungle', 'Passport', 'Museum', 'Festival', 'Marathon',
+      'Stadium', 'Library', 'Galaxy', 'Horizon', 'Carnival', 'Paradise', 'Adventure', 'Mystery', 'Legend', 'Journey',
+      'Sunrise', 'Wilderness', 'Melody', 'Harmony', 'Symphony', 'Canvas', 'Sculpture', 'Portrait', 'Masterpiece', 'Champion',
+      'Victory', 'Achievement', 'Challenge', 'Dream', 'Courage', 'Wisdom', 'Freedom', 'Justice', 'Peace', 'Storm',
+      'Breeze', 'Shadow', 'Moonlight', 'Starlight', 'Garden', 'Meadow', 'Forest', 'Desert', 'Tundra', 'River',
+      'Lake', 'Island', 'Canyon', 'Valley', 'Bridge', 'Tower', 'Temple', 'Palace', 'Fortress', 'Orbit',
+      'Beacon', 'Flame', 'Echo', 'Rhythm', 'Puzzle', 'Galaxy', 'Spark', 'Whisper', 'Signal', 'Harvest',
+      'Anchor', 'Voyage', 'Crescent', 'Aurora', 'Summit', 'Portal', 'Mirage', 'Alchemy', 'Momentum', 'Zenith'
+    ];
+
     // Last updated date
     const LAST_UPDATED = 'March 30, 2026';
 
@@ -4825,6 +5147,28 @@
       totalAnalogies: 0,
       fastestTime: null
     };
+
+    // Speak on the Spot Challenge state
+    const spotChallengeStatsKey = 'spotChallengeStats';
+    let spotChallengeStats = JSON.parse(localStorage.getItem(spotChallengeStatsKey)) || {
+      totalGames: 0,
+      bestScore: 0,
+      totalWordsUsed: 0,
+      totalWordsTarget: 0,
+      fastestCompletion: null
+    };
+    let spotSession = null;
+    let spotMainInterval = null;
+    let spotWordInterval = null;
+    let spotThinkInterval = null;
+    let spotRecognition = null;
+    let spotRecognitionActive = false;
+    let spotTranscript = '';
+    let spotMediaRecorder = null;
+    let spotMediaStream = null;
+    let spotRecordingChunks = [];
+    let spotRecordingUrl = '';
+
     let rapidFireInterval = null;
     let rapidFireTimeLeft = 0;
     let rapidFireCurrentRound = 0;
@@ -4873,8 +5217,10 @@
       updateWeekCalendar();
       updateNudge();
       initSpeechRecognition();
+      initSpotRecognition();
       initAIToggle();
       initPromptModeToggle();
+      initSpotChallengePage();
       setAiStatus('Waiting for your next recording.');
       manualTranscript.value = '';
       updateVersionDisplay();
@@ -7117,6 +7463,11 @@
         stopAllWarmupTimers();
       }
 
+      // Stop Speak on the Spot challenge if leaving that page
+      if (currentPage === 'spot') {
+        stopSpotChallenge(true);
+      }
+
       // Hide all pages
       document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
 
@@ -7131,6 +7482,10 @@
         document.getElementById('warmUpPage').classList.add('active');
         setRandomWarmupQuote();
         updateWarmupStats();
+      } else if (pageName === 'spot') {
+        document.getElementById('spotChallengePage').classList.add('active');
+        refreshSpotSettingsDefaults();
+        updateSpotChallengeStatsUI();
       } else if (pageName === 'analytics') {
         document.getElementById('analyticsPage').classList.add('active');
         loadAnalyticsDashboard();
@@ -7178,6 +7533,7 @@
     // Back buttons
     document.getElementById('rapidFireBackBtn').addEventListener('click', () => navigateToPage('main'));
     document.getElementById('warmUpBackBtn').addEventListener('click', () => navigateToPage('main'));
+    document.getElementById('spotBackBtn').addEventListener('click', () => navigateToPage('main'));
     document.getElementById('settingsBackBtn').addEventListener('click', () => navigateToPage('main'));
     document.getElementById('analyticsBackBtn').addEventListener('click', () => navigateToPage('main'));
     document.getElementById('vocabBackBtn').addEventListener('click', () => navigateToPage('main'));
@@ -7886,6 +8242,378 @@
     // Rapid Fire page event listeners
     document.getElementById('startRapidFireBtnPage').addEventListener('click', startRapidFirePage);
     document.getElementById('stopRapidFireBtnPage').addEventListener('click', stopRapidFirePage);
+
+    // ===== SPEAK ON THE SPOT CHALLENGE =====
+    function getSpotSettings() {
+      const thinkTime = parseInt(document.getElementById('spotThinkTime').value, 10);
+      const speechDuration = parseInt(document.getElementById('spotSpeechDuration').value, 10);
+      const wordInterval = parseInt(document.getElementById('spotWordInterval').value, 10);
+      const numWords = parseInt(document.getElementById('spotNumWords').value, 10);
+      return { thinkTime, speechDuration, wordInterval, numWords };
+    }
+
+    function refreshSpotSettingsDefaults() {
+      const duration = parseInt(document.getElementById('spotSpeechDuration').value, 10);
+      const interval = parseInt(document.getElementById('spotWordInterval').value, 10);
+      const suggested = Math.max(3, Math.min(10, Math.floor(duration / interval)));
+      const wordsSelect = document.getElementById('spotNumWords');
+      const active = parseInt(wordsSelect.value, 10);
+      if (![3, 5, 6, 8, 10].includes(active)) {
+        wordsSelect.value = String(suggested);
+      }
+      document.getElementById('spotPreviewQuestion').textContent = SPOT_CHALLENGE_QUESTIONS[Math.floor(Math.random() * SPOT_CHALLENGE_QUESTIONS.length)];
+    }
+
+    function updateSpotChallengeStatsUI() {
+      document.getElementById('spotTotalGames').textContent = spotChallengeStats.totalGames;
+      document.getElementById('spotBestScore').textContent = spotChallengeStats.bestScore;
+      const avgWords = spotChallengeStats.totalGames ? (spotChallengeStats.totalWordsUsed / spotChallengeStats.totalGames).toFixed(1) : '0.0';
+      document.getElementById('spotAvgWords').textContent = avgWords;
+      document.getElementById('spotFastest').textContent = spotChallengeStats.fastestCompletion ? `${spotChallengeStats.fastestCompletion}s` : '--';
+    }
+
+    function saveSpotChallengeStats() {
+      localStorage.setItem(spotChallengeStatsKey, JSON.stringify(spotChallengeStats));
+      updateSpotChallengeStatsUI();
+    }
+
+    function initSpotChallengePage() {
+      updateSpotChallengeStatsUI();
+      refreshSpotSettingsDefaults();
+      document.getElementById('spotSpeechDuration').addEventListener('change', refreshSpotSettingsDefaults);
+      document.getElementById('spotWordInterval').addEventListener('change', refreshSpotSettingsDefaults);
+      document.getElementById('spotStartBtn').addEventListener('click', startSpotChallenge);
+      document.getElementById('spotStopBtn').addEventListener('click', () => stopSpotChallenge(false));
+      document.getElementById('spotPlayAgainBtn').addEventListener('click', startSpotChallenge);
+      document.getElementById('spotViewRecordingBtn').addEventListener('click', viewSpotRecording);
+    }
+
+    function setSpotPhase(phaseId) {
+      ['spotSetupPhase', 'spotThinkPhase', 'spotSpeakPhase', 'spotResultsPhase'].forEach(id => {
+        document.getElementById(id).classList.toggle('active', id === phaseId);
+      });
+    }
+
+    function pickRandomSpotWords(count) {
+      const shuffled = [...SPOT_CHALLENGE_WORDS].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, count).map(w => ({ word: w, used: false, missed: false, detectedAt: null }));
+    }
+
+    function normalizeTextForSpot(text) {
+      return (text || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
+    }
+
+    function initSpotRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) return;
+      spotRecognition = new SpeechRecognition();
+      spotRecognition.continuous = true;
+      spotRecognition.interimResults = true;
+      spotRecognition.lang = 'en-US';
+      spotRecognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = 0; i < event.results.length; i++) transcript += event.results[i][0].transcript + ' ';
+        spotTranscript = transcript.trim();
+        document.getElementById('spotLiveTranscript').textContent = spotTranscript || 'Listening...';
+        detectSpotCurrentWord();
+      };
+      spotRecognition.onend = () => {
+        spotRecognitionActive = false;
+      };
+    }
+
+    function startSpotRecognition() {
+      if (!spotRecognition || spotRecognitionActive) return;
+      spotTranscript = '';
+      document.getElementById('spotLiveTranscript').textContent = 'Listening...';
+      try {
+        spotRecognition.start();
+        spotRecognitionActive = true;
+      } catch (err) {
+        console.error('Spot recognition start error:', err);
+      }
+    }
+
+    function stopSpotRecognition() {
+      if (spotRecognition && spotRecognitionActive) {
+        spotRecognition.stop();
+      }
+    }
+
+    async function startSpotRecording() {
+      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return;
+      try {
+        spotMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        spotRecordingChunks = [];
+        spotMediaRecorder = new MediaRecorder(spotMediaStream);
+        spotMediaRecorder.ondataavailable = (e) => { if (e.data?.size) spotRecordingChunks.push(e.data); };
+        spotMediaRecorder.start();
+      } catch (err) {
+        console.warn('Spot recording unavailable:', err);
+      }
+    }
+
+    function stopSpotRecording() {
+      return new Promise((resolve) => {
+        if (!spotMediaRecorder || spotMediaRecorder.state === 'inactive') {
+          if (spotMediaStream) {
+            spotMediaStream.getTracks().forEach(t => t.stop());
+            spotMediaStream = null;
+          }
+          return resolve();
+        }
+
+        let resolved = false;
+        const safeResolve = () => {
+          if (resolved) return;
+          resolved = true;
+          resolve();
+        };
+
+        const stopTimeout = setTimeout(() => {
+          if (spotMediaStream) {
+            spotMediaStream.getTracks().forEach(t => t.stop());
+            spotMediaStream = null;
+          }
+          spotMediaRecorder = null;
+          safeResolve();
+        }, 800);
+
+        spotMediaRecorder.onstop = () => {
+          clearTimeout(stopTimeout);
+          const blob = new Blob(spotRecordingChunks, { type: 'audio/webm' });
+          if (spotRecordingUrl) URL.revokeObjectURL(spotRecordingUrl);
+          if (blob.size > 0) {
+            spotRecordingUrl = URL.createObjectURL(blob);
+            const dl = document.getElementById('spotDownloadRecordingBtn');
+            dl.href = spotRecordingUrl;
+            dl.style.display = 'inline-block';
+          }
+          if (spotMediaStream) {
+            spotMediaStream.getTracks().forEach(t => t.stop());
+            spotMediaStream = null;
+          }
+          spotMediaRecorder = null;
+          safeResolve();
+        };
+
+        try {
+          spotMediaRecorder.stop();
+        } catch (err) {
+          clearTimeout(stopTimeout);
+          if (spotMediaStream) {
+            spotMediaStream.getTracks().forEach(t => t.stop());
+            spotMediaStream = null;
+          }
+          spotMediaRecorder = null;
+          safeResolve();
+        }
+      });
+    }
+
+    function hardResetSpotRuntime() {
+      clearInterval(spotMainInterval);
+      clearInterval(spotWordInterval);
+      clearInterval(spotThinkInterval);
+      stopSpotRecognition();
+      document.getElementById('spotGameShell').classList.remove('spot-border-danger');
+    }
+
+    function renderSpotWords() {
+      if (!spotSession) return;
+      const usedList = document.getElementById('spotUsedWordsList');
+      const upcomingList = document.getElementById('spotUpcomingWordsList');
+      usedList.innerHTML = '';
+      upcomingList.innerHTML = '';
+      spotSession.words.forEach((item, idx) => {
+        if (item.used || item.missed) {
+          const chip = document.createElement('div');
+          chip.className = `spot-chip ${item.used ? 'used' : 'missed'}`;
+          chip.textContent = `${item.used ? '✅' : '❌'} ${item.word}`;
+          usedList.appendChild(chip);
+        } else if (idx > spotSession.currentWordIndex) {
+          const chip = document.createElement('div');
+          chip.className = 'spot-chip locked';
+          chip.textContent = '🔒 Hidden word';
+          upcomingList.appendChild(chip);
+        }
+      });
+      if (!usedList.innerHTML) usedList.innerHTML = '<div class="spot-chip">No words completed yet</div>';
+      if (!upcomingList.innerHTML) upcomingList.innerHTML = '<div class="spot-chip">No upcoming words</div>';
+    }
+
+    function showSpotWord(index) {
+      if (!spotSession) return;
+      if (index >= spotSession.words.length) return finishSpotChallenge();
+      spotSession.currentWordIndex = index;
+      spotSession.wordTimeLeft = spotSession.settings.wordInterval;
+      const item = spotSession.words[index];
+      document.getElementById('spotCurrentWord').textContent = item.word.toUpperCase();
+      document.getElementById('spotWordTimer').textContent = String(spotSession.wordTimeLeft);
+      document.getElementById('spotWordTimerInline').textContent = `${spotSession.wordTimeLeft}s to use this word`;
+      document.getElementById('spotWordCard').style.animation = 'none';
+      requestAnimationFrame(() => { document.getElementById('spotWordCard').style.animation = ''; });
+      renderSpotWords();
+    }
+
+    function detectSpotCurrentWord() {
+      if (!spotSession) return;
+      const i = spotSession.currentWordIndex;
+      const item = spotSession.words[i];
+      if (!item || item.used || item.missed) return;
+      const normalized = normalizeTextForSpot(spotTranscript);
+      const wordNorm = normalizeTextForSpot(item.word).trim();
+      if (!wordNorm) return;
+      if (normalized.split(/\s+/).includes(wordNorm)) {
+        item.used = true;
+        item.detectedAt = spotSession.settings.wordInterval - spotSession.wordTimeLeft;
+        const bonus = Math.max(0, 5 - Math.floor(item.detectedAt / 2));
+        spotSession.bonus += bonus;
+        renderSpotWords();
+        showAchievement('✅ Word detected!');
+        showSpotWord(i + 1);
+      }
+    }
+
+    function updateSpotTimersUI() {
+      if (!spotSession) return;
+      document.getElementById('spotMainTimer').textContent = String(spotSession.mainTimeLeft);
+      const wordTimerEl = document.getElementById('spotWordTimer');
+      const inline = document.getElementById('spotWordTimerInline');
+      wordTimerEl.textContent = String(spotSession.wordTimeLeft);
+      inline.textContent = `${spotSession.wordTimeLeft}s to use this word`;
+      inline.classList.toggle('danger', spotSession.wordTimeLeft <= 3);
+      document.getElementById('spotGameShell').classList.toggle('spot-border-danger', spotSession.mainTimeLeft <= 10);
+    }
+
+    async function startSpotChallenge() {
+      try {
+        hardResetSpotRuntime();
+        await stopSpotRecording();
+        spotSession = null;
+        const settings = getSpotSettings();
+      const question = SPOT_CHALLENGE_QUESTIONS[Math.floor(Math.random() * SPOT_CHALLENGE_QUESTIONS.length)];
+      spotSession = {
+        settings,
+        question,
+        words: pickRandomSpotWords(settings.numWords),
+        mainTimeLeft: settings.speechDuration,
+        wordTimeLeft: settings.wordInterval,
+        currentWordIndex: 0,
+        startTime: null,
+        endTime: null,
+        earlyStopped: false,
+        bonus: 0
+      };
+      document.getElementById('spotQuestionText').textContent = question;
+      document.getElementById('spotGoText').textContent = `${settings.thinkTime}...`; 
+      document.getElementById('spotThinkCountdown').textContent = settings.thinkTime;
+      document.getElementById('spotDownloadRecordingBtn').style.display = 'none';
+      setSpotPhase('spotThinkPhase');
+
+      let think = settings.thinkTime;
+      spotThinkInterval = setInterval(async () => {
+        think -= 1;
+        document.getElementById('spotThinkCountdown').textContent = Math.max(think, 0);
+        document.getElementById('spotGoText').textContent = think > 0 ? `${think}...` : 'GO!';
+        if (think <= 0) {
+          clearInterval(spotThinkInterval);
+          setSpotPhase('spotSpeakPhase');
+          spotSession.startTime = Date.now();
+          showSpotWord(0);
+          startSpotRecognition();
+          await startSpotRecording();
+          spotMainInterval = setInterval(() => {
+            if (!spotSession) return;
+            spotSession.mainTimeLeft -= 1;
+            if (spotSession.mainTimeLeft <= 0) {
+              finishSpotChallenge();
+              return;
+            }
+            updateSpotTimersUI();
+          }, 1000);
+
+          spotWordInterval = setInterval(() => {
+            if (!spotSession) return;
+            spotSession.wordTimeLeft -= 1;
+            if (spotSession.wordTimeLeft <= 0) {
+              const idx = spotSession.currentWordIndex;
+              if (spotSession.words[idx] && !spotSession.words[idx].used) spotSession.words[idx].missed = true;
+              showSpotWord(idx + 1);
+            }
+            updateSpotTimersUI();
+          }, 1000);
+        }
+      }, 1000);
+      } catch (error) {
+        console.error('Failed to start Speak on the Spot challenge:', error);
+        showAchievement('⚠️ Could not start challenge. Please try again.');
+        setSpotPhase('spotSetupPhase');
+      }
+    }
+
+    function calculateSpotScore(session) {
+      const used = session.words.filter(w => w.used).length;
+      const missed = session.words.filter(w => w.missed).length;
+      const fullTimeBonus = session.mainTimeLeft <= 0 && !session.earlyStopped ? 10 : 0;
+      const earlyPenalty = session.earlyStopped ? 5 : 0;
+      const raw = (used * 15) + session.bonus + fullTimeBonus - (missed * 10) - earlyPenalty;
+      return Math.max(0, Math.min(100, Math.round(raw)));
+    }
+
+    async function finishSpotChallenge() {
+      if (!spotSession) return;
+      clearInterval(spotMainInterval);
+      clearInterval(spotWordInterval);
+      clearInterval(spotThinkInterval);
+      stopSpotRecognition();
+      await stopSpotRecording();
+
+      spotSession.endTime = Date.now();
+      const elapsed = spotSession.startTime ? Math.round((spotSession.endTime - spotSession.startTime) / 1000) : 0;
+      const used = spotSession.words.filter(w => w.used).length;
+      const score = calculateSpotScore(spotSession);
+
+      spotChallengeStats.totalGames += 1;
+      spotChallengeStats.bestScore = Math.max(spotChallengeStats.bestScore, score);
+      spotChallengeStats.totalWordsUsed += used;
+      spotChallengeStats.totalWordsTarget += spotSession.words.length;
+      if (!spotChallengeStats.fastestCompletion || elapsed < spotChallengeStats.fastestCompletion) {
+        spotChallengeStats.fastestCompletion = elapsed;
+      }
+      saveSpotChallengeStats();
+
+      document.getElementById('spotScoreValue').textContent = score;
+      document.getElementById('spotWordsUsedValue').textContent = `${used}/${spotSession.words.length}`;
+      document.getElementById('spotTimeValue').textContent = `${elapsed}s`;
+      const resultsList = document.getElementById('spotWordResultsList');
+      resultsList.innerHTML = spotSession.words.map(w => `<div class="spot-chip ${w.used ? 'used' : 'missed'}">${w.used ? '✅ Used' : '❌ Missed'} — ${w.word}</div>`).join('');
+      document.getElementById('spotFinalTranscript').textContent = spotTranscript || 'No transcript captured. Try Chrome for Web Speech API support.';
+      document.getElementById('spotGameShell').classList.remove('spot-border-danger');
+      setSpotPhase('spotResultsPhase');
+      spotSession = null;
+    }
+
+    async function stopSpotChallenge(silent = false) {
+      hardResetSpotRuntime();
+      await stopSpotRecording();
+      if (spotSession && !silent) {
+        spotSession.earlyStopped = true;
+        await finishSpotChallenge();
+      } else {
+        spotSession = null;
+        if (silent) setSpotPhase('spotSetupPhase');
+      }
+    }
+
+    function viewSpotRecording() {
+      if (!spotRecordingUrl) {
+        showAchievement('⚠️ Recording unavailable on this browser/session.');
+        return;
+      }
+      const audio = new Audio(spotRecordingUrl);
+      audio.play().catch(() => showAchievement('⚠️ Could not play recording.'));
+    }
 
     // ===== WARM UP PAGE FUNCTIONS =====
     let warmupExerciseTimers = [];
