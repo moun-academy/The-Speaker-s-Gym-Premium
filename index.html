@@ -3306,6 +3306,10 @@
       <button class="menu-close" id="menuClose">×</button>
     </div>
     <nav class="menu-nav">
+      <div class="menu-item" id="menuWarmUp" data-page="warmup">
+        <span class="menu-item-icon">🎤</span>
+        <span>Warm Up</span>
+      </div>
       <div class="menu-item active" id="menuHome" data-page="main">
         <span class="menu-item-icon">🏠</span>
         <span>Home</span>
@@ -3313,10 +3317,6 @@
       <div class="menu-item" id="menuRapidFire" data-page="rapidfire">
         <span class="menu-item-icon">⚡</span>
         <span>Think Fast</span>
-      </div>
-      <div class="menu-item" id="menuWarmUp" data-page="warmup">
-        <span class="menu-item-icon">🎤</span>
-        <span>Warm Up</span>
       </div>
       <div class="menu-item" id="menuSpot" data-page="spot">
         <span class="menu-item-icon">🎯</span>
@@ -5217,10 +5217,8 @@
       updateWeekCalendar();
       updateNudge();
       initSpeechRecognition();
-      initSpotRecognition();
       initAIToggle();
       initPromptModeToggle();
-      initSpotChallengePage();
       setAiStatus('Waiting for your next recording.');
       manualTranscript.value = '';
       updateVersionDisplay();
@@ -8614,6 +8612,12 @@
       const audio = new Audio(spotRecordingUrl);
       audio.play().catch(() => showAchievement('⚠️ Could not play recording.'));
     }
+
+    // Initialize Speak on the Spot (must run in this script block because the
+    // functions are defined here; init() in the earlier <script> block can't
+    // see them due to function declarations not hoisting across script tags).
+    initSpotRecognition();
+    initSpotChallengePage();
 
     // ===== WARM UP PAGE FUNCTIONS =====
     let warmupExerciseTimers = [];
