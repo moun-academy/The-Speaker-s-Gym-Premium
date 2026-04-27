@@ -3175,6 +3175,17 @@
       margin: 14px 0;
       color: #fef3c7;
     }
+    .spot-question.spot-question-small {
+      font-size: 18px;
+      line-height: 1.3;
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(250, 204, 21, 0.22);
+      border-radius: 10px;
+      color: #facc15;
+      font-weight: 700;
+    }
     .spot-think-count {
       text-align: center;
       font-size: 78px;
@@ -3712,6 +3723,7 @@
       </div>
 
       <div class="spot-phase" id="spotSpeakPhase">
+        <div class="spot-question spot-question-small" id="spotQuestionSpeakText">Question</div>
         <div class="spot-timers">
           <div class="spot-timer-box">
             <div class="spot-timer-label">Main Timer</div>
@@ -5163,6 +5175,8 @@
     let spotThinkInterval = null;
     let spotRecognition = null;
     let spotRecognitionActive = false;
+    let spotRecognitionShouldRun = false;
+    let spotRecognitionSupported = true;
     let spotTranscript = '';
     let spotMediaRecorder = null;
     let spotMediaStream = null;
@@ -8303,11 +8317,17 @@
 
     function initSpotRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) return;
+      if (!SpeechRecognition) {
+        spotRecognitionSupported = false;
+        return;
+      }
       spotRecognition = new SpeechRecognition();
       spotRecognition.continuous = true;
       spotRecognition.interimResults = true;
       spotRecognition.lang = 'en-US';
+      spotRecognition.onstart = () => {
+        spotRecognitionActive = true;
+      };
       spotRecognition.onresult = (event) => {
         let transcript = '';
         for (let i = 0; i < event.results.length; i++) transcript += event.results[i][0].transcript + ' ';
@@ -8315,26 +8335,60 @@
         document.getElementById('spotLiveTranscript').textContent = spotTranscript || 'Listening...';
         detectSpotCurrentWord();
       };
+      spotRecognition.onerror = (event) => {
+        console.warn('Spot recognition error:', event.error);
+        spotRecognitionActive = false;
+        // Fatal errors: don't try to restart; show a message instead.
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          spotRecognitionShouldRun = false;
+          const el = document.getElementById('spotLiveTranscript');
+          if (el) el.textContent = '⚠️ Microphone permission is required for live transcription. Enable it and restart the challenge.';
+        } else if (event.error === 'audio-capture') {
+          spotRecognitionShouldRun = false;
+          const el = document.getElementById('spotLiveTranscript');
+          if (el) el.textContent = '⚠️ No microphone detected.';
+        }
+        // Other transient errors (no-speech, aborted, network) — onend will restart us.
+      };
       spotRecognition.onend = () => {
         spotRecognitionActive = false;
+        // Auto-restart while the challenge is still running so the recognizer
+        // stays alive across silence timeouts / transient errors.
+        if (spotRecognitionShouldRun && spotSession) {
+          try {
+            spotRecognition.start();
+          } catch (err) {
+            console.warn('Spot recognition restart failed:', err);
+          }
+        }
       };
     }
 
     function startSpotRecognition() {
-      if (!spotRecognition || spotRecognitionActive) return;
+      if (!spotRecognitionSupported || !spotRecognition) {
+        const el = document.getElementById('spotLiveTranscript');
+        if (el) el.textContent = 'ℹ️ Live transcription is not supported in this browser — word detection is disabled. Try Chrome.';
+        return;
+      }
+      spotRecognitionShouldRun = true;
+      if (spotRecognitionActive) return;
       spotTranscript = '';
       document.getElementById('spotLiveTranscript').textContent = 'Listening...';
       try {
         spotRecognition.start();
-        spotRecognitionActive = true;
       } catch (err) {
         console.error('Spot recognition start error:', err);
+        // InvalidStateError means it's already running — treat as active.
+        if (err && err.name === 'InvalidStateError') {
+          spotRecognitionActive = true;
+        }
       }
     }
 
     function stopSpotRecognition() {
+      spotRecognitionShouldRun = false;
       if (spotRecognition && spotRecognitionActive) {
-        spotRecognition.stop();
+        try { spotRecognition.stop(); } catch (err) { /* ignore */ }
       }
     }
 
@@ -8484,11 +8538,25 @@
       document.getElementById('spotGameShell').classList.toggle('spot-border-danger', spotSession.mainTimeLeft <= 10);
     }
 
+    async function primeSpotMicPermission() {
+      // Request mic permission inside the click's async chain so the browser
+      // prompts correctly. Once granted, SpeechRecognition.start() later
+      // (inside setInterval) won't be blocked waiting for a user gesture.
+      if (!navigator.mediaDevices?.getUserMedia) return;
+      try {
+        const warm = await navigator.mediaDevices.getUserMedia({ audio: true });
+        warm.getTracks().forEach(t => t.stop());
+      } catch (err) {
+        console.warn('Mic pre-grant failed:', err);
+      }
+    }
+
     async function startSpotChallenge() {
       try {
         hardResetSpotRuntime();
         await stopSpotRecording();
         spotSession = null;
+        await primeSpotMicPermission();
         const settings = getSpotSettings();
       const question = SPOT_CHALLENGE_QUESTIONS[Math.floor(Math.random() * SPOT_CHALLENGE_QUESTIONS.length)];
       spotSession = {
@@ -8504,7 +8572,8 @@
         bonus: 0
       };
       document.getElementById('spotQuestionText').textContent = question;
-      document.getElementById('spotGoText').textContent = `${settings.thinkTime}...`; 
+      document.getElementById('spotQuestionSpeakText').textContent = question;
+      document.getElementById('spotGoText').textContent = `${settings.thinkTime}...`;
       document.getElementById('spotThinkCountdown').textContent = settings.thinkTime;
       document.getElementById('spotDownloadRecordingBtn').style.display = 'none';
       setSpotPhase('spotThinkPhase');
