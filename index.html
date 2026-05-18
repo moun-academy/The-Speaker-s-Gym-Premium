@@ -5178,6 +5178,9 @@
     let spotRecognitionShouldRun = false;
     let spotRecognitionSupported = true;
     let spotTranscript = '';
+    let spotTranscriptFinal = '';
+    const SPOT_IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const SPOT_IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
     let spotMediaRecorder = null;
     let spotMediaStream = null;
     let spotRecordingChunks = [];
@@ -8322,17 +8325,36 @@
         return;
       }
       spotRecognition = new SpeechRecognition();
+      // Mobile browsers (especially iOS Safari) often ignore `continuous` and
+      // auto-stop after a single utterance. We rely on the onend → restart loop
+      // below, and accumulate finalized transcripts into spotTranscriptFinal so
+      // detection sees the full history across restarts.
       spotRecognition.continuous = true;
       spotRecognition.interimResults = true;
       spotRecognition.lang = 'en-US';
+      spotRecognition.maxAlternatives = 5;
       spotRecognition.onstart = () => {
         spotRecognitionActive = true;
       };
       spotRecognition.onresult = (event) => {
-        let transcript = '';
-        for (let i = 0; i < event.results.length; i++) transcript += event.results[i][0].transcript + ' ';
-        spotTranscript = transcript.trim();
-        document.getElementById('spotLiveTranscript').textContent = spotTranscript || 'Listening...';
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          // Walk every alternative so an unusual top-1 transcription doesn't
+          // hide a clean match in alternative 2/3.
+          let combined = '';
+          for (let a = 0; a < result.length; a++) {
+            combined += result[a].transcript + ' ';
+          }
+          if (result.isFinal) {
+            spotTranscriptFinal += combined + ' ';
+          } else {
+            interim += combined + ' ';
+          }
+        }
+        spotTranscript = (spotTranscriptFinal + ' ' + interim).trim();
+        const liveEl = document.getElementById('spotLiveTranscript');
+        if (liveEl) liveEl.textContent = spotTranscript || 'Listening...';
         detectSpotCurrentWord();
       };
       spotRecognition.onerror = (event) => {
@@ -8353,13 +8375,24 @@
       spotRecognition.onend = () => {
         spotRecognitionActive = false;
         // Auto-restart while the challenge is still running so the recognizer
-        // stays alive across silence timeouts / transient errors.
-        if (spotRecognitionShouldRun && spotSession) {
-          try {
-            spotRecognition.start();
-          } catch (err) {
-            console.warn('Spot recognition restart failed:', err);
-          }
+        // stays alive across silence timeouts / transient errors. Mobile
+        // browsers commonly end the session after a single utterance — without
+        // this loop, recognition would die mid-challenge.
+        if (spotRecognitionShouldRun) {
+          // Small delay lets the previous session fully release on mobile
+          // (avoids InvalidStateError when restarting too quickly).
+          setTimeout(() => {
+            if (!spotRecognitionShouldRun) return;
+            try {
+              spotRecognition.start();
+            } catch (err) {
+              if (err && err.name === 'InvalidStateError') {
+                spotRecognitionActive = true;
+              } else {
+                console.warn('Spot recognition restart failed:', err);
+              }
+            }
+          }, 250);
         }
       };
     }
@@ -8373,6 +8406,7 @@
       spotRecognitionShouldRun = true;
       if (spotRecognitionActive) return;
       spotTranscript = '';
+      spotTranscriptFinal = '';
       document.getElementById('spotLiveTranscript').textContent = 'Listening...';
       try {
         spotRecognition.start();
@@ -8394,6 +8428,11 @@
 
     async function startSpotRecording() {
       if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return;
+      // On iOS the microphone is single-tenant: a second getUserMedia call
+      // here would yank the mic away from SpeechRecognition and break word
+      // detection. Word detection is the core feature, so skip the audio
+      // recording on iOS rather than break it.
+      if (SPOT_IS_IOS) return;
       try {
         spotMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         spotRecordingChunks = [];
@@ -8508,23 +8547,47 @@
       renderSpotWords();
     }
 
+    function spotTranscriptMatchesWord(transcript, word) {
+      const normalized = normalizeTextForSpot(transcript);
+      const wordNorm = normalizeTextForSpot(word).trim();
+      if (!wordNorm) return false;
+      const tokens = normalized.split(/\s+/).filter(Boolean);
+      // Accept exact token, common English inflections (plural / verb forms),
+      // and possessive ("guitar's" → tokens contain "guitar"). This makes the
+      // matcher tolerant of mobile speech engines that often return slightly
+      // different word forms than what the user actually spoke.
+      const variants = new Set([
+        wordNorm,
+        wordNorm + 's',
+        wordNorm + 'es',
+        wordNorm + 'ed',
+        wordNorm + 'ing',
+        wordNorm.endsWith('y') ? wordNorm.slice(0, -1) + 'ies' : null,
+        wordNorm.endsWith('e') ? wordNorm.slice(0, -1) + 'ing' : null,
+      ].filter(Boolean));
+      for (const t of tokens) {
+        if (variants.has(t)) return true;
+        // Long words: allow a token that starts with the target (handles
+        // suffixed forms like "guitarist" → "guitar"). Skip for short words
+        // to avoid false positives.
+        if (wordNorm.length >= 5 && t.startsWith(wordNorm)) return true;
+      }
+      return false;
+    }
+
     function detectSpotCurrentWord() {
       if (!spotSession) return;
       const i = spotSession.currentWordIndex;
       const item = spotSession.words[i];
       if (!item || item.used || item.missed) return;
-      const normalized = normalizeTextForSpot(spotTranscript);
-      const wordNorm = normalizeTextForSpot(item.word).trim();
-      if (!wordNorm) return;
-      if (normalized.split(/\s+/).includes(wordNorm)) {
-        item.used = true;
-        item.detectedAt = spotSession.settings.wordInterval - spotSession.wordTimeLeft;
-        const bonus = Math.max(0, 5 - Math.floor(item.detectedAt / 2));
-        spotSession.bonus += bonus;
-        renderSpotWords();
-        showAchievement('✅ Word detected!');
-        showSpotWord(i + 1);
-      }
+      if (!spotTranscriptMatchesWord(spotTranscript, item.word)) return;
+      item.used = true;
+      item.detectedAt = spotSession.settings.wordInterval - spotSession.wordTimeLeft;
+      const bonus = Math.max(0, 5 - Math.floor(item.detectedAt / 2));
+      spotSession.bonus += bonus;
+      renderSpotWords();
+      showAchievement('✅ Word detected!');
+      showSpotWord(i + 1);
     }
 
     function updateSpotTimersUI() {
@@ -8578,6 +8641,13 @@
       document.getElementById('spotDownloadRecordingBtn').style.display = 'none';
       setSpotPhase('spotThinkPhase');
 
+      // Kick off speech recognition NOW (while we're still in the click's
+      // gesture chain). iOS Safari refuses to start SpeechRecognition outside
+      // a user gesture, and the think-phase setInterval below doesn't count.
+      // It's fine if it listens during the think phase — we don't start
+      // matching against the current word until showSpotWord(0) runs.
+      startSpotRecognition();
+
       let think = settings.thinkTime;
       spotThinkInterval = setInterval(async () => {
         think -= 1;
@@ -8587,8 +8657,13 @@
           clearInterval(spotThinkInterval);
           setSpotPhase('spotSpeakPhase');
           spotSession.startTime = Date.now();
+          // Clear any chatter captured during the think phase so it doesn't
+          // accidentally satisfy the first word.
+          spotTranscript = '';
+          spotTranscriptFinal = '';
+          const liveEl = document.getElementById('spotLiveTranscript');
+          if (liveEl) liveEl.textContent = 'Listening...';
           showSpotWord(0);
-          startSpotRecognition();
           await startSpotRecording();
           spotMainInterval = setInterval(() => {
             if (!spotSession) return;
