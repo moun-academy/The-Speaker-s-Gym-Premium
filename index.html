@@ -5180,6 +5180,11 @@
     let spotRecognitionSupported = true;
     let spotTranscript = '';
     let spotTranscriptFinal = '';
+    // Separate "haystack" that also includes lower-ranked alternatives. Used
+    // only for word detection — never displayed — because mobile recognizers
+    // sometimes bury the right word in alt[1]/alt[2].
+    let spotMatchTranscript = '';
+    let spotMatchTranscriptFinal = '';
     const SPOT_IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const SPOT_IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
     // Diagnostic state so we can surface *why* word detection failed on
@@ -8376,23 +8381,28 @@
       };
       spotRecognition.onresult = (event) => {
         spotRecogDiag.resultCount += 1;
-        let interim = '';
+        let interimTop = '';
+        let interimAlts = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
-          // Walk every alternative so an unusual top-1 transcription doesn't
-          // hide a clean match in alternative 2/3.
-          let combined = '';
+          const top = result[0] ? result[0].transcript : '';
+          // For matching only, include every alternative so an unusual top-1
+          // transcription doesn't hide a clean match in alternative 2/3.
+          let alts = '';
           for (let a = 0; a < result.length; a++) {
-            combined += result[a].transcript + ' ';
+            alts += result[a].transcript + ' ';
           }
           if (result.isFinal) {
             spotRecogDiag.finalResultCount += 1;
-            spotTranscriptFinal += combined + ' ';
+            spotTranscriptFinal += top + ' ';
+            spotMatchTranscriptFinal += alts + ' ';
           } else {
-            interim += combined + ' ';
+            interimTop += top + ' ';
+            interimAlts += alts + ' ';
           }
         }
-        spotTranscript = (spotTranscriptFinal + ' ' + interim).trim();
+        spotTranscript = (spotTranscriptFinal + ' ' + interimTop).trim();
+        spotMatchTranscript = (spotMatchTranscriptFinal + ' ' + interimAlts).trim();
         const liveEl = document.getElementById('spotLiveTranscript');
         if (liveEl) liveEl.textContent = spotTranscript || 'Listening...';
         detectSpotCurrentWord();
@@ -8455,6 +8465,8 @@
       if (spotRecognitionActive) return;
       spotTranscript = '';
       spotTranscriptFinal = '';
+      spotMatchTranscript = '';
+      spotMatchTranscriptFinal = '';
       resetSpotRecogDiag();
       document.getElementById('spotLiveTranscript').textContent = 'Listening...';
       try {
@@ -8630,7 +8642,7 @@
       const i = spotSession.currentWordIndex;
       const item = spotSession.words[i];
       if (!item || item.used || item.missed) return;
-      if (!spotTranscriptMatchesWord(spotTranscript, item.word)) return;
+      if (!spotTranscriptMatchesWord(spotMatchTranscript || spotTranscript, item.word)) return;
       item.used = true;
       item.detectedAt = spotSession.settings.wordInterval - spotSession.wordTimeLeft;
       const bonus = Math.max(0, 5 - Math.floor(item.detectedAt / 2));
@@ -8711,6 +8723,8 @@
           // accidentally satisfy the first word.
           spotTranscript = '';
           spotTranscriptFinal = '';
+          spotMatchTranscript = '';
+          spotMatchTranscriptFinal = '';
           const liveEl = document.getElementById('spotLiveTranscript');
           if (liveEl) liveEl.textContent = 'Listening...';
           showSpotWord(0);
