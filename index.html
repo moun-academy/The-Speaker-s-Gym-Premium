@@ -8115,12 +8115,22 @@
       const h = wrap.clientHeight;
       ctx.clearRect(0, 0, w, h);
 
-      const padL = 28, padR = 12, padT = 8, padB = 24;
+      // padT reserves vertical space above the tallest bar so the value
+      // label drawn above it never clips out the top of the canvas.
+      const padL = 28, padR = 12, padT = 20, padB = 24;
       const chartW = w - padL - padR;
       const chartH = h - padT - padB;
       const values = buckets.map(b => b.speeches.length);
       const maxVal = Math.max(...values, 1);
-      const niceMax = Math.max(maxVal, 4); // always show some headroom
+      // Round the axis up to a nice number with 15%+ headroom so the tallest
+      // bar never reaches the very top — labels need breathing room.
+      const niceMax = (() => {
+        const padded = Math.max(maxVal * 1.15, maxVal + 1, 4);
+        if (padded <= 10) return Math.ceil(padded);
+        if (padded <= 50) return Math.ceil(padded / 5) * 5;
+        if (padded <= 200) return Math.ceil(padded / 10) * 10;
+        return Math.ceil(padded / 50) * 50;
+      })();
 
       // Grid + y labels
       ctx.strokeStyle = 'rgba(55, 65, 81, 0.35)';
@@ -8159,12 +8169,22 @@
           roundRect(ctx, x, y, barWidth, barH, 3);
           ctx.fill();
         }
-        // Value label on top of current/best bar
+        // Value label on top of current/best bar. Clamp the y position so
+        // it can never sit above the canvas top — if the bar is tall enough
+        // that the label would clip, draw it just inside the top of the bar.
         if ((isCurrent || isBest) && v > 0) {
-          ctx.fillStyle = '#e5e7eb';
           ctx.font = 'bold 10px Inter, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText(String(v), x + barWidth / 2, y - 4);
+          const labelAboveY = y - 4;
+          if (labelAboveY >= 10) {
+            ctx.fillStyle = '#e5e7eb';
+            ctx.fillText(String(v), x + barWidth / 2, labelAboveY);
+          } else {
+            // Bar is so tall the label wouldn't fit above — paint it on the
+            // bar in a contrasting color instead.
+            ctx.fillStyle = '#0f172a';
+            ctx.fillText(String(v), x + barWidth / 2, y + 11);
+          }
         }
         // X label every other bucket so they don't crowd
         if (i === 0 || i === buckets.length - 1 || (buckets.length <= 8) || i % 2 === 1) {
