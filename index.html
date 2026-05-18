@@ -5179,12 +5179,20 @@
     let spotRecognitionShouldRun = false;
     let spotRecognitionSupported = true;
     let spotTranscript = '';
-    let spotTranscriptFinal = '';
+    // Finals from prior recognition sessions (the recognizer restarts on
+    // mobile after each utterance/silence — we promote a session's finals
+    // into these accumulators when it ends so the user sees the whole speech).
+    let spotPriorFinal = '';
+    let spotPriorMatchFinal = '';
+    // Finals captured during the CURRENT session, rebuilt every onresult so
+    // re-emitted results don't pile up (Android Chrome often emits the same
+    // finalized result repeatedly with event.resultIndex stuck at 0).
+    let spotCurrentSessionFinal = '';
+    let spotCurrentSessionMatchFinal = '';
     // Separate "haystack" that also includes lower-ranked alternatives. Used
     // only for word detection — never displayed — because mobile recognizers
     // sometimes bury the right word in alt[1]/alt[2].
     let spotMatchTranscript = '';
-    let spotMatchTranscriptFinal = '';
     const SPOT_IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const SPOT_IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
     // Diagnostic state so we can surface *why* word detection failed on
@@ -8369,7 +8377,7 @@
       spotRecognition = new SpeechRecognition();
       // Mobile browsers (especially iOS Safari) often ignore `continuous` and
       // auto-stop after a single utterance. We rely on the onend → restart loop
-      // below, and accumulate finalized transcripts into spotTranscriptFinal so
+      // below, and the onresult handler stitches each session's finals into
       // detection sees the full history across restarts.
       spotRecognition.continuous = true;
       spotRecognition.interimResults = true;
@@ -8381,28 +8389,36 @@
       };
       spotRecognition.onresult = (event) => {
         spotRecogDiag.resultCount += 1;
+        // Rebuild this session's transcript from scratch each call. Some
+        // mobile recognizers re-emit the same finalized results across
+        // onresult calls (event.resultIndex doesn't advance reliably), so
+        // appending would duplicate every utterance over and over.
+        let sessionFinalTop = '';
+        let sessionFinalAlts = '';
         let interimTop = '';
         let interimAlts = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
+        let sessionFinalCount = 0;
+        for (let i = 0; i < event.results.length; i++) {
           const result = event.results[i];
           const top = result[0] ? result[0].transcript : '';
-          // For matching only, include every alternative so an unusual top-1
-          // transcription doesn't hide a clean match in alternative 2/3.
           let alts = '';
           for (let a = 0; a < result.length; a++) {
             alts += result[a].transcript + ' ';
           }
           if (result.isFinal) {
-            spotRecogDiag.finalResultCount += 1;
-            spotTranscriptFinal += top + ' ';
-            spotMatchTranscriptFinal += alts + ' ';
+            sessionFinalCount += 1;
+            sessionFinalTop += top + ' ';
+            sessionFinalAlts += alts + ' ';
           } else {
             interimTop += top + ' ';
             interimAlts += alts + ' ';
           }
         }
-        spotTranscript = (spotTranscriptFinal + ' ' + interimTop).trim();
-        spotMatchTranscript = (spotMatchTranscriptFinal + ' ' + interimAlts).trim();
+        spotCurrentSessionFinal = sessionFinalTop;
+        spotCurrentSessionMatchFinal = sessionFinalAlts;
+        spotRecogDiag.finalResultCount = sessionFinalCount; // current session only
+        spotTranscript = (spotPriorFinal + ' ' + sessionFinalTop + ' ' + interimTop).replace(/\s+/g, ' ').trim();
+        spotMatchTranscript = (spotPriorMatchFinal + ' ' + sessionFinalAlts + ' ' + interimAlts).replace(/\s+/g, ' ').trim();
         const liveEl = document.getElementById('spotLiveTranscript');
         if (liveEl) liveEl.textContent = spotTranscript || 'Listening...';
         detectSpotCurrentWord();
@@ -8432,6 +8448,17 @@
       spotRecognition.onend = () => {
         spotRecognitionActive = false;
         spotRecogDiag.endCount += 1;
+        // Persist this ended session's finals so the next session's
+        // (independent) event.results doesn't wipe the user's prior speech
+        // from the visible transcript.
+        if (spotCurrentSessionFinal) {
+          spotPriorFinal = (spotPriorFinal + ' ' + spotCurrentSessionFinal).replace(/\s+/g, ' ').trim() + ' ';
+        }
+        if (spotCurrentSessionMatchFinal) {
+          spotPriorMatchFinal = (spotPriorMatchFinal + ' ' + spotCurrentSessionMatchFinal).replace(/\s+/g, ' ').trim() + ' ';
+        }
+        spotCurrentSessionFinal = '';
+        spotCurrentSessionMatchFinal = '';
         // Auto-restart while the challenge is still running so the recognizer
         // stays alive across silence timeouts / transient errors. Mobile
         // browsers commonly end the session after a single utterance — without
@@ -8464,9 +8491,11 @@
       spotRecognitionShouldRun = true;
       if (spotRecognitionActive) return;
       spotTranscript = '';
-      spotTranscriptFinal = '';
+      spotPriorFinal = '';
+      spotCurrentSessionFinal = '';
       spotMatchTranscript = '';
-      spotMatchTranscriptFinal = '';
+      spotPriorMatchFinal = '';
+      spotCurrentSessionMatchFinal = '';
       resetSpotRecogDiag();
       document.getElementById('spotLiveTranscript').textContent = 'Listening...';
       try {
@@ -8722,9 +8751,11 @@
           // Clear any chatter captured during the think phase so it doesn't
           // accidentally satisfy the first word.
           spotTranscript = '';
-          spotTranscriptFinal = '';
+          spotPriorFinal = '';
+          spotCurrentSessionFinal = '';
           spotMatchTranscript = '';
-          spotMatchTranscriptFinal = '';
+          spotPriorMatchFinal = '';
+          spotCurrentSessionMatchFinal = '';
           const liveEl = document.getElementById('spotLiveTranscript');
           if (liveEl) liveEl.textContent = 'Listening...';
           showSpotWord(0);
