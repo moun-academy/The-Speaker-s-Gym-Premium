@@ -504,6 +504,185 @@
       color: #facc15;
     }
 
+    /* Track Record */
+    .track-record-container {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 16px;
+      padding: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .track-record-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .track-tab {
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(55, 65, 81, 0.5);
+      background: rgba(15, 23, 42, 0.4);
+      color: #9ca3af;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .track-tab.active {
+      background: rgba(250, 204, 21, 0.15);
+      border-color: rgba(250, 204, 21, 0.4);
+      color: #facc15;
+    }
+    .track-summary-header {
+      font-size: 11px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+    .track-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .track-stat {
+      background: rgba(15, 23, 42, 0.55);
+      border-radius: 12px;
+      padding: 12px;
+      border: 1px solid rgba(55, 65, 81, 0.3);
+    }
+    .track-stat-label {
+      font-size: 10px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .track-stat-value {
+      font-size: 22px;
+      font-weight: 800;
+      color: #e5e7eb;
+      margin-top: 4px;
+      line-height: 1.1;
+    }
+    .track-stat-change {
+      font-size: 11px;
+      font-weight: 700;
+      margin-top: 6px;
+      min-height: 14px;
+    }
+    .track-stat-change.positive { color: #22c55e; }
+    .track-stat-change.negative { color: #ef4444; }
+    .track-stat-change.neutral { color: #6b7280; }
+    .track-chart-label {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+    .track-chart-wrap {
+      height: 150px;
+    }
+    .track-chart-legend {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      font-size: 11px;
+      color: #9ca3af;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .legend-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      background: #facc15;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
+    /* Practice Patterns */
+    .patterns-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .pattern-card {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .pattern-label {
+      font-size: 10px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+    }
+    .pattern-value {
+      font-size: 20px;
+      font-weight: 800;
+      color: #facc15;
+      margin-top: 6px;
+      line-height: 1.15;
+    }
+    .pattern-detail {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    /* Personal Records */
+    .records-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .record-card {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 12px;
+      padding: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .record-icon {
+      font-size: 22px;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(250, 204, 21, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .record-body { min-width: 0; flex: 1; }
+    .record-label {
+      font-size: 10px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+    .record-value {
+      font-size: 15px;
+      font-weight: 700;
+      color: #e5e7eb;
+      margin-top: 2px;
+      line-height: 1.2;
+    }
+    @media (max-width: 480px) {
+      .records-grid { grid-template-columns: 1fr; }
+    }
+
     /* Analytics login prompt */
     .analytics-login-prompt {
       text-align: center;
@@ -4284,6 +4463,124 @@
         </div>
       </div>
 
+      <!-- Track Record (Weekly / Monthly) -->
+      <div class="analytics-section">
+        <div class="analytics-section-title">📅 Track Record</div>
+        <div class="track-record-container">
+          <div class="track-record-tabs" id="trackRecordTabs">
+            <button class="track-tab active" data-period="week">By Week</button>
+            <button class="track-tab" data-period="month">By Month</button>
+          </div>
+          <div class="track-summary-header" id="trackSummaryHeader">This Week vs Last Week</div>
+          <div class="track-stats-grid">
+            <div class="track-stat">
+              <div class="track-stat-label">Sessions</div>
+              <div class="track-stat-value" id="trackSessions">--</div>
+              <div class="track-stat-change" id="trackSessionsChange"></div>
+            </div>
+            <div class="track-stat">
+              <div class="track-stat-label">Practice Days</div>
+              <div class="track-stat-value" id="trackDays">--</div>
+              <div class="track-stat-change" id="trackDaysChange"></div>
+            </div>
+            <div class="track-stat">
+              <div class="track-stat-label">Speaking Time</div>
+              <div class="track-stat-value" id="trackMinutes">--</div>
+              <div class="track-stat-change" id="trackMinutesChange"></div>
+            </div>
+            <div class="track-stat">
+              <div class="track-stat-label">Avg Fillers</div>
+              <div class="track-stat-value" id="trackFillers">--</div>
+              <div class="track-stat-change" id="trackFillersChange"></div>
+            </div>
+          </div>
+          <div class="track-chart-label" id="trackChartLabel">Last 12 Weeks</div>
+          <div class="chart-canvas-wrap track-chart-wrap">
+            <canvas id="trackChart"></canvas>
+          </div>
+          <div class="track-chart-legend">
+            <span><span class="legend-dot legend-bar"></span> Sessions completed</span>
+            <span id="trackBestPeriod"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Practice Patterns -->
+      <div class="analytics-section">
+        <div class="analytics-section-title">🧭 Practice Patterns</div>
+        <div class="patterns-grid">
+          <div class="pattern-card">
+            <div class="pattern-label">Best Practice Day</div>
+            <div class="pattern-value" id="patternBestDay">--</div>
+            <div class="pattern-detail" id="patternBestDayDetail">No data yet</div>
+          </div>
+          <div class="pattern-card">
+            <div class="pattern-label">Most Active Time</div>
+            <div class="pattern-value" id="patternBestTime">--</div>
+            <div class="pattern-detail" id="patternBestTimeDetail">No data yet</div>
+          </div>
+          <div class="pattern-card">
+            <div class="pattern-label">Avg Session Length</div>
+            <div class="pattern-value" id="patternAvgDuration">--</div>
+            <div class="pattern-detail" id="patternAvgDurationDetail">Across all sessions</div>
+          </div>
+          <div class="pattern-card">
+            <div class="pattern-label">Sessions / Week</div>
+            <div class="pattern-value" id="patternSessionsPerWeek">--</div>
+            <div class="pattern-detail" id="patternSessionsPerWeekDetail">Average, last 4 weeks</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Personal Records -->
+      <div class="analytics-section">
+        <div class="analytics-section-title">🏆 Personal Records</div>
+        <div class="records-grid">
+          <div class="record-card">
+            <div class="record-icon">🔥</div>
+            <div class="record-body">
+              <div class="record-label">Longest Streak</div>
+              <div class="record-value" id="recordStreak">--</div>
+            </div>
+          </div>
+          <div class="record-card">
+            <div class="record-icon">📅</div>
+            <div class="record-body">
+              <div class="record-label">Most In One Day</div>
+              <div class="record-value" id="recordMostInDay">--</div>
+            </div>
+          </div>
+          <div class="record-card">
+            <div class="record-icon">⏱️</div>
+            <div class="record-body">
+              <div class="record-label">Longest Speech</div>
+              <div class="record-value" id="recordLongest">--</div>
+            </div>
+          </div>
+          <div class="record-card">
+            <div class="record-icon">🎯</div>
+            <div class="record-body">
+              <div class="record-label">Best Pacing</div>
+              <div class="record-value" id="recordBestWpm">--</div>
+            </div>
+          </div>
+          <div class="record-card">
+            <div class="record-icon">🤫</div>
+            <div class="record-body">
+              <div class="record-label">Cleanest Speech</div>
+              <div class="record-value" id="recordCleanest">--</div>
+            </div>
+          </div>
+          <div class="record-card">
+            <div class="record-icon">⭐</div>
+            <div class="record-body">
+              <div class="record-label">Top Self-Rating</div>
+              <div class="record-value" id="recordTopRating">--</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- WPM Trend Chart -->
       <div class="analytics-section">
         <div class="analytics-section-title">📈 Words Per Minute</div>
@@ -4292,6 +4589,7 @@
           <div class="chart-period-btns" data-chart="wpm">
             <button class="chart-period-btn active" data-period="7">7 days</button>
             <button class="chart-period-btn" data-period="30">30 days</button>
+            <button class="chart-period-btn" data-period="90">90 days</button>
             <button class="chart-period-btn" data-period="all">All time</button>
           </div>
           <div class="chart-canvas-wrap" id="wpmChartWrap">
@@ -4308,6 +4606,7 @@
           <div class="chart-period-btns" data-chart="filler">
             <button class="chart-period-btn active" data-period="7">7 days</button>
             <button class="chart-period-btn" data-period="30">30 days</button>
+            <button class="chart-period-btn" data-period="90">90 days</button>
             <button class="chart-period-btn" data-period="all">All time</button>
           </div>
           <div class="chart-canvas-wrap" id="fillerChartWrap">
@@ -4324,6 +4623,7 @@
           <div class="chart-period-btns" data-chart="rating">
             <button class="chart-period-btn active" data-period="7">7 days</button>
             <button class="chart-period-btn" data-period="30">30 days</button>
+            <button class="chart-period-btn" data-period="90">90 days</button>
             <button class="chart-period-btn" data-period="all">All time</button>
           </div>
           <div class="chart-canvas-wrap" id="ratingChartWrap">
@@ -7667,14 +7967,456 @@
         });
 
         calculateSpeakingScore();
+        renderTrackRecord(currentTrackPeriod);
+        renderPracticePatterns();
+        renderPersonalRecords();
         renderCharts('wpm', 7);
         renderCharts('filler', 7);
         renderCharts('rating', 7);
         renderBadges();
         generateWeeklyInsight();
         setupChartPeriodButtons();
+        setupTrackRecordTabs();
       } catch (error) {
         console.error('[Analytics] Error loading data:', error);
+      }
+    }
+
+    // ===== TRACK RECORD (Weekly / Monthly) =====
+    let currentTrackPeriod = 'week';
+
+    // Get the Monday of the week containing `d` (week start). Mutates a copy.
+    function startOfWeek(d) {
+      const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const day = (out.getDay() + 6) % 7; // 0 = Monday, 6 = Sunday
+      out.setDate(out.getDate() - day);
+      return out;
+    }
+    function startOfMonth(d) {
+      return new Date(d.getFullYear(), d.getMonth(), 1);
+    }
+    function addDays(d, n) {
+      const out = new Date(d);
+      out.setDate(out.getDate() + n);
+      return out;
+    }
+    function addMonths(d, n) {
+      return new Date(d.getFullYear(), d.getMonth() + n, 1);
+    }
+
+    function buildPeriodBuckets(period, count) {
+      // Returns array of { start, end, label, speeches: [] } for the last `count`
+      // periods including the current one, ordered oldest → newest.
+      const now = new Date();
+      const buckets = [];
+      if (period === 'week') {
+        const currentStart = startOfWeek(now);
+        for (let i = count - 1; i >= 0; i--) {
+          const start = addDays(currentStart, -7 * i);
+          const end = addDays(start, 7);
+          buckets.push({
+            start,
+            end,
+            label: `${start.getMonth() + 1}/${start.getDate()}`,
+            speeches: [],
+          });
+        }
+      } else {
+        const currentStart = startOfMonth(now);
+        for (let i = count - 1; i >= 0; i--) {
+          const start = addMonths(currentStart, -i);
+          const end = addMonths(start, 1);
+          buckets.push({
+            start,
+            end,
+            label: start.toLocaleDateString('en-US', { month: 'short' }),
+            speeches: [],
+          });
+        }
+      }
+      analyticsSpeeches.forEach(s => {
+        if (!s._date) return;
+        for (const b of buckets) {
+          if (s._date >= b.start && s._date < b.end) {
+            b.speeches.push(s);
+            break;
+          }
+        }
+      });
+      return buckets;
+    }
+
+    function summarizeBucket(b) {
+      const days = new Set(b.speeches.map(s => s._date.toDateString())).size;
+      const totalSeconds = b.speeches.reduce((sum, s) => sum + (s.duration || 0), 0);
+      const fillerSpeeches = b.speeches.filter(s => s.metrics && s.metrics.fillerWordCount !== undefined);
+      const avgFiller = fillerSpeeches.length
+        ? fillerSpeeches.reduce((sum, s) => sum + s.metrics.fillerWordCount, 0) / fillerSpeeches.length
+        : null;
+      return {
+        sessions: b.speeches.length,
+        days,
+        totalSeconds,
+        avgFiller,
+      };
+    }
+
+    function formatChange(curr, prev, opts = {}) {
+      const { lowerIsBetter = false, isFloat = false, suffix = '', unit = '' } = opts;
+      if (prev == null && curr == null) return { text: '', cls: 'neutral' };
+      if (prev == null || prev === 0) {
+        if (curr == null || curr === 0) return { text: 'No prior data', cls: 'neutral' };
+        return { text: `New this period`, cls: lowerIsBetter ? 'neutral' : 'positive' };
+      }
+      if (curr == null) return { text: 'No data', cls: 'neutral' };
+      const diff = curr - prev;
+      if (Math.abs(diff) < (isFloat ? 0.05 : 0.5)) return { text: 'Steady vs last', cls: 'neutral' };
+      const pct = Math.round((diff / Math.max(Math.abs(prev), 0.001)) * 100);
+      const arrow = diff > 0 ? '▲' : '▼';
+      const sign = diff > 0 ? '+' : '';
+      const display = isFloat ? `${sign}${diff.toFixed(1)}${unit}` : `${sign}${Math.round(diff)}${unit}`;
+      const isPositive = lowerIsBetter ? diff < 0 : diff > 0;
+      return { text: `${arrow} ${display} ${suffix}(${Math.abs(pct)}%)`, cls: isPositive ? 'positive' : 'negative' };
+    }
+
+    function applyChangeEl(el, change) {
+      el.textContent = change.text;
+      el.className = 'track-stat-change ' + change.cls;
+    }
+
+    function formatMinutes(seconds) {
+      if (!seconds) return '0 min';
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.round(seconds % 60);
+      if (mins === 0) return `${secs}s`;
+      if (mins < 60) return `${mins} min${secs ? ` ${secs}s` : ''}`;
+      const hours = Math.floor(mins / 60);
+      const rem = mins % 60;
+      return `${hours}h ${rem}m`;
+    }
+
+    function renderTrackRecord(period) {
+      currentTrackPeriod = period;
+      const count = 12;
+      const buckets = buildPeriodBuckets(period, count);
+      const current = buckets[buckets.length - 1];
+      const previous = buckets[buckets.length - 2] || null;
+      const currStats = summarizeBucket(current);
+      const prevStats = previous ? summarizeBucket(previous) : null;
+
+      const periodWord = period === 'week' ? 'Week' : 'Month';
+      document.getElementById('trackSummaryHeader').textContent = `This ${periodWord} vs Last ${periodWord}`;
+      document.getElementById('trackChartLabel').textContent = `Last ${count} ${period === 'week' ? 'Weeks' : 'Months'}`;
+
+      document.getElementById('trackSessions').textContent = currStats.sessions;
+      applyChangeEl(
+        document.getElementById('trackSessionsChange'),
+        formatChange(currStats.sessions, prevStats?.sessions)
+      );
+
+      document.getElementById('trackDays').textContent = currStats.days;
+      applyChangeEl(
+        document.getElementById('trackDaysChange'),
+        formatChange(currStats.days, prevStats?.days, { suffix: 'days ' })
+      );
+
+      document.getElementById('trackMinutes').textContent = formatMinutes(currStats.totalSeconds);
+      applyChangeEl(
+        document.getElementById('trackMinutesChange'),
+        formatChange(currStats.totalSeconds / 60, prevStats ? prevStats.totalSeconds / 60 : null, { isFloat: true, unit: ' min' })
+      );
+
+      const fillerEl = document.getElementById('trackFillers');
+      fillerEl.textContent = currStats.avgFiller != null ? currStats.avgFiller.toFixed(1) : '--';
+      applyChangeEl(
+        document.getElementById('trackFillersChange'),
+        formatChange(currStats.avgFiller, prevStats?.avgFiller, { lowerIsBetter: true, isFloat: true })
+      );
+
+      // Find best period for highlight
+      let bestIdx = -1, bestSessions = 0;
+      buckets.forEach((b, i) => {
+        if (b.speeches.length > bestSessions) {
+          bestSessions = b.speeches.length;
+          bestIdx = i;
+        }
+      });
+      const bestEl = document.getElementById('trackBestPeriod');
+      if (bestIdx >= 0 && bestSessions > 0) {
+        const b = buckets[bestIdx];
+        const label = period === 'week'
+          ? `week of ${b.label}`
+          : b.start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        bestEl.textContent = `Best: ${bestSessions} session${bestSessions !== 1 ? 's' : ''} in ${label}`;
+      } else {
+        bestEl.textContent = '';
+      }
+
+      drawTrackChart(buckets, bestIdx);
+    }
+
+    function drawTrackChart(buckets, bestIdx) {
+      const canvas = document.getElementById('trackChart');
+      const ctx = canvas.getContext('2d');
+      const wrap = canvas.parentElement;
+      canvas.width = wrap.clientWidth * 2;
+      canvas.height = wrap.clientHeight * 2;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(2, 2);
+      const w = wrap.clientWidth;
+      const h = wrap.clientHeight;
+      ctx.clearRect(0, 0, w, h);
+
+      // padT reserves vertical space above the tallest bar so the value
+      // label drawn above it never clips out the top of the canvas.
+      const padL = 28, padR = 12, padT = 20, padB = 24;
+      const chartW = w - padL - padR;
+      const chartH = h - padT - padB;
+      const values = buckets.map(b => b.speeches.length);
+      const maxVal = Math.max(...values, 1);
+      // Round the axis up to a nice number with 15%+ headroom so the tallest
+      // bar never reaches the very top — labels need breathing room.
+      const niceMax = (() => {
+        const padded = Math.max(maxVal * 1.15, maxVal + 1, 4);
+        if (padded <= 10) return Math.ceil(padded);
+        if (padded <= 50) return Math.ceil(padded / 5) * 5;
+        if (padded <= 200) return Math.ceil(padded / 10) * 10;
+        return Math.ceil(padded / 50) * 50;
+      })();
+
+      // Grid + y labels
+      ctx.strokeStyle = 'rgba(55, 65, 81, 0.35)';
+      ctx.lineWidth = 0.5;
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '10px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      for (let i = 0; i <= 2; i++) {
+        const y = padT + (chartH / 2) * i;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(w - padR, y);
+        ctx.stroke();
+        ctx.fillText(String(Math.round(niceMax - (niceMax / 2) * i)), padL - 4, y + 4);
+      }
+
+      const barGap = 4;
+      const barWidth = Math.max(6, (chartW / buckets.length) - barGap);
+      buckets.forEach((b, i) => {
+        const x = padL + (chartW / buckets.length) * i + barGap / 2;
+        const v = b.speeches.length;
+        const barH = (v / niceMax) * chartH;
+        const y = padT + chartH - barH;
+        const isCurrent = i === buckets.length - 1;
+        const isBest = i === bestIdx && v > 0;
+        let fill;
+        if (isCurrent) fill = '#facc15';
+        else if (isBest) fill = '#22c55e';
+        else fill = 'rgba(148, 163, 184, 0.45)';
+        ctx.fillStyle = fill;
+        if (v === 0) {
+          // Empty slot — show a faint line
+          ctx.fillStyle = 'rgba(148, 163, 184, 0.15)';
+          ctx.fillRect(x, padT + chartH - 2, barWidth, 2);
+        } else {
+          roundRect(ctx, x, y, barWidth, barH, 3);
+          ctx.fill();
+        }
+        // Value label on top of current/best bar. Clamp the y position so
+        // it can never sit above the canvas top — if the bar is tall enough
+        // that the label would clip, draw it just inside the top of the bar.
+        if ((isCurrent || isBest) && v > 0) {
+          ctx.font = 'bold 10px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          const labelAboveY = y - 4;
+          if (labelAboveY >= 10) {
+            ctx.fillStyle = '#e5e7eb';
+            ctx.fillText(String(v), x + barWidth / 2, labelAboveY);
+          } else {
+            // Bar is so tall the label wouldn't fit above — paint it on the
+            // bar in a contrasting color instead.
+            ctx.fillStyle = '#0f172a';
+            ctx.fillText(String(v), x + barWidth / 2, y + 11);
+          }
+        }
+        // X label every other bucket so they don't crowd
+        if (i === 0 || i === buckets.length - 1 || (buckets.length <= 8) || i % 2 === 1) {
+          ctx.fillStyle = '#6b7280';
+          ctx.font = '9px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(b.label, x + barWidth / 2, h - 6);
+        }
+      });
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+      const radius = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + w - radius, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+      ctx.lineTo(x + w, y + h);
+      ctx.lineTo(x, y + h);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    function setupTrackRecordTabs() {
+      const tabs = document.getElementById('trackRecordTabs');
+      if (!tabs || tabs.dataset.wired === '1') return;
+      tabs.dataset.wired = '1';
+      tabs.querySelectorAll('.track-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          tabs.querySelectorAll('.track-tab').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          renderTrackRecord(btn.getAttribute('data-period'));
+        });
+      });
+    }
+
+    // ===== PRACTICE PATTERNS =====
+    function renderPracticePatterns() {
+      const speeches = analyticsSpeeches.filter(s => s._date);
+      const bestDayEl = document.getElementById('patternBestDay');
+      const bestDayDetailEl = document.getElementById('patternBestDayDetail');
+      const bestTimeEl = document.getElementById('patternBestTime');
+      const bestTimeDetailEl = document.getElementById('patternBestTimeDetail');
+      const avgDurEl = document.getElementById('patternAvgDuration');
+      const avgDurDetailEl = document.getElementById('patternAvgDurationDetail');
+      const perWeekEl = document.getElementById('patternSessionsPerWeek');
+      const perWeekDetailEl = document.getElementById('patternSessionsPerWeekDetail');
+
+      if (speeches.length === 0) {
+        [bestDayEl, bestTimeEl, avgDurEl, perWeekEl].forEach(el => { el.textContent = '--'; });
+        return;
+      }
+
+      // Best day of week
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const dayCounts = new Array(7).fill(0);
+      speeches.forEach(s => { dayCounts[s._date.getDay()]++; });
+      const bestDayIdx = dayCounts.indexOf(Math.max(...dayCounts));
+      const bestDayCount = dayCounts[bestDayIdx];
+      bestDayEl.textContent = dayNames[bestDayIdx];
+      const totalForPct = dayCounts.reduce((a, b) => a + b, 0);
+      const dayPct = Math.round((bestDayCount / totalForPct) * 100);
+      bestDayDetailEl.textContent = `${bestDayCount} session${bestDayCount !== 1 ? 's' : ''} (${dayPct}% of total)`;
+
+      // Most active time of day — bucket into Morning (5-11), Afternoon (12-16), Evening (17-20), Night (21-4)
+      const timeBuckets = { Morning: 0, Afternoon: 0, Evening: 0, Night: 0 };
+      speeches.forEach(s => {
+        const h = s._date.getHours();
+        if (h >= 5 && h <= 11) timeBuckets.Morning++;
+        else if (h >= 12 && h <= 16) timeBuckets.Afternoon++;
+        else if (h >= 17 && h <= 20) timeBuckets.Evening++;
+        else timeBuckets.Night++;
+      });
+      const bestTime = Object.entries(timeBuckets).sort((a, b) => b[1] - a[1])[0];
+      bestTimeEl.textContent = bestTime[0];
+      const timePct = Math.round((bestTime[1] / speeches.length) * 100);
+      bestTimeDetailEl.textContent = `${bestTime[1]} session${bestTime[1] !== 1 ? 's' : ''} (${timePct}%)`;
+
+      // Average session length
+      const withDuration = speeches.filter(s => s.duration);
+      if (withDuration.length > 0) {
+        const avgSec = withDuration.reduce((sum, s) => sum + s.duration, 0) / withDuration.length;
+        avgDurEl.textContent = formatMinutes(avgSec);
+        avgDurDetailEl.textContent = `Across ${withDuration.length} timed session${withDuration.length !== 1 ? 's' : ''}`;
+      } else {
+        avgDurEl.textContent = '--';
+        avgDurDetailEl.textContent = 'No timed sessions yet';
+      }
+
+      // Sessions per week (last 4 weeks)
+      const fourWeeksAgo = addDays(startOfWeek(new Date()), -7 * 3);
+      const last4Weeks = speeches.filter(s => s._date >= fourWeeksAgo);
+      const perWeek = last4Weeks.length / 4;
+      perWeekEl.textContent = perWeek.toFixed(1);
+      perWeekDetailEl.textContent = `${last4Weeks.length} session${last4Weeks.length !== 1 ? 's' : ''} in the last 4 weeks`;
+    }
+
+    // ===== PERSONAL RECORDS =====
+    function renderPersonalRecords() {
+      const speeches = analyticsSpeeches.filter(s => s._date);
+      const setOr = (id, value, fallback = '--') => {
+        document.getElementById(id).textContent = value != null && value !== '' ? value : fallback;
+      };
+
+      if (speeches.length === 0) {
+        ['recordStreak', 'recordMostInDay', 'recordLongest', 'recordBestWpm', 'recordCleanest', 'recordTopRating']
+          .forEach(id => setOr(id, null));
+        return;
+      }
+
+      // Longest streak (max consecutive practice days, ever)
+      const uniqueDays = [...new Set(speeches.map(s => s._date.toDateString()))]
+        .map(d => new Date(d))
+        .sort((a, b) => a - b);
+      let longest = 1, current = 1;
+      for (let i = 1; i < uniqueDays.length; i++) {
+        const diffDays = Math.round((uniqueDays[i] - uniqueDays[i - 1]) / 86400000);
+        if (diffDays === 1) {
+          current += 1;
+          if (current > longest) longest = current;
+        } else if (diffDays > 1) {
+          current = 1;
+        }
+      }
+      setOr('recordStreak', `${longest} day${longest !== 1 ? 's' : ''}`);
+
+      // Most sessions in one day
+      const dayMap = {};
+      speeches.forEach(s => {
+        const k = s._date.toDateString();
+        dayMap[k] = (dayMap[k] || 0) + 1;
+      });
+      const mostInDayEntry = Object.entries(dayMap).sort((a, b) => b[1] - a[1])[0];
+      const mostInDayDate = new Date(mostInDayEntry[0]);
+      setOr('recordMostInDay', `${mostInDayEntry[1]} on ${mostInDayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
+
+      // Longest speech
+      const longestSpeech = speeches
+        .filter(s => s.duration)
+        .sort((a, b) => b.duration - a.duration)[0];
+      if (longestSpeech) {
+        setOr('recordLongest', formatMinutes(longestSpeech.duration));
+      } else {
+        setOr('recordLongest', null);
+      }
+
+      // Best pacing — WPM closest to 135 (mid of 120–150 sweet spot)
+      const wpmSpeeches = speeches.filter(s => s.metrics && s.metrics.wordsPerMinute);
+      if (wpmSpeeches.length > 0) {
+        const best = wpmSpeeches.reduce((best, s) => {
+          const d = Math.abs(s.metrics.wordsPerMinute - 135);
+          if (!best || d < best.dist) return { speech: s, dist: d };
+          return best;
+        }, null);
+        const wpm = best.speech.metrics.wordsPerMinute;
+        const inRange = wpm >= 120 && wpm <= 150;
+        setOr('recordBestWpm', `${Math.round(wpm)} WPM${inRange ? ' ✓' : ''}`);
+      } else {
+        setOr('recordBestWpm', null);
+      }
+
+      // Cleanest speech (lowest filler count)
+      const fillerSpeeches = speeches.filter(s => s.metrics && s.metrics.fillerWordCount !== undefined);
+      if (fillerSpeeches.length > 0) {
+        const cleanest = fillerSpeeches.sort((a, b) => a.metrics.fillerWordCount - b.metrics.fillerWordCount)[0];
+        const n = cleanest.metrics.fillerWordCount;
+        setOr('recordCleanest', `${n} filler${n !== 1 ? 's' : ''}`);
+      } else {
+        setOr('recordCleanest', null);
+      }
+
+      // Top self-rating
+      const ratedSpeeches = speeches.filter(s => s.rating);
+      if (ratedSpeeches.length > 0) {
+        const topRating = Math.max(...ratedSpeeches.map(s => s.rating));
+        const countAtTop = ratedSpeeches.filter(s => s.rating === topRating).length;
+        setOr('recordTopRating', `${topRating}⭐ × ${countAtTop}`);
+      } else {
+        setOr('recordTopRating', null);
       }
     }
 
