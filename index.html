@@ -4641,6 +4641,16 @@
   <div class="achievement" id="achievement"></div>
 
   <script>
+    // ---------------------------------------------------------------------------
+    // API base URL — empty string on the web (relative paths work fine on Vercel).
+    // On Android (Capacitor), the WebView serves from capacitor://localhost so
+    // relative /api/* paths 404. Set CAPACITOR_API_BASE to your Vercel URL.
+    // ---------------------------------------------------------------------------
+    const CAPACITOR_API_BASE = 'https://YOUR_VERCEL_URL_HERE'; // ← replace before building
+    const API_BASE = (window.Capacitor?.isNativePlatform?.())
+      ? CAPACITOR_API_BASE
+      : '';
+
     // Word database
     const words = [
       { word: "Dream", definition: "A cherished aspiration or ideal" },
@@ -5631,7 +5641,7 @@
         formData.append('duration', duration.toString());
         console.log('[INFO] Sending request to /api/feedback');
 
-        const feedbackRes = await fetch('/api/feedback', {
+        const feedbackRes = await fetch(API_BASE + '/api/feedback', {
           method: 'POST',
           body: formData
         });
@@ -5700,7 +5710,7 @@
       setAiStatus('Requesting AI feedback...');
 
       try {
-        const feedbackRes = await fetch('/api/feedback', {
+        const feedbackRes = await fetch(API_BASE + '/api/feedback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: trimmed })
@@ -5831,7 +5841,7 @@
       speechChatSend.disabled = true;
 
       try {
-        const res = await fetch('/api/chat', {
+        const res = await fetch(API_BASE + '/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
