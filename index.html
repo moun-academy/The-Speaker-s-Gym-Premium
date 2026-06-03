@@ -2449,6 +2449,111 @@
     .ai-status.error { color: #f87171; }
 
     .ai-feedback-box { background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 14px; padding: 16px; color: #e2e8f0; font-size: 14px; white-space: pre-wrap; line-height: 1.6; }
+    /* When showing the rich scorecard, disable pre-wrap so block layout is clean */
+    .ai-feedback-box.rich { white-space: normal; }
+
+    /* ===== Read-only highlighted transcript ===== */
+    .transcript-display {
+      width: 100%;
+      min-height: 64px;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(55, 65, 81, 0.4);
+      background: rgba(15, 23, 42, 0.6);
+      color: #e5e7eb;
+      font-size: 14px;
+      line-height: 1.7;
+      margin-bottom: 12px;
+    }
+    .transcript-display.transcript-empty { color: #9ca3af; font-style: italic; }
+    .transcript-caption {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .transcript-text { white-space: pre-wrap; }
+    mark.filler {
+      background: rgba(245, 158, 11, 0.28);
+      color: #fde68a;
+      border-radius: 4px;
+      padding: 0 3px;
+      font-weight: 600;
+    }
+
+    /* ===== Feedback scorecard ===== */
+    .score-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .score-card {
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-top: 3px solid #64748b;
+      border-radius: 12px;
+      padding: 12px 10px;
+      text-align: center;
+    }
+    .score-card.good { border-top-color: #22c55e; }
+    .score-card.warn { border-top-color: #f59e0b; }
+    .score-card.bad  { border-top-color: #ef4444; }
+    .score-card-icon { font-size: 18px; line-height: 1; }
+    .score-card-value { font-size: 26px; font-weight: 800; color: #f8fafc; margin-top: 4px; }
+    .score-card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #94a3b8; margin-top: 2px; }
+    .score-card-rating { font-size: 12px; font-weight: 700; margin-top: 6px; }
+    .score-card.good .score-card-rating { color: #4ade80; }
+    .score-card.warn .score-card-rating { color: #fbbf24; }
+    .score-card.bad  .score-card-rating { color: #f87171; }
+    .score-card-sub { font-size: 11px; color: #94a3b8; margin-top: 4px; word-break: break-word; }
+
+    .feedback-summary {
+      background: rgba(250, 204, 21, 0.08);
+      border-left: 3px solid rgba(250, 204, 21, 0.5);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13.5px;
+      color: #e2e8f0;
+      margin-bottom: 16px;
+    }
+    .feedback-section { margin-bottom: 16px; }
+    .feedback-section-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+    .feedback-section-title.strengths { color: #4ade80; }
+    .feedback-section-title.improvements { color: #fbbf24; }
+    .feedback-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .feedback-list li {
+      position: relative;
+      padding: 8px 12px 8px 30px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.5);
+      font-size: 13.5px;
+      line-height: 1.55;
+    }
+    .feedback-list li::before { position: absolute; left: 10px; top: 8px; }
+    .strengths-list li { border-left: 3px solid #22c55e; }
+    .strengths-list li::before { content: '✓'; color: #4ade80; font-weight: 800; }
+    .improvements-list li { border-left: 3px solid #f59e0b; }
+    .improvements-list li::before { content: '→'; color: #fbbf24; font-weight: 800; }
+    .next-focus {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(29, 78, 216, 0.12));
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 13.5px;
+      color: #e2e8f0;
+      line-height: 1.5;
+    }
+    .next-focus-label {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #93c5fd;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .feedback-raw { white-space: pre-wrap; line-height: 1.6; }
 
     /* Speech Chat */
     .speech-chat {
@@ -3723,7 +3828,7 @@
       <div class="helper">
         <span id="aiToggleHelper">Get personalized feedback on your pace, pauses, and delivery.</span>
       </div>
-      <textarea id="manualTranscript" class="transcript-input" placeholder="Transcript will appear here automatically after recording. You can also paste text for manual analysis."></textarea>
+      <div id="transcriptDisplay" class="transcript-display transcript-empty">Your transcript will appear here after your speech, with filler words highlighted.</div>
       <div class="ai-status" id="aiStatus">Waiting for your next recording.</div>
       <div class="ai-feedback-box" id="aiFeedback">Your detailed feedback will appear here after your speech.</div>
 
@@ -5576,7 +5681,18 @@
     const ratingModal = document.getElementById('ratingModal');
     const aiFeedback = document.getElementById('aiFeedback');
     const aiStatus = document.getElementById('aiStatus');
-    const manualTranscript = document.getElementById('manualTranscript');
+    const transcriptDisplay = document.getElementById('transcriptDisplay');
+    // Holds the current transcript string (the transcript view is now a read-only div, not a textarea)
+    let currentTranscript = '';
+
+    // Reset the read-only transcript view to its empty placeholder state
+    function clearTranscriptDisplay() {
+      currentTranscript = '';
+      if (transcriptDisplay) {
+        transcriptDisplay.textContent = 'Your transcript will appear here after your speech, with filler words highlighted.';
+        transcriptDisplay.classList.add('transcript-empty');
+      }
+    }
 
     // Conversation Elements
     const conversationQuestionEl = document.getElementById('conversationQuestion');
@@ -5596,7 +5712,7 @@
       initAIToggle();
       initPromptModeToggle();
       setAiStatus('Waiting for your next recording.');
-      manualTranscript.value = '';
+      clearTranscriptDisplay();
       updateVersionDisplay();
     }
 
@@ -5910,7 +6026,12 @@
           transcript += event.results[i][0].transcript + ' ';
         }
         liveTranscript = transcript.trim();
-        manualTranscript.value = liveTranscript;
+        // Live (pre-analysis) transcript: show plain text, fillers highlighted later after Whisper analysis
+        currentTranscript = liveTranscript;
+        if (transcriptDisplay) {
+          transcriptDisplay.textContent = liveTranscript;
+          transcriptDisplay.classList.toggle('transcript-empty', !liveTranscript);
+        }
       };
 
       recognition.onerror = () => {
@@ -5942,7 +6063,7 @@
     }
 
     function getTranscriptForFeedback() {
-      const text = (manualTranscript.value || liveTranscript || '').trim();
+      const text = (currentTranscript || liveTranscript || '').trim();
       if (!text) return '';
       let header = '';
       if (isConversationMode && currentConversationQuestion) {
@@ -5952,6 +6073,238 @@
       }
       const duration = elapsedSeconds ? `Duration: ${formatTime(elapsedSeconds)}\n` : '';
       return `${header}${duration}Transcript: ${text}`.trim();
+    }
+
+    // ===== VISUAL FEEDBACK SCORECARD =====
+
+    // Escape text for safe insertion into innerHTML
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Parse the API's labeled feedback text into structured sections.
+    // The API returns: "Summary:", "What you did well:" (• bullets),
+    // "What to improve:" (• bullets), "Next speech focus:" (• bullet).
+    function parseFeedbackSections(text) {
+      const result = { summary: '', strengths: [], improvements: [], nextFocus: '' };
+      if (!text) return result;
+
+      const lines = text.split('\n');
+      let section = null; // 'summary' | 'strengths' | 'improvements' | 'nextFocus'
+
+      const headerFor = (line) => {
+        const l = line.trim().toLowerCase().replace(/[:：]\s*$/, '');
+        if (l === 'summary' || l.startsWith('summary:')) return 'summary';
+        if (l.startsWith('what you did well')) return 'strengths';
+        if (l.startsWith('what to improve')) return 'improvements';
+        if (l.startsWith('next speech focus') || l.startsWith('next focus')) return 'nextFocus';
+        return null;
+      };
+
+      for (let raw of lines) {
+        const line = raw.trim();
+        if (!line) continue;
+
+        const h = headerFor(line);
+        if (h) {
+          section = h;
+          // Capture inline content after "Header:" on the same line
+          const idx = line.indexOf(':');
+          const inline = idx >= 0 ? line.slice(idx + 1).trim() : '';
+          if (inline) {
+            if (h === 'summary') result.summary = inline;
+            else if (h === 'nextFocus') result.nextFocus = inline;
+            else result[h].push(inline.replace(/^[•\-*]\s*/, ''));
+          }
+          continue;
+        }
+
+        const bullet = line.replace(/^[•\-*]\s*/, '').trim();
+        if (!bullet) continue;
+
+        if (section === 'summary') {
+          result.summary = result.summary ? `${result.summary} ${bullet}` : bullet;
+        } else if (section === 'nextFocus') {
+          result.nextFocus = result.nextFocus ? `${result.nextFocus} ${bullet}` : bullet;
+        } else if (section === 'strengths' || section === 'improvements') {
+          result[section].push(bullet);
+        }
+      }
+      return result;
+    }
+
+    // Build the rating (value + label + color class) for a metric card.
+    function wpmRating(wpm) {
+      if (wpm < 120) return { label: 'Slow', cls: 'warn' };
+      if (wpm > 160) return { label: 'Fast', cls: 'bad' };
+      return { label: 'Good pace', cls: 'good' };
+    }
+    function fillerRating(count) {
+      if (count <= 2) return { label: 'Clean', cls: 'good' };
+      if (count <= 5) return { label: 'Watch it', cls: 'warn' };
+      return { label: 'Too many', cls: 'bad' };
+    }
+    function pauseRating(pacing) {
+      if (pacing === 'halting') return { label: 'Choppy', cls: 'warn' };
+      if (pacing === 'rushed') return { label: 'Rushed', cls: 'bad' };
+      return { label: 'Smooth', cls: 'good' };
+    }
+
+    // Render the AI feedback as a visual scorecard into #aiFeedback.
+    function renderFeedbackScorecard({ feedbackText, metrics }) {
+      const m = metrics || {};
+      const parsed = parseFeedbackSections(feedbackText || '');
+      const cards = [];
+
+      // WPM card
+      if (m.wordsPerMinute) {
+        const r = wpmRating(m.wordsPerMinute);
+        cards.push(`
+          <div class="score-card ${r.cls}">
+            <div class="score-card-icon">🏃</div>
+            <div class="score-card-value">${m.wordsPerMinute}</div>
+            <div class="score-card-label">WPM</div>
+            <div class="score-card-rating">${r.label}</div>
+          </div>`);
+      }
+
+      // Filler words card
+      if (typeof m.fillerWordCount === 'number') {
+        const r = fillerRating(m.fillerWordCount);
+        const used = m.fillerWordsUsed && Object.keys(m.fillerWordsUsed).length
+          ? Object.entries(m.fillerWordsUsed)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 3)
+              .map(([w, c]) => `${escapeHtml(w)} ×${c}`)
+              .join(', ')
+          : 'None detected';
+        cards.push(`
+          <div class="score-card ${r.cls}">
+            <div class="score-card-icon">💬</div>
+            <div class="score-card-value">${m.fillerWordCount}</div>
+            <div class="score-card-label">Filler words</div>
+            <div class="score-card-rating">${r.label}</div>
+            <div class="score-card-sub">${used}</div>
+          </div>`);
+      }
+
+      // Pause card (only if pause data is available)
+      if (typeof m.pauseCount === 'number' && m.averagePauseDuration !== undefined) {
+        const r = pauseRating(m.pacingVariation);
+        cards.push(`
+          <div class="score-card ${r.cls}">
+            <div class="score-card-icon">⏸️</div>
+            <div class="score-card-value">${m.pauseCount}</div>
+            <div class="score-card-label">Pauses</div>
+            <div class="score-card-rating">${r.label}</div>
+            <div class="score-card-sub">avg ${m.averagePauseDuration}s</div>
+          </div>`);
+      }
+
+      // Structure card (only if a structure score is provided)
+      if (typeof m.structureScore === 'number') {
+        const s = m.structureScore;
+        const cls = s >= 70 ? 'good' : s >= 40 ? 'warn' : 'bad';
+        cards.push(`
+          <div class="score-card ${cls}">
+            <div class="score-card-icon">🧱</div>
+            <div class="score-card-value">${s}</div>
+            <div class="score-card-label">Structure</div>
+            <div class="score-card-rating">/ 100</div>
+          </div>`);
+      }
+
+      const hasParsed = parsed.summary || parsed.strengths.length || parsed.improvements.length || parsed.nextFocus;
+
+      let html = '';
+
+      if (cards.length) {
+        html += `<div class="score-cards">${cards.join('')}</div>`;
+      }
+
+      if (parsed.summary) {
+        html += `<div class="feedback-summary">${escapeHtml(parsed.summary)}</div>`;
+      }
+
+      if (parsed.strengths.length) {
+        html += `
+          <div class="feedback-section">
+            <div class="feedback-section-title strengths">✅ What you did well</div>
+            <ul class="feedback-list strengths-list">
+              ${parsed.strengths.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
+            </ul>
+          </div>`;
+      }
+
+      if (parsed.improvements.length) {
+        html += `
+          <div class="feedback-section">
+            <div class="feedback-section-title improvements">🎯 What to improve</div>
+            <ul class="feedback-list improvements-list">
+              ${parsed.improvements.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
+            </ul>
+          </div>`;
+      }
+
+      if (parsed.nextFocus) {
+        html += `<div class="next-focus"><span class="next-focus-label">Next speech focus</span>${escapeHtml(parsed.nextFocus)}</div>`;
+      }
+
+      // Fallback: if nothing parsed, show the raw feedback text so no info is lost
+      if (!hasParsed) {
+        html += `<div class="feedback-raw">${escapeHtml(feedbackText || 'No feedback generated.')}</div>`;
+      }
+
+      aiFeedback.classList.add('rich');
+      aiFeedback.innerHTML = html;
+    }
+
+    // Render the transcript read-only with filler words highlighted.
+    function renderHighlightedTranscript(transcript, fillerWordsUsed) {
+      if (!transcriptDisplay) return;
+      const text = (transcript || '').trim();
+
+      if (!text) {
+        clearTranscriptDisplay();
+        return;
+      }
+
+      transcriptDisplay.classList.remove('transcript-empty');
+
+      const standardFillers = ['you know', 'um', 'uh', 'like', 'so', 'basically', 'actually', 'literally'];
+      const detected = fillerWordsUsed && Object.keys(fillerWordsUsed).length
+        ? Object.keys(fillerWordsUsed)
+        : standardFillers;
+
+      // Sort longest-first so multi-word fillers ("you know") match before single words
+      const terms = detected
+        .filter(Boolean)
+        .map(t => t.trim())
+        .filter(Boolean)
+        .sort((a, b) => b.length - a.length)
+        .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+      let highlightCount = 0;
+      let html = escapeHtml(text);
+
+      if (terms.length) {
+        const re = new RegExp(`\\b(${terms.join('|')})\\b`, 'gi');
+        html = html.replace(re, (match) => {
+          highlightCount++;
+          return `<mark class="filler">${match}</mark>`;
+        });
+      }
+
+      const caption = highlightCount
+        ? `<div class="transcript-caption">${highlightCount} filler word${highlightCount === 1 ? '' : 's'} highlighted</div>`
+        : `<div class="transcript-caption">No filler words detected 🎉</div>`;
+
+      transcriptDisplay.innerHTML = `${caption}<div class="transcript-text">${html}</div>`;
     }
 
     async function requestFeedbackWithAudio(audioBlob, duration) {
@@ -5970,6 +6323,7 @@
       if (!aiEnabled) {
         console.log('[INFO] AI feedback disabled, skipping analysis');
         setAiStatus('Recording saved. AI feedback is disabled (transcript only).');
+        aiFeedback.classList.remove('rich');
         aiFeedback.textContent = 'AI feedback is disabled. Toggle it ON above to get detailed speech analysis.\n\nYour recording has been saved and you can download it below.';
 
         // Still show rating modal to complete the speech and update stats
@@ -5985,6 +6339,7 @@
       }
 
       isRequestingFeedback = true;
+      aiFeedback.classList.remove('rich');
       aiFeedback.textContent = '✨ Your AI coaching feedback is on its way — sit tight while we listen back to your speech and put together your personalised report...';
       setAiStatus('Transcribing and analysing your speech with AI...');
       console.log('[INFO] Starting AI analysis...');
@@ -6020,25 +6375,17 @@
         console.log('[INFO] Transcript length:', transcript.length);
         console.log('[INFO] Metrics:', metrics);
 
-        // Update UI with transcript
+        // Update UI with transcript (read-only, filler words highlighted)
+        currentTranscript = transcript;
         if (transcript) {
-          manualTranscript.value = transcript;
+          renderHighlightedTranscript(transcript, metrics.fillerWordsUsed);
           console.log('[INFO] Transcript updated in UI');
         } else {
           console.warn('[WARN] No transcript in response');
         }
 
-        // Display feedback with metrics
-        let displayText = feedbackText;
-        if (metrics.wordsPerMinute) {
-          displayText = `📊 Speech Metrics:\n` +
-            `• Pace: ${metrics.wordsPerMinute} WPM (${metrics.pacingVariation})\n` +
-            `• Pauses: ${metrics.pauseCount} pauses (avg ${metrics.averagePauseDuration}s)\n` +
-            `• Filler words: ${metrics.fillerWordCount}\n\n` +
-            displayText;
-        }
-
-        aiFeedback.textContent = displayText;
+        // Display feedback as a visual scorecard
+        renderFeedbackScorecard({ feedbackText, metrics });
         setAiStatus('AI analysis complete! Scroll down to read your feedback.');
         console.log('[SUCCESS] AI analysis complete');
 
@@ -6049,6 +6396,7 @@
         console.error('[ERROR] Failed to get feedback:', err);
         console.error('[ERROR] Error details:', err.message, err.stack);
         setAiStatus(`Unable to analyze audio: ${err.message}`, true);
+        aiFeedback.classList.remove('rich');
         aiFeedback.textContent = 'AI feedback could not be generated for this session. Try again on your next speech.';
 
       } finally {
@@ -6075,7 +6423,8 @@
         const feedbackData = await feedbackRes.json();
         const feedbackText = feedbackData.feedback?.trim() || 'No feedback generated.';
 
-        aiFeedback.textContent = feedbackText;
+        // Manual text path has no audio metrics — render scorecard with strengths/improvements only
+        renderFeedbackScorecard({ feedbackText, metrics: null });
         setAiStatus('Feedback ready!');
 
         // Show chat panel for follow-up questions
@@ -7819,7 +8168,7 @@
 
       // Sync speech document to Firebase (stats will be automatically recalculated from speeches)
       if (syncEnabled && currentUser) {
-        const transcript = manualTranscript?.value || '';
+        const transcript = currentTranscript || '';
         const feedback = aiFeedback?.textContent || '';
 
         // Always sync the speech (even without transcript/feedback for stats tracking)
