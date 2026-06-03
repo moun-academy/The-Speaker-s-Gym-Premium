@@ -3688,10 +3688,6 @@
       </div>
     </div>
 
-    <!-- Controls -->
-    <div class="controls">
-      <button id="resetBtn" class="secondary">Reset</button>
-    </div>
 
     <!-- Structure Guide -->
     <div class="structure-guide-row">
@@ -5863,6 +5859,9 @@
       document.getElementById('startTimerBtn').style.display = 'block';
       document.getElementById('stopTimerBtn').style.display = 'none';
       if (elapsedSeconds >= 30) showRatingModal();
+      // Stop = end of speech: reset timer state automatically for the next round
+      elapsedSeconds = 0;
+      updateTimerDisplay();
     }
 
     function reset() {
@@ -6503,6 +6502,9 @@
       updateCallAudioIndicators(false);
       // Show rating modal immediately — AI feedback continues in the background
       if (elapsedSeconds >= 30) showRatingModal();
+      // Stop = end of speech: reset timer state automatically (deferred so the
+      // recorder's onstop handler still reports the real speech duration)
+      setTimeout(() => { elapsedSeconds = 0; updateTimerDisplay(); }, 0);
     }
 
     async function startVideoRecording() {
@@ -6578,6 +6580,9 @@
       updateCallAudioIndicators(false);
       // Show rating modal immediately — AI feedback continues in the background
       if (elapsedSeconds >= 30) showRatingModal();
+      // Stop = end of speech: reset timer state automatically (deferred so the
+      // recorder's onstop handler still reports the real speech duration)
+      setTimeout(() => { elapsedSeconds = 0; updateTimerDisplay(); }, 0);
     }
 
     // ========== RAPID FIRE FUNCTIONS ==========
@@ -6782,7 +6787,6 @@
 
     // Event listeners
     document.getElementById('newWordBtn').addEventListener('click', newWord);
-    document.getElementById('resetBtn').addEventListener('click', reset);
     document.getElementById('timerOnlyBtn').addEventListener('click', () => setMode('timer'));
     document.getElementById('audioBtn').addEventListener('click', () => setMode('audio'));
     document.getElementById('cameraBtn').addEventListener('click', () => setMode('video'));
