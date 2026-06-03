@@ -4942,6 +4942,16 @@
   <div class="achievement" id="achievement"></div>
 
   <script>
+    // ---------------------------------------------------------------------------
+    // API base URL — empty string on the web (relative paths work fine on Vercel).
+    // On Android (Capacitor), the WebView serves from capacitor://localhost so
+    // relative /api/* paths 404. Set CAPACITOR_API_BASE to your Vercel URL.
+    // ---------------------------------------------------------------------------
+    const CAPACITOR_API_BASE = 'https://the-speaker-s-gym-premium.vercel.app';
+    const API_BASE = (window.Capacitor?.isNativePlatform?.())
+      ? CAPACITOR_API_BASE
+      : '';
+
     // Word database
     const words = [
       { word: "Dream", definition: "A cherished aspiration or ideal" },
@@ -5983,7 +5993,7 @@
         formData.append('duration', duration.toString());
         console.log('[INFO] Sending request to /api/feedback');
 
-        const feedbackRes = await fetch('/api/feedback', {
+        const feedbackRes = await fetch(API_BASE + '/api/feedback', {
           method: 'POST',
           body: formData
         });
@@ -6052,7 +6062,7 @@
       setAiStatus('Requesting AI feedback...');
 
       try {
-        const feedbackRes = await fetch('/api/feedback', {
+        const feedbackRes = await fetch(API_BASE + '/api/feedback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: trimmed })
@@ -6183,7 +6193,7 @@
       speechChatSend.disabled = true;
 
       try {
-        const res = await fetch('/api/chat', {
+        const res = await fetch(API_BASE + '/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -7272,6 +7282,50 @@
     let syncEnabled = false;
     let firebaseReady = false;
 
+    // ---------------------------------------------------------------------------
+    // Google sign-in dispatcher
+    //
+    // On the web we use the existing firebase.auth().signInWithPopup() flow —
+    // unchanged behaviour. Inside a Capacitor Android WebView, popups don't
+    // return to the app (they open an external Chrome tab), so we delegate to
+    // @capacitor-firebase/authentication which drives the native Google
+    // sign-in dialog, then bridge the resulting ID token into the Firebase
+    // Web SDK via signInWithCredential — so the rest of the app
+    // (Firestore listeners, onAuthStateChanged, etc.) keeps working exactly
+    // as it does on the web.
+    // ---------------------------------------------------------------------------
+    function isCapacitorNative() {
+      return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    }
+
+    async function signInWithGoogleSmart() {
+      if (!isCapacitorNative()) {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        return auth.signInWithPopup(provider);
+      }
+      const plugin = window.Capacitor?.Plugins?.FirebaseAuthentication;
+      if (!plugin) {
+        throw new Error('FirebaseAuthentication plugin is unavailable on this build.');
+      }
+      const result = await plugin.signInWithGoogle();
+      const idToken = result?.credential?.idToken;
+      if (!idToken) {
+        throw new Error('Google sign-in did not return an ID token.');
+      }
+      const webCredential = firebase.auth.GoogleAuthProvider.credential(idToken);
+      return auth.signInWithCredential(webCredential);
+    }
+
+    async function signOutSmart() {
+      if (isCapacitorNative()) {
+        const plugin = window.Capacitor?.Plugins?.FirebaseAuthentication;
+        if (plugin) {
+          try { await plugin.signOut(); } catch (e) { console.warn('[Auth] native signOut failed:', e); }
+        }
+      }
+      return auth.signOut();
+    }
+
     async function initializeFirebase() {
       console.log('[Firebase] Starting initialization...');
       try {
@@ -7649,8 +7703,7 @@
           loginGoogleBtn.disabled = true;
           loginGoogleBtn.textContent = 'Signing in...';
           try {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            await auth.signInWithPopup(provider);
+            await signInWithGoogleSmart();
           } catch (err) {
             console.error('[Auth] Login failed:', err);
             loginError.textContent = 'Sign-in failed. Please try again.';
@@ -7724,8 +7777,7 @@
       if (profileGoogleSignInBtn) {
         profileGoogleSignInBtn.addEventListener('click', async () => {
           try {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            await auth.signInWithPopup(provider);
+            await signInWithGoogleSmart();
             profileDropdown.classList.remove('show');
             showAchievement('✅ Signed in successfully!');
           } catch (error) {
@@ -7740,7 +7792,7 @@
       if (profileSignOutBtn) {
         profileSignOutBtn.addEventListener('click', async () => {
           try {
-            await auth.signOut();
+            await signOutSmart();
             profileDropdown.classList.remove('show');
             showAchievement('👋 Signed out');
           } catch (error) {
@@ -9854,8 +9906,7 @@
     // Settings page sign in/out buttons
     document.getElementById('settingsGoogleSignInBtn').addEventListener('click', async () => {
       try {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        await auth.signInWithPopup(provider);
+        await signInWithGoogleSmart();
         showAchievement('✅ Signed in successfully!');
         updateSettingsPageUI();
       } catch (error) {
@@ -9866,7 +9917,7 @@
 
     document.getElementById('settingsSignOutBtn').addEventListener('click', async () => {
       try {
-        await auth.signOut();
+        await signOutSmart();
         showAchievement('👋 Signed out');
         updateSettingsPageUI();
       } catch (error) {

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "746797685018",
+    "project_id": "speaker-s-gym-premium",
+    "storage_bucket": "speaker-s-gym-premium.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:746797685018:android:b4771bd9bbed018c18b4a3",
+        "android_client_info": {
+          "package_name": "com.speakersgym.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "746797685018-8m7f2mjpkgisrq8fjf74fjgaqdrof1im.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.speakersgym.app",
+            "certificate_hash": "0a73f906e5b67bff9b27212cf4af24a12a6ee5f6"
+          }
+        },
+        {
+          "client_id": "746797685018-4sns8ngopbcvu8cr2hfs5354saemlmfb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBU7wzSCE_tP8WgyMfeXrqKWshD8RDohHI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "746797685018-4sns8ngopbcvu8cr2hfs5354saemlmfb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
