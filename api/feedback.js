@@ -117,6 +117,35 @@ function analyzeMetrics(words, duration) {
   };
 }
 
+// Extract the trailing "SCORES: {...}" line from the model output.
+// Returns { vocalVariety, structure } clamped to 0-100, plus the feedback
+// text with that line removed. Falls back to nulls if absent/unparseable.
+function extractScores(feedbackRaw) {
+  let feedback = feedbackRaw;
+  let vocalVariety = null;
+  let structure = null;
+
+  const match = feedbackRaw.match(/SCORES:\s*(\{[\s\S]*?\})\s*$/i);
+  if (match) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      const clamp = v => {
+        const n = Math.round(Number(v));
+        if (!Number.isFinite(n)) return null;
+        return Math.max(0, Math.min(100, n));
+      };
+      vocalVariety = clamp(parsed.vocalVariety);
+      structure = clamp(parsed.structure);
+    } catch (e) {
+      console.warn('Failed to parse SCORES line:', e.message);
+    }
+    // Strip the SCORES line (and any trailing whitespace) from the prose.
+    feedback = feedbackRaw.slice(0, match.index).trim();
+  }
+
+  return { feedback, vocalVariety, structure };
+}
+
 export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -212,6 +241,13 @@ Speech Metrics:
               'Next speech focus:',
               '• [One actionable goal based on the data and their specific content]',
               '',
+              'After all the prose sections above, output ONE final line, exactly in this format and nothing after it:',
+              'SCORES: {"vocalVariety": <0-100 integer>, "structure": <0-100 integer>}',
+              'Scoring guidance:',
+              '- vocalVariety = how dynamic and expressive the delivery is. Reward varied pace, deliberate pauses, and emphasis/contrast in word choice; penalize monotone rushing, flat steady pacing with no pauses, and heavy filler. Use the provided metrics (pace, pacing variation, pause count/length, filler count) AND the wording. 0 = monotone, 100 = highly dynamic.',
+              '- structure = how well organized the speech is: a clear opening/hook, one or more distinct points, supporting detail or an example, and a deliberate close/landing. 0 = rambling with no shape, 100 = tight, complete arc. Judge only from the transcript.',
+              'The SCORES line is mandatory and must be valid JSON. Do not wrap it in code fences.',
+              '',
               'Examples of good feedback:',
               '- When you said "the most important thing is trust", you emphasized the key word effectively',
               '- The opening "I was completely lost" grabbed attention with vulnerability',
@@ -229,7 +265,13 @@ Speech Metrics:
         ]
       });
 
-      const feedback = completion.choices?.[0]?.message?.content?.trim() || 'No feedback generated.';
+      const feedbackRaw = completion.choices?.[0]?.message?.content?.trim() || 'No feedback generated.';
+      const { feedback, vocalVariety, structure } = extractScores(feedbackRaw);
+
+      // Fold the AI scores into metrics so the client's leveling engine,
+      // Firebase sync, and analytics all pick them up automatically.
+      metrics.vocalVariety = vocalVariety;
+      metrics.structure = structure;
 
       return res.status(200).json({
         feedback,
@@ -257,15 +299,19 @@ Speech Metrics:
               'What you did well: exactly three bullet points.',
               'What to improve: exactly three bullet points.',
               'Next speech focus: one actionable bullet.',
-              'Keep the tone concise, specific, and constructive.'
+              'Keep the tone concise, specific, and constructive.',
+              'After all prose, output ONE final line exactly: SCORES: {"vocalVariety": <0-100 integer>, "structure": <0-100 integer>}.',
+              'vocalVariety = how dynamic/expressive the delivery reads (varied pace, emphasis, contrast; penalize monotone and filler).',
+              'structure = clarity of organization: opening/hook, distinct point(s), support/example, deliberate close. Valid JSON, no code fences.'
             ].join(' '),
           },
           { role: 'user', content: text.trim() }
         ]
       });
 
-      const feedback = completion.choices?.[0]?.message?.content?.trim() || 'No feedback generated.';
-      return res.status(200).json({ feedback });
+      const feedbackRaw = completion.choices?.[0]?.message?.content?.trim() || 'No feedback generated.';
+      const { feedback, vocalVariety, structure } = extractScores(feedbackRaw);
+      return res.status(200).json({ feedback, metrics: { vocalVariety, structure } });
     }
 
   } catch (error) {
