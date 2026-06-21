@@ -3567,6 +3567,113 @@
       .spot-btn { width: 100%; }
     }
 
+    /* ===== GAMIFICATION: LEVELS + PROGRAM ===== */
+    /* Compact level summary on the main page */
+    .levels-summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+      cursor: pointer;
+    }
+    .level-mini {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(250, 204, 21, 0.18);
+      border-radius: 16px;
+      padding: 12px 14px;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .levels-summary:hover .level-mini { border-color: rgba(250, 204, 21, 0.4); }
+    .level-mini:active { transform: scale(0.98); }
+    .level-mini-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .level-mini-icon { font-size: 20px; }
+    .level-mini-track { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.04em; }
+    .level-mini-num {
+      margin-left: auto; font-size: 12px; font-weight: 800; color: #0a0f1e;
+      background: #facc15; border-radius: 999px; padding: 2px 9px;
+    }
+    .level-mini-name { font-size: 14px; font-weight: 700; color: #e5e7eb; margin-bottom: 8px; }
+    .level-mini-bar { height: 7px; background: rgba(148, 163, 184, 0.2); border-radius: 999px; overflow: hidden; }
+    .level-mini-fill { height: 100%; background: linear-gradient(90deg, #f59e0b, #facc15); border-radius: 999px; transition: width 0.6s ease; }
+
+    /* Levels page */
+    .level-track-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(250, 204, 21, 0.18);
+      border-radius: 20px;
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+    .level-track-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .level-track-icon { font-size: 30px; }
+    .level-track-title { font-size: 18px; font-weight: 800; color: #facc15; }
+    .level-track-sub { font-size: 12px; color: #9ca3af; }
+    .level-badge-big {
+      margin-left: auto; text-align: center; background: #facc15; color: #0a0f1e;
+      border-radius: 16px; padding: 8px 14px; min-width: 56px;
+    }
+    .level-badge-big .lv-num { font-size: 22px; font-weight: 900; line-height: 1; }
+    .level-badge-big .lv-word { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+    .level-xp-bar { height: 12px; background: rgba(148, 163, 184, 0.2); border-radius: 999px; overflow: hidden; margin: 6px 0; }
+    .level-xp-fill { height: 100%; background: linear-gradient(90deg, #f59e0b, #facc15); border-radius: 999px; transition: width 0.6s ease; }
+    .level-xp-text { font-size: 12px; color: #cbd5e1; display: flex; justify-content: space-between; }
+    .level-gate-note {
+      font-size: 12px; margin-top: 10px; padding: 8px 12px; border-radius: 10px;
+      background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); color: #fbbf24;
+    }
+    .level-gate-note.met { background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.3); color: #86efac; }
+    .level-ladder { margin-top: 14px; display: flex; flex-direction: column; gap: 4px; }
+    .level-ladder-row {
+      display: flex; align-items: center; gap: 10px; font-size: 13px;
+      padding: 6px 10px; border-radius: 8px; color: #94a3b8;
+    }
+    .level-ladder-row.done { color: #e5e7eb; }
+    .level-ladder-row.current { background: rgba(250, 204, 21, 0.12); color: #facc15; font-weight: 700; }
+    .level-ladder-row .ll-num { width: 22px; text-align: center; font-weight: 800; }
+    .level-ladder-row .ll-check { margin-left: auto; }
+
+    /* Program page */
+    .program-hero { text-align: center; margin-bottom: 22px; }
+    .program-cta {
+      background: linear-gradient(135deg, #f59e0b, #facc15); color: #0a0f1e;
+      border: none; border-radius: 14px; padding: 14px 22px; font-size: 16px; font-weight: 800;
+      cursor: pointer; width: 100%; max-width: 320px; transition: transform 0.15s ease;
+    }
+    .program-cta:active { transform: scale(0.98); }
+    .program-cta.leave { background: rgba(51, 65, 85, 0.8); color: #e5e7eb; border: 1px solid rgba(148, 163, 184, 0.3); max-width: 200px; }
+    .program-streak-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0; }
+    .program-stat { background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(250, 204, 21, 0.15); border-radius: 16px; padding: 14px; text-align: center; }
+    .program-stat-val { font-size: 26px; font-weight: 900; color: #facc15; }
+    .program-stat-label { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px; }
+    .program-today {
+      background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(250, 204, 21, 0.3);
+      border-radius: 20px; padding: 22px; margin-bottom: 20px;
+    }
+    .program-today.done { border-color: rgba(34, 197, 94, 0.4); }
+    .program-today-tag { font-size: 11px; color: #facc15; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+    .program-today-title { font-size: 20px; font-weight: 800; color: #e5e7eb; margin: 6px 0; }
+    .program-today-desc { font-size: 14px; color: #cbd5e1; line-height: 1.5; margin-bottom: 14px; }
+    .program-today-focus { display: inline-flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+    .program-chip { font-size: 11px; padding: 3px 10px; border-radius: 999px; background: rgba(250, 204, 21, 0.15); color: #facc15; font-weight: 600; }
+    .program-go-btn {
+      background: linear-gradient(135deg, #f59e0b, #facc15); color: #0a0f1e; border: none;
+      border-radius: 12px; padding: 12px 20px; font-size: 15px; font-weight: 800; cursor: pointer; width: 100%;
+    }
+    .program-done-msg { color: #86efac; font-weight: 700; text-align: center; padding: 8px; }
+    .program-weeks { display: flex; flex-direction: column; gap: 16px; }
+    .program-week { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 16px; padding: 16px; }
+    .program-week-title { font-size: 14px; font-weight: 800; color: #facc15; margin-bottom: 4px; }
+    .program-week-theme { font-size: 12px; color: #9ca3af; margin-bottom: 12px; }
+    .program-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+    .program-day {
+      aspect-ratio: 1; border-radius: 10px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; font-size: 13px; font-weight: 800;
+      background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.15); color: #64748b;
+    }
+    .program-day.done { background: rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.45); color: #86efac; }
+    .program-day.current { background: rgba(250, 204, 21, 0.2); border-color: #facc15; color: #facc15; }
+    .program-day .pd-dot { font-size: 9px; margin-top: 2px; }
+
   </style>
 </head>
 
@@ -3621,6 +3728,14 @@
       <div class="menu-item" id="menuVocab" data-page="vocab">
         <span class="menu-item-icon">📚</span>
         <span>Word Upgrade</span>
+      </div>
+      <div class="menu-item" id="menuLevels" data-page="levels">
+        <span class="menu-item-icon">⭐</span>
+        <span>Levels</span>
+      </div>
+      <div class="menu-item" id="menuProgram" data-page="program">
+        <span class="menu-item-icon">🗓️</span>
+        <span>6-Week Program</span>
       </div>
       <div class="menu-item" id="menuAnalytics" data-page="analytics">
         <span class="menu-item-icon">📊</span>
@@ -3708,6 +3823,31 @@
         <span class="stat-label">All Time</span>
       </div>
     </div>
+
+    <!-- Level Summary (tap to open Levels) -->
+    <div class="levels-summary" id="levelsSummary">
+      <div class="level-mini">
+        <div class="level-mini-top">
+          <span class="level-mini-icon">🎙️</span>
+          <span class="level-mini-track">Vocal Variety</span>
+          <span class="level-mini-num" id="vvMiniNum">1</span>
+        </div>
+        <div class="level-mini-name" id="vvMiniName">Monotone</div>
+        <div class="level-mini-bar"><div class="level-mini-fill" id="vvMiniFill" style="width:0%"></div></div>
+      </div>
+      <div class="level-mini">
+        <div class="level-mini-top">
+          <span class="level-mini-icon">🏛️</span>
+          <span class="level-mini-track">Structure</span>
+          <span class="level-mini-num" id="stMiniNum">1</span>
+        </div>
+        <div class="level-mini-name" id="stMiniName">Rambler</div>
+        <div class="level-mini-bar"><div class="level-mini-fill" id="stMiniFill" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- Program Banner (only shown when enrolled) -->
+    <div class="nudge-banner" id="programBanner" style="display:none; cursor:pointer;"></div>
 
     <!-- Nudge Banner -->
     <div class="nudge-banner" id="nudgeBanner"></div>
@@ -4879,6 +5019,31 @@
     </div>
   </div>
   <!-- END VOCABULARY GAME PAGE -->
+
+  <!-- LEVELS PAGE -->
+  <div class="container page" id="levelsPage">
+    <button class="back-btn" id="levelsBackBtn">← Back to Home</button>
+    <h2 style="font-size: 24px; color: #facc15; margin-bottom: 6px; text-align: center;">⭐ Your Levels</h2>
+    <p style="text-align:center; color:#9ca3af; font-size:13px; margin-bottom:22px;">
+      Every analyzed speech earns XP toward two skills. Higher tiers also require proving the skill in a recent speech.
+    </p>
+    <div id="levelsContent"></div>
+    <p style="text-align:center; color:#64748b; font-size:12px; margin-top:8px;">
+      Levels grow from speeches you record with AI feedback on. Practice anytime — no program required.
+    </p>
+  </div>
+  <!-- END LEVELS PAGE -->
+
+  <!-- 6-WEEK PROGRAM PAGE -->
+  <div class="container page" id="programPage">
+    <button class="back-btn" id="programBackBtn">← Back to Home</button>
+    <h2 style="font-size: 24px; color: #facc15; margin-bottom: 6px; text-align: center;">🗓️ 6-Week Program</h2>
+    <p style="text-align:center; color:#9ca3af; font-size:13px; margin-bottom:22px;">
+      An optional guided path: one assignment a day, building vocal variety and structure. Miss a day and the streak resets — but your progress stays.
+    </p>
+    <div id="programContent"></div>
+  </div>
+  <!-- END 6-WEEK PROGRAM PAGE -->
 
   <!-- SETTINGS PAGE -->
   <div class="container page" id="settingsPage">
@@ -6372,6 +6537,9 @@
         const metrics = feedbackData.metrics || {};
         lastSpeechMetrics = metrics; // Save for Firebase sync
 
+        // Award level XP from the AI's vocal-variety & structure scores.
+        applyAiScores(metrics);
+
         console.log('[INFO] Transcript length:', transcript.length);
         console.log('[INFO] Metrics:', metrics);
 
@@ -6422,6 +6590,9 @@
         if (!feedbackRes.ok) throw new Error('Feedback generation failed');
         const feedbackData = await feedbackRes.json();
         const feedbackText = feedbackData.feedback?.trim() || 'No feedback generated.';
+
+        // Award level XP from the AI's vocal-variety & structure scores.
+        applyAiScores(feedbackData.metrics);
 
         // Manual text path has no audio metrics — render scorecard with strengths/improvements only
         renderFeedbackScorecard({ feedbackText, metrics: null });
@@ -6648,6 +6819,13 @@
       updateNudge();
       if (stats.todaySpeeches === 1) showAchievement("🎯 First speech of the day!");
       else if (stats.todaySpeeches === 3) showAchievement("🔥 3 speeches! On fire!");
+
+      // If enrolled in the program and today's assignment is a speech-based
+      // drill, completing a speech marks the day done (strict one-per-day).
+      if (typeof program !== 'undefined' && program.enrolled && !programFinished() && !programDoneToday()) {
+        const day = PROGRAM_DAYS[program.currentDay - 1];
+        if (day && day.mode === 'main') markProgramDayComplete();
+      }
     }
 
     // Mode switching (Timer, Audio, Video only - Rapid Fire is now a separate page)
@@ -7964,6 +8142,30 @@
               await saveSettingsToDB(notificationSettings);
             }
           }
+
+          // Load gamification (levels + program), preferring whichever side
+          // has more progress so a fresh device doesn't wipe cloud data.
+          if (data.gamification) {
+            if (data.gamification.levels) {
+              const remote = data.gamification.levels;
+              const remoteXp = (remote.vocalVariety?.xp || 0) + (remote.structure?.xp || 0);
+              const localXp = (levels.vocalVariety?.xp || 0) + (levels.structure?.xp || 0);
+              if (remoteXp >= localXp) {
+                levels = remote;
+                localStorage.setItem('sgLevels', JSON.stringify(levels));
+              }
+            }
+            if (data.gamification.program) {
+              const remote = data.gamification.program;
+              const remoteDays = Object.keys(remote.completed || {}).length;
+              const localDays = Object.keys(program.completed || {}).length;
+              if (remoteDays >= localDays) {
+                program = { ...defaultProgram(), ...remote, completed: remote.completed || {} };
+                localStorage.setItem('sgProgram', JSON.stringify(program));
+              }
+            }
+            initGamification();
+          }
         }
 
         console.log('[Settings] Settings loaded successfully');
@@ -8265,6 +8467,12 @@
       } else if (pageName === 'vocab') {
         document.getElementById('vocabPage').classList.add('active');
         updateVocabStats();
+      } else if (pageName === 'levels') {
+        document.getElementById('levelsPage').classList.add('active');
+        renderLevelsPage();
+      } else if (pageName === 'program') {
+        document.getElementById('programPage').classList.add('active');
+        renderProgramPage();
       } else if (pageName === 'settings') {
         document.getElementById('settingsPage').classList.add('active');
         updateSettingsPageUI();
@@ -8310,6 +8518,507 @@
     document.getElementById('settingsBackBtn').addEventListener('click', () => navigateToPage('main'));
     document.getElementById('analyticsBackBtn').addEventListener('click', () => navigateToPage('main'));
     document.getElementById('vocabBackBtn').addEventListener('click', () => navigateToPage('main'));
+    document.getElementById('levelsBackBtn').addEventListener('click', () => navigateToPage('main'));
+    document.getElementById('programBackBtn').addEventListener('click', () => navigateToPage('main'));
+
+    // Tap the main-page level summary to open the Levels page
+    document.getElementById('levelsSummary').addEventListener('click', () => navigateToPage('levels'));
+    document.getElementById('programBanner').addEventListener('click', () => navigateToPage('program'));
+
+    // ============================================================
+    // ===== GAMIFICATION: LEVELS ENGINE ==========================
+    // ============================================================
+
+    // Cumulative XP required to BE at each level (index 1..10).
+    const LEVEL_THRESHOLDS = [0, 0, 40, 100, 190, 320, 500, 740, 1050, 1450, 1950];
+    // Minimum recent score required to first ENTER a level (skill gate).
+    // null = no gate. Top tiers must be demonstrated, not just ground out.
+    const LEVEL_GATES =      [null, null, null, null, null, null, null, 60, 70, 80, 88];
+    const MAX_LEVEL = 10;
+
+    const LEVEL_NAMES = {
+      vocalVariety: ['', 'Monotone', 'Flat Tone', 'Steady Voice', 'Warming Up', 'Expressive',
+                     'Dynamic', 'Colorful', 'Captivating', 'Spellbinding', 'Vocal Maestro'],
+      structure:    ['', 'Rambler', 'Scattered', 'Finding Form', 'Organized', 'Clear Arc',
+                     'Tight', 'Polished', 'Compelling', 'Masterful', 'Architect']
+    };
+    const TRACK_META = {
+      vocalVariety: { icon: '🎙️', label: 'Vocal Variety' },
+      structure:    { icon: '🏛️', label: 'Structure' }
+    };
+
+    let levels = loadLevels();
+
+    function defaultLevels() {
+      return {
+        vocalVariety: { xp: 0, level: 1, recentScores: [] },
+        structure:    { xp: 0, level: 1, recentScores: [] }
+      };
+    }
+
+    function loadLevels() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('sgLevels'));
+        if (!saved || !saved.vocalVariety || !saved.structure) return defaultLevels();
+        // Backfill any missing fields.
+        ['vocalVariety', 'structure'].forEach(t => {
+          saved[t].xp = saved[t].xp || 0;
+          saved[t].level = saved[t].level || 1;
+          saved[t].recentScores = Array.isArray(saved[t].recentScores) ? saved[t].recentScores : [];
+        });
+        return saved;
+      } catch (e) {
+        return defaultLevels();
+      }
+    }
+
+    function saveLevels() {
+      localStorage.setItem('sgLevels', JSON.stringify(levels));
+      syncGamificationToFirebase();
+    }
+
+    function bestRecentScore(track) {
+      const r = levels[track].recentScores;
+      return r.length ? Math.max(...r) : 0;
+    }
+
+    // Highest level the track currently qualifies for, never dropping below
+    // the level already achieved (`floor`). Gates block first entry only.
+    function computeLevel(track) {
+      const state = levels[track];
+      const xp = state.xp;
+      const best = bestRecentScore(track);
+      let lv = state.level || 1;
+      for (let L = lv + 1; L <= MAX_LEVEL; L++) {
+        const xpOk = xp >= LEVEL_THRESHOLDS[L];
+        const gateOk = LEVEL_GATES[L] == null || best >= LEVEL_GATES[L];
+        if (xpOk && gateOk) lv = L;
+        else break;
+      }
+      return lv;
+    }
+
+    // Display info for a track: level, name, progress within level, next gate.
+    function getLevelInfo(track) {
+      const state = levels[track];
+      const level = state.level;
+      const xp = state.xp;
+      const atMax = level >= MAX_LEVEL;
+      const floor = LEVEL_THRESHOLDS[level];
+      const ceil = atMax ? LEVEL_THRESHOLDS[MAX_LEVEL] : LEVEL_THRESHOLDS[level + 1];
+      const span = Math.max(1, ceil - floor);
+      const progress = atMax ? 1 : Math.min(1, Math.max(0, (xp - floor) / span));
+      // Is XP already enough for the next level but a score gate is blocking?
+      let gateBlocked = false, gateNeeded = null;
+      if (!atMax) {
+        const nextGate = LEVEL_GATES[level + 1];
+        if (nextGate != null && xp >= LEVEL_THRESHOLDS[level + 1] && bestRecentScore(track) < nextGate) {
+          gateBlocked = true;
+          gateNeeded = nextGate;
+        }
+      }
+      return {
+        level, atMax,
+        name: LEVEL_NAMES[track][level],
+        nextName: atMax ? null : LEVEL_NAMES[track][level + 1],
+        xp, progress,
+        xpIntoLevel: Math.max(0, xp - floor),
+        xpForLevel: span,
+        xpToNext: atMax ? 0 : Math.max(0, ceil - xp),
+        gateBlocked, gateNeeded,
+        bestRecent: bestRecentScore(track)
+      };
+    }
+
+    // Award XP from a single analyzed speech. `scores` = {vocalVariety, structure}
+    // each 0-100 or null. Returns array of level-up events for toasts.
+    function awardSpeechScores(scores) {
+      if (!scores) return [];
+      const events = [];
+      ['vocalVariety', 'structure'].forEach(track => {
+        const score = scores[track];
+        if (score == null || isNaN(score)) return;
+        const state = levels[track];
+        const before = state.level;
+        // XP scales with the score: a great speech is worth far more than a weak one.
+        const gain = Math.max(1, Math.round(score / 4));
+        state.xp += gain;
+        state.recentScores.push(score);
+        if (state.recentScores.length > 10) state.recentScores.shift();
+        const after = computeLevel(track);
+        if (after > before) {
+          state.level = after;
+          events.push({ track, from: before, to: after, name: LEVEL_NAMES[track][after] });
+        }
+      });
+      saveLevels();
+      updateLevelSummary();
+      return events;
+    }
+
+    // Called wherever AI speech scores arrive. Shows toasts + refreshes UI.
+    function applyAiScores(metrics) {
+      if (!metrics) return;
+      const scores = {
+        vocalVariety: typeof metrics.vocalVariety === 'number' ? metrics.vocalVariety : null,
+        structure: typeof metrics.structure === 'number' ? metrics.structure : null
+      };
+      if (scores.vocalVariety == null && scores.structure == null) return;
+      const events = awardSpeechScores(scores);
+      events.forEach((ev, i) => {
+        const meta = TRACK_META[ev.track];
+        setTimeout(() => {
+          showAchievement(`${meta.icon} Level ${ev.to} — ${meta.label}: ${ev.name}!`);
+        }, 600 + i * 1800);
+      });
+    }
+
+    // Update the compact level cards on the main page.
+    function updateLevelSummary() {
+      const vv = getLevelInfo('vocalVariety');
+      const st = getLevelInfo('structure');
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      const fill = (id, pct) => { const el = document.getElementById(id); if (el) el.style.width = (pct * 100).toFixed(0) + '%'; };
+      set('vvMiniNum', vv.level); set('vvMiniName', vv.name); fill('vvMiniFill', vv.progress);
+      set('stMiniNum', st.level); set('stMiniName', st.name); fill('stMiniFill', st.progress);
+    }
+
+    function renderLevelsPage() {
+      updateLevelSummary();
+      const container = document.getElementById('levelsContent');
+      container.innerHTML = ['vocalVariety', 'structure'].map(track => {
+        const info = getLevelInfo(track);
+        const meta = TRACK_META[track];
+        const names = LEVEL_NAMES[track];
+        let gateHtml = '';
+        if (info.atMax) {
+          gateHtml = `<div class="level-gate-note met">🏆 Top level reached — you've mastered this skill.</div>`;
+        } else if (info.gateBlocked) {
+          gateHtml = `<div class="level-gate-note">🔒 You have the XP for Level ${info.level + 1}. Score <strong>${info.gateNeeded}+</strong> on a recent speech to unlock it. Your recent best: ${info.bestRecent}.</div>`;
+        } else if (LEVEL_GATES[info.level + 1] != null) {
+          gateHtml = `<div class="level-gate-note">Next level also needs a recent speech scoring <strong>${LEVEL_GATES[info.level + 1]}+</strong>. Recent best: ${info.bestRecent}.</div>`;
+        }
+        const ladder = names.slice(1).map((nm, idx) => {
+          const L = idx + 1;
+          const cls = L === info.level ? 'current' : (L < info.level ? 'done' : '');
+          const gate = LEVEL_GATES[L] != null ? ` · needs ${LEVEL_GATES[L]}+` : '';
+          return `<div class="level-ladder-row ${cls}">
+            <span class="ll-num">${L}</span>
+            <span>${nm}</span>
+            <span style="color:#64748b;font-size:11px;">${gate}</span>
+            <span class="ll-check">${L < info.level ? '✓' : (L === info.level ? '★' : '')}</span>
+          </div>`;
+        }).join('');
+        const progressLabel = info.atMax
+          ? `${info.xp} XP · MAX`
+          : `${info.xpIntoLevel} / ${info.xpForLevel} XP · ${info.xpToNext} to go`;
+        return `<div class="level-track-card">
+          <div class="level-track-head">
+            <span class="level-track-icon">${meta.icon}</span>
+            <div>
+              <div class="level-track-title">${meta.label}</div>
+              <div class="level-track-sub">${info.name}</div>
+            </div>
+            <div class="level-badge-big"><div class="lv-num">${info.level}</div><div class="lv-word">Level</div></div>
+          </div>
+          <div class="level-xp-bar"><div class="level-xp-fill" style="width:${(info.progress * 100).toFixed(0)}%"></div></div>
+          <div class="level-xp-text"><span>${progressLabel}</span><span>${info.atMax ? '' : 'Next: ' + info.nextName}</span></div>
+          ${gateHtml}
+          <div class="level-ladder">${ladder}</div>
+        </div>`;
+      }).join('');
+    }
+
+    // ============================================================
+    // ===== GAMIFICATION: 6-WEEK PROGRAM =========================
+    // ============================================================
+
+    // 42-day curriculum. Each day routes to an existing practice mode.
+    // focus tags drive which skill it builds. mode maps to navigateToPage().
+    const PROGRAM_WEEKS = [
+      { title: 'Week 1 · Foundations', theme: 'Find your voice and give every speech a shape.' },
+      { title: 'Week 2 · Vocal Range', theme: 'Pace, pause, and emphasis — make your delivery move.' },
+      { title: 'Week 3 · Structure Basics', theme: 'Strong openings, clear points, deliberate closes.' },
+      { title: 'Week 4 · Storytelling', theme: 'Combine a clear arc with expressive delivery.' },
+      { title: 'Week 5 · Persuasion & Impact', theme: 'Advanced structure that lands and convinces.' },
+      { title: 'Week 6 · Mastery', theme: 'Integrate everything under pressure.' }
+    ];
+
+    const PROGRAM_DAYS = [
+      // Week 1 — Foundations
+      { t: 'Baseline speech', d: 'Record a 60-second speech on any random word. This is your starting line — speak naturally and get your first scores.', focus: ['Vocal Variety', 'Structure'], mode: 'main' },
+      { t: 'Open, point, close', d: 'Give a 60s speech with a clear opening line, one point, and a closing line. Aim for shape over polish.', focus: ['Structure'], mode: 'main' },
+      { t: 'Warm up the instrument', d: 'Run a full vocal warm-up, then record a short speech right after. Notice how your voice feels looser.', focus: ['Vocal Variety'], mode: 'warmup' },
+      { t: 'One clear idea', d: 'Speak for 60s making exactly ONE point. No tangents. Land it cleanly.', focus: ['Structure'], mode: 'main' },
+      { t: 'Slow it down', d: 'Deliver a 60s speech deliberately slower than feels natural. Let pauses breathe.', focus: ['Vocal Variety'], mode: 'main' },
+      { t: 'Speak on the spot', d: 'Do a Speak on the Spot challenge. React fast, keep talking, stay on your feet.', focus: ['Vocal Variety', 'Structure'], mode: 'spot' },
+      { t: 'Week 1 review speech', d: 'Record a 90s speech using everything so far: warm voice, one clear point, clean open and close.', focus: ['Vocal Variety', 'Structure'], mode: 'main' },
+      // Week 2 — Vocal Range
+      { t: 'Pace contrast', d: 'Record a 60s speech where you deliberately speed up on excitement and slow down on key points.', focus: ['Vocal Variety'], mode: 'main' },
+      { t: 'The power of the pause', d: 'Give a 60s speech and insert at least 3 deliberate 2-second pauses before important words.', focus: ['Vocal Variety'], mode: 'main' },
+      { t: 'Rapid fire analogies', d: 'Run a Rapid Fire session. Train quick, vivid expression under time pressure.', focus: ['Vocal Variety'], mode: 'rapidfire' },
+      { t: 'Emphasis hunt', d: 'Speak 60s and stress the single most important word in each sentence. Make it audible.', focus: ['Vocal Variety'], mode: 'main' },
+      { t: 'Light and shade', d: 'Tell a 90s story shifting tone: quiet and tense, then bright and loud. Use contrast.', focus: ['Vocal Variety'], mode: 'main' },
+      { t: 'Warm-up + expressive', d: 'Warm up, then record a 60s speech focused purely on sounding alive and dynamic.', focus: ['Vocal Variety'], mode: 'warmup' },
+      { t: 'Week 2 review speech', d: 'Record 90s combining pace contrast, pauses, and emphasis. Aim to raise your Vocal Variety score.', focus: ['Vocal Variety'], mode: 'main' },
+      // Week 3 — Structure Basics
+      { t: 'Hook openings', d: 'Record a 60s speech that opens with a question, a bold claim, or a vivid image.', focus: ['Structure'], mode: 'main' },
+      { t: 'Three points', d: 'Give a 90s speech with exactly three distinct points. Signpost each one.', focus: ['Structure'], mode: 'main' },
+      { t: 'Point + example', d: 'Make one point and back it with a concrete example or story. 60–90s.', focus: ['Structure'], mode: 'main' },
+      { t: 'Strong closings', d: 'Record a 60s speech and nail a deliberate closing line — a call to action or a callback.', focus: ['Structure'], mode: 'main' },
+      { t: 'Spot challenge structure', d: 'Do a Speak on the Spot challenge but force a clear beginning, middle, and end.', focus: ['Structure'], mode: 'spot' },
+      { t: 'PREP method', d: 'Speak 90s using Point → Reason → Example → Point. A clean, repeatable frame.', focus: ['Structure'], mode: 'main' },
+      { t: 'Week 3 review speech', d: 'Record 90s with a hook, three signposted points, and a strong close. Push your Structure score up.', focus: ['Structure'], mode: 'main' },
+      // Week 4 — Storytelling
+      { t: 'A small story', d: 'Tell a 90s personal story with a clear beginning, turn, and resolution.', focus: ['Structure', 'Vocal Variety'], mode: 'main' },
+      { t: 'Show, don\'t tell', d: 'Retell a moment using sensory detail and varied delivery instead of summary.', focus: ['Vocal Variety'], mode: 'main' },
+      { t: 'Build tension', d: 'Tell a 90s story that slows and quiets toward a turning point, then releases.', focus: ['Vocal Variety', 'Structure'], mode: 'main' },
+      { t: 'Character voices', d: 'Tell a story with 2 people in it — shift your voice for each. 90s.', focus: ['Vocal Variety'], mode: 'main' },
+      { t: 'Rapid fire imagery', d: 'Run a Rapid Fire session leaning into vivid, surprising images.', focus: ['Vocal Variety'], mode: 'rapidfire' },
+      { t: 'Story with a point', d: 'Tell a 90s story that clearly makes ONE point by the end. Arc + meaning.', focus: ['Structure', 'Vocal Variety'], mode: 'main' },
+      { t: 'Week 4 review speech', d: 'Record a 2-minute story: clear arc, expressive delivery, one landing point.', focus: ['Structure', 'Vocal Variety'], mode: 'main' },
+      // Week 5 — Persuasion & Impact
+      { t: 'Make a case', d: 'Argue one position for 90s: claim, two reasons, evidence, restate.', focus: ['Structure'], mode: 'main' },
+      { t: 'Rule of three', d: 'Build a 60s speech around a memorable three-part phrase. Deliver it with rhythm.', focus: ['Vocal Variety', 'Structure'], mode: 'main' },
+      { t: 'Contrast for impact', d: 'Persuade for 90s using "not this, but that" contrasts. Punch the turns.', focus: ['Vocal Variety', 'Structure'], mode: 'main' },
+      { t: 'Spot persuasion', d: 'Do a Speak on the Spot challenge trying to convince, not just describe.', focus: ['Structure', 'Vocal Variety'], mode: 'spot' },
+      { t: 'Open with a story, close with a call', d: 'Story hook → one argument → call to action. 90s.', focus: ['Structure'], mode: 'main' },
+      { t: 'High-stakes delivery', d: 'Record a 90s speech as if the room must act now. Urgency in voice and shape.', focus: ['Vocal Variety', 'Structure'], mode: 'main' },
+      { t: 'Week 5 review speech', d: 'Deliver a 2-minute persuasive speech: hook, argument, contrast, call to action.', focus: ['Structure', 'Vocal Variety'], mode: 'main' },
+      // Week 6 — Mastery
+      { t: 'Cold open challenge', d: 'Speak on the Spot with no prep — apply everything: shape, pace, emphasis.', focus: ['Vocal Variety', 'Structure'], mode: 'spot' },
+      { t: 'Two-minute keynote', d: 'Record a polished 2-minute speech on a topic you care about. Full toolkit.', focus: ['Structure', 'Vocal Variety'], mode: 'main' },
+      { t: 'Vocabulary upgrade', d: 'Play a Word Upgrade round, then record a 60s speech using sharper words.', focus: ['Vocal Variety'], mode: 'vocab' },
+      { t: 'Story + persuade', d: 'Tell a story that argues a point in 2 minutes. Blend Week 4 and Week 5.', focus: ['Structure', 'Vocal Variety'], mode: 'main' },
+      { t: 'Rapid fire finale', d: 'Run a fast Rapid Fire session and keep your expression high throughout.', focus: ['Vocal Variety'], mode: 'rapidfire' },
+      { t: 'Free masterpiece', d: 'Record your best 2-minute speech yet. No constraints — show your range.', focus: ['Vocal Variety', 'Structure'], mode: 'main' },
+      { t: 'Graduation speech', d: 'Record a final 2-minute speech reflecting on these 6 weeks. Aim for personal-best scores.', focus: ['Vocal Variety', 'Structure'], mode: 'main' }
+    ];
+
+    let program = loadProgram();
+
+    function defaultProgram() {
+      return {
+        enrolled: false, startDate: null, currentDay: 1, completed: {},
+        lastCompletedDate: null, streak: 0, bestStreak: 0
+      };
+    }
+    function loadProgram() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('sgProgram'));
+        if (!saved) return defaultProgram();
+        return { ...defaultProgram(), ...saved, completed: saved.completed || {} };
+      } catch (e) { return defaultProgram(); }
+    }
+    function saveProgram() {
+      localStorage.setItem('sgProgram', JSON.stringify(program));
+      syncGamificationToFirebase();
+    }
+
+    function dateStr(d) { return d.toDateString(); }
+    function todayStr() { return dateStr(new Date()); }
+    function yesterdayStr() { const d = new Date(); d.setDate(d.getDate() - 1); return dateStr(d); }
+    const PROGRAM_TOTAL_DAYS = PROGRAM_DAYS.length; // 42
+
+    function programFinished() { return program.currentDay > PROGRAM_TOTAL_DAYS; }
+    function programDoneToday() { return program.lastCompletedDate === todayStr(); }
+
+    // Strict streak: if a full calendar day was skipped without completion,
+    // the streak resets to 0. Progress (currentDay/completed) is preserved.
+    function checkProgramStreak() {
+      if (!program.enrolled || programFinished()) return;
+      const lc = program.lastCompletedDate;
+      if (lc && lc !== todayStr() && lc !== yesterdayStr() && program.streak !== 0) {
+        program.streak = 0;
+        saveProgram();
+      }
+    }
+
+    function enrollProgram() {
+      program.enrolled = true;
+      program.startDate = todayStr();
+      saveProgram();
+      showAchievement('🗓️ Enrolled in the 6-Week Program! Day 1 is ready.');
+      renderProgramPage();
+      updateProgramBanner();
+    }
+    function leaveProgram() {
+      if (!confirm('Leave the program? Your day and streak progress will be kept, but the program will go back to optional.')) return;
+      program.enrolled = false;
+      saveProgram();
+      renderProgramPage();
+      updateProgramBanner();
+    }
+    function resetProgram() {
+      if (!confirm('Restart the program from Day 1? This clears your program progress and streak.')) return;
+      const enrolled = program.enrolled;
+      program = defaultProgram();
+      program.enrolled = enrolled;
+      program.startDate = todayStr();
+      saveProgram();
+      renderProgramPage();
+      updateProgramBanner();
+    }
+
+    // Mark the current day complete (auto-called when a speech finishes, or
+    // via the manual button for non-speech drills). Strict: one per calendar day.
+    function markProgramDayComplete() {
+      if (!program.enrolled || programFinished() || programDoneToday()) return;
+      const today = todayStr();
+      program.streak = (program.lastCompletedDate === yesterdayStr()) ? program.streak + 1 : 1;
+      program.bestStreak = Math.max(program.bestStreak, program.streak);
+      program.completed[program.currentDay] = today;
+      program.lastCompletedDate = today;
+      program.currentDay += 1;
+      saveProgram();
+      if (programFinished()) {
+        showAchievement('🎓 Program complete — all 42 days done! Incredible work.');
+      } else {
+        showAchievement(`✅ Day ${program.currentDay - 1} done! 🔥 ${program.streak}-day program streak.`);
+      }
+      updateProgramBanner();
+      if (currentPage === 'program') renderProgramPage();
+    }
+
+    function updateProgramBanner() {
+      const banner = document.getElementById('programBanner');
+      if (!banner) return;
+      if (!program.enrolled) { banner.style.display = 'none'; return; }
+      banner.style.display = 'block';
+      if (programFinished()) {
+        banner.innerHTML = '🎓 6-Week Program complete! Tap to review or restart.';
+        return;
+      }
+      const day = PROGRAM_DAYS[program.currentDay - 1];
+      if (programDoneToday()) {
+        banner.innerHTML = `✅ Program Day ${program.currentDay - 1} done · 🔥 ${program.streak}-day streak · come back tomorrow`;
+      } else {
+        banner.innerHTML = `🗓️ Program Day ${program.currentDay}: <strong>${day.t}</strong> · tap to start`;
+      }
+    }
+
+    function renderProgramPage() {
+      checkProgramStreak();
+      const container = document.getElementById('programContent');
+
+      if (!program.enrolled) {
+        const weeksPreview = PROGRAM_WEEKS.map(w =>
+          `<div class="program-week"><div class="program-week-title">${w.title}</div><div class="program-week-theme">${w.theme}</div></div>`
+        ).join('');
+        container.innerHTML = `
+          <div class="program-hero">
+            <p style="color:#cbd5e1; font-size:15px; line-height:1.6; margin-bottom:18px;">
+              A 6-week guided path that builds your <strong>Vocal Variety</strong> and <strong>Structure</strong> levels with one short assignment a day.
+              It's completely optional — you can keep practising freely whenever you like.
+            </p>
+            <button class="program-cta" id="programEnrollBtn">Start the 6-Week Program</button>
+          </div>
+          <div class="program-weeks">${weeksPreview}</div>`;
+        document.getElementById('programEnrollBtn').addEventListener('click', enrollProgram);
+        return;
+      }
+
+      const finished = programFinished();
+      const doneToday = programDoneToday();
+      const completedCount = Object.keys(program.completed).length;
+      const pct = Math.round((completedCount / PROGRAM_TOTAL_DAYS) * 100);
+
+      let todayCard = '';
+      if (finished) {
+        todayCard = `<div class="program-today done">
+          <div class="program-today-tag">🎓 Complete</div>
+          <div class="program-today-title">You finished all 42 days!</div>
+          <div class="program-today-desc">You've built real range and structure. Keep practising freely, or run it again.</div>
+          <button class="program-go-btn" id="programRestartBtn">🔄 Restart from Day 1</button>
+        </div>`;
+      } else {
+        const day = PROGRAM_DAYS[program.currentDay - 1];
+        const chips = day.focus.map(f => `<span class="program-chip">${f}</span>`).join('');
+        const weekNum = Math.ceil(program.currentDay / 7);
+        if (doneToday) {
+          todayCard = `<div class="program-today done">
+            <div class="program-today-tag">Week ${weekNum} · Day ${program.currentDay} of 42</div>
+            <div class="program-today-title">${day.t}</div>
+            <div class="program-today-focus">${chips}</div>
+            <div class="program-done-msg">✅ Done for today — come back tomorrow to keep your streak alive.</div>
+          </div>`;
+        } else {
+          todayCard = `<div class="program-today">
+            <div class="program-today-tag">Today · Week ${weekNum} · Day ${program.currentDay} of 42</div>
+            <div class="program-today-title">${day.t}</div>
+            <div class="program-today-desc">${day.d}</div>
+            <div class="program-today-focus">${chips}</div>
+            <button class="program-go-btn" id="programGoBtn">▶️ Start today's drill</button>
+            <button class="program-go-btn" id="programMarkBtn" style="margin-top:8px; background:rgba(51,65,85,0.8); color:#e5e7eb;">✓ Mark today complete</button>
+          </div>`;
+        }
+      }
+
+      const weeksHtml = PROGRAM_WEEKS.map((w, wi) => {
+        const daysHtml = Array.from({ length: 7 }, (_, di) => {
+          const dayNum = wi * 7 + di + 1;
+          const isDone = !!program.completed[dayNum];
+          const isCurrent = dayNum === program.currentDay && !finished;
+          const cls = isDone ? 'done' : (isCurrent ? 'current' : '');
+          const dot = isDone ? '✓' : (isCurrent ? '●' : '');
+          return `<div class="program-day ${cls}">${dayNum}<span class="pd-dot">${dot}</span></div>`;
+        }).join('');
+        return `<div class="program-week">
+          <div class="program-week-title">${w.title}</div>
+          <div class="program-week-theme">${w.theme}</div>
+          <div class="program-days">${daysHtml}</div>
+        </div>`;
+      }).join('');
+
+      container.innerHTML = `
+        <div class="program-streak-row">
+          <div class="program-stat"><div class="program-stat-val">🔥 ${program.streak}</div><div class="program-stat-label">Day Streak</div></div>
+          <div class="program-stat"><div class="program-stat-val">${completedCount}/42</div><div class="program-stat-label">Days Done</div></div>
+          <div class="program-stat"><div class="program-stat-val">${pct}%</div><div class="program-stat-label">Complete</div></div>
+        </div>
+        ${todayCard}
+        <div class="program-weeks">${weeksHtml}</div>
+        <div style="text-align:center; margin-top:18px; display:flex; gap:10px; justify-content:center;">
+          <button class="program-cta leave" id="programLeaveBtn">Leave program</button>
+          <button class="program-cta leave" id="programResetBtn">Restart</button>
+        </div>`;
+
+      const goBtn = document.getElementById('programGoBtn');
+      if (goBtn) goBtn.addEventListener('click', () => {
+        const day = PROGRAM_DAYS[program.currentDay - 1];
+        navigateToPage(day.mode === 'main' ? 'main' : day.mode);
+        showAchievement(`🗓️ Day ${program.currentDay}: ${day.t}`);
+      });
+      const markBtn = document.getElementById('programMarkBtn');
+      if (markBtn) markBtn.addEventListener('click', markProgramDayComplete);
+      const restartBtn = document.getElementById('programRestartBtn');
+      if (restartBtn) restartBtn.addEventListener('click', resetProgram);
+      const leaveBtn = document.getElementById('programLeaveBtn');
+      if (leaveBtn) leaveBtn.addEventListener('click', leaveProgram);
+      const resetBtn = document.getElementById('programResetBtn');
+      if (resetBtn) resetBtn.addEventListener('click', resetProgram);
+    }
+
+    // Mirror levels + program to Firebase (best-effort, when signed in).
+    function syncGamificationToFirebase() {
+      if (typeof syncEnabled === 'undefined' || !syncEnabled || !currentUser) return;
+      try {
+        db.collection('users').doc(currentUser.uid).set({
+          gamification: { levels, program },
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } catch (e) {
+        console.warn('[Gamification] sync failed:', e.message);
+      }
+    }
+
+    // Initialize gamification UI on load.
+    function initGamification() {
+      checkProgramStreak();
+      updateLevelSummary();
+      updateProgramBanner();
+    }
+    initGamification();
 
     // ===== ANALYTICS DASHBOARD =====
 
