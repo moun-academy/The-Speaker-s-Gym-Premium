@@ -72,7 +72,7 @@ export default async function handler(req, res) {
     messages.push({ role: 'user', content: message.trim() });
 
     const completion = await client.chat.completions.create({
-      model: 'gpt-5.4-mini',
+      model: 'gpt-5.4-nano',
       reasoning_effort: 'none',
       messages,
     });
