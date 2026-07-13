@@ -8006,7 +8006,8 @@
     //     to enforce a hard gate once products are live in Play Console.
     // ===========================================================================
     const PREMIUM_PRODUCT_ID = 'speaker_gym_premium';
-    let PAYWALL_BLOCKING = false;   // <-- flip to true for a hard gate
+    const PAYWALL_ENABLED = false;
+    let PAYWALL_BLOCKING = false;   // Used only when PAYWALL_ENABLED is true.
     let hasPremium = false;
     let billingReady = false;
 
@@ -8036,6 +8037,10 @@
       const paywall = document.getElementById('paywall');
       const closeBtn = document.getElementById('paywallCloseBtn');
       if (!paywall) return;
+      if (!PAYWALL_ENABLED) {
+        paywall.style.display = 'none';
+        return;
+      }
       if (hasPremium || !currentUser) {
         paywall.style.display = 'none';
         return;
