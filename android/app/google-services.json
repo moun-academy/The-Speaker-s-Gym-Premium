@@ -14,11 +14,27 @@
       },
       "oauth_client": [
         {
+          "client_id": "746797685018-2rf8ua0hi0kt83ug05d95a8s4bkispnj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.speakersgym.app",
+            "certificate_hash": "ae2449f61e86c6e6cd267ae69c2c19fb053c62c4"
+          }
+        },
+        {
           "client_id": "746797685018-8m7f2mjpkgisrq8fjf74fjgaqdrof1im.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.speakersgym.app",
             "certificate_hash": "0a73f906e5b67bff9b27212cf4af24a12a6ee5f6"
+          }
+        },
+        {
+          "client_id": "746797685018-s6ltkc1lh2i0j1t6oe6um4ol7u1ld38r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.speakersgym.app",
+            "certificate_hash": "01fb4ce417374a58aca581c5e4fc61c5fbb0b4fe"
           }
         },
         {

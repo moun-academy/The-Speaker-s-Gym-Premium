@@ -2980,6 +2980,41 @@
       box-shadow: 0 0 60px rgba(250, 204, 21, 0.08), 0 24px 64px rgba(0,0,0,0.6);
     }
 
+    /* Paywall — reuses .login-card / .login-google-btn styling */
+    .paywall-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0a0f1e 0%, #0f172a 50%, #131c33 100%);
+      padding: 24px;
+    }
+    .paywall-price {
+      font-size: 15px;
+      color: #facc15;
+      font-weight: 700;
+      margin-bottom: 18px;
+      min-height: 18px;
+    }
+    .paywall-subscribe-btn {
+      background: #facc15;
+      color: #111;
+    }
+    .paywall-link-btn {
+      display: block;
+      width: 100%;
+      margin-top: 12px;
+      padding: 8px;
+      background: none;
+      border: none;
+      color: #9ca3af;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .paywall-link-btn:hover { color: #facc15; }
+
     .login-logo-img {
       width: 110px;
       height: 110px;
@@ -3581,16 +3616,17 @@
       border: 1px solid rgba(250, 204, 21, 0.18);
       border-radius: 16px;
       padding: 12px 14px;
+      min-width: 0; /* allow grid item to shrink below content size */
       transition: transform 0.15s ease, border-color 0.15s ease;
     }
     .levels-summary:hover .level-mini { border-color: rgba(250, 204, 21, 0.4); }
     .level-mini:active { transform: scale(0.98); }
-    .level-mini-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .level-mini-icon { font-size: 20px; }
-    .level-mini-track { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.04em; }
+    .level-mini-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; min-width: 0; }
+    .level-mini-icon { font-size: 20px; flex-shrink: 0; }
+    .level-mini-track { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.04em; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
     .level-mini-num {
       margin-left: auto; font-size: 12px; font-weight: 800; color: #0a0f1e;
-      background: #facc15; border-radius: 999px; padding: 2px 9px;
+      background: #facc15; border-radius: 999px; padding: 2px 9px; flex-shrink: 0;
     }
     .level-mini-name { font-size: 14px; font-weight: 700; color: #e5e7eb; margin-bottom: 8px; }
     .level-mini-bar { height: 7px; background: rgba(148, 163, 184, 0.2); border-radius: 999px; overflow: hidden; }
@@ -3696,6 +3732,21 @@
         Sign in with Google
       </button>
       <div id="loginError" class="login-error" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- Paywall (Google Play subscription) -->
+  <div id="paywall" class="paywall-gate" style="display:none;">
+    <div class="login-card paywall-card">
+      <img src="logo.png" alt="The Speaker's Gym" class="login-logo-img">
+      <h1>Unlock Premium</h1>
+      <p class="login-subtitle">The Speaker's Gym</p>
+      <p class="login-desc">Subscribe to unlock the full training experience — every drill, the 6‑week program, levels, and AI feedback.</p>
+      <div id="paywallPrice" class="paywall-price"></div>
+      <button id="paywallSubscribeBtn" class="login-google-btn paywall-subscribe-btn">Subscribe</button>
+      <button id="paywallRestoreBtn" class="paywall-link-btn">Restore purchases</button>
+      <button id="paywallCloseBtn" class="paywall-link-btn" style="display:none;">Maybe later</button>
+      <div id="paywallError" class="login-error" style="display:none;"></div>
     </div>
   </div>
 
@@ -3883,6 +3934,11 @@
       </div>
     </div>
 
+    <!-- Controls (New Word / Next Question) — directly below the word box -->
+    <div class="controls">
+      <button id="newWordBtn" class="primary">Next Question</button>
+    </div>
+
     <!-- Mode Selector -->
     <div class="mode-selector">
       <button class="mode-btn active" id="timerOnlyBtn">⏱️ Timer</button>
@@ -3932,7 +3988,6 @@
         <a href="#" id="videoDownloadLink" class="download-link" download="speech.webm">Download Recording</a>
       </div>
     </div>
-
 
     <!-- Structure Guide -->
     <div class="structure-guide-row">
@@ -5181,7 +5236,7 @@
     <div class="settings-section">
       <h3>ℹ️ About</h3>
       <div class="settings-row">
-        <span class="settings-row-label">Version</span>
+        <span class="settings-row-label">Last Update</span>
         <span class="settings-row-value" id="settingsAppVersion">Loading...</span>
       </div>
       <div class="settings-row">
@@ -5704,7 +5759,7 @@
     ];
 
     // Last updated date
-    const LAST_UPDATED = 'March 30, 2026';
+    const LAST_UPDATED = 'June 25, 2026, 10:45 PM';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -6176,7 +6231,9 @@
     function initSpeechRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        setAiStatus('Live transcription unavailable on this browser. Paste your transcript to get feedback.', true);
+        setAiStatus(isCapacitorNative()
+          ? 'Live transcription isn’t available on this device. Paste your transcript to get feedback.'
+          : 'Live transcription unavailable on this browser. Paste your transcript to get feedback.', true);
         return;
       }
 
@@ -7447,7 +7504,61 @@
       await saveSettingsToDB(notificationSettings);
     }
 
+    // ---- Native daily reminders (Capacitor Local Notifications) --------------
+    const DAILY_REMINDER_ID = 1001;
+    function getLocalNotifications() {
+      return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) || null;
+    }
+    async function requestNativeNotifPermission() {
+      const LN = getLocalNotifications();
+      if (!LN) return false;
+      try {
+        let perm = await LN.checkPermissions();
+        if (perm.display !== 'granted') perm = await LN.requestPermissions();
+        return perm.display === 'granted';
+      } catch (e) { console.warn('[Reminders] permission failed:', e); return false; }
+    }
+    async function scheduleNativeDailyReminder(time24) {
+      const LN = getLocalNotifications();
+      if (!LN) return;
+      const [hour, minute] = time24.split(':').map(Number);
+      try {
+        await LN.cancel({ notifications: [{ id: DAILY_REMINDER_ID }] });
+        await LN.schedule({
+          notifications: [{
+            id: DAILY_REMINDER_ID,
+            title: "The Speaker's Gym",
+            body: "Time to train your speaking skills 🎤",
+            schedule: { on: { hour, minute }, allowWhileIdle: true, repeats: true }
+          }]
+        });
+        console.log('[Reminders] native daily reminder scheduled for', time24);
+      } catch (e) { console.warn('[Reminders] schedule failed:', e); }
+    }
+    async function cancelNativeDailyReminder() {
+      const LN = getLocalNotifications();
+      if (!LN) return;
+      try { await LN.cancel({ notifications: [{ id: DAILY_REMINDER_ID }] }); } catch (e) { /* ignore */ }
+    }
+
     function updateNotificationStatus() {
+      // Native (Capacitor) path — uses Local Notifications, not the web API.
+      if (isCapacitorNative()) {
+        if (!getLocalNotifications()) {
+          notificationStatus.textContent = 'Reminders unavailable on this device';
+          notificationStatus.className = 'notification-status denied';
+          return;
+        }
+        if (notificationSettings.enabled) {
+          notificationStatus.textContent = `Reminder set for ${formatTime12h(notificationSettings.time)}`;
+          notificationStatus.className = 'notification-status active';
+        } else {
+          notificationStatus.textContent = 'Enable to get daily practice reminders';
+          notificationStatus.className = 'notification-status';
+        }
+        return;
+      }
+
       if (!('Notification' in window)) {
         notificationStatus.textContent = 'Notifications not supported in this browser';
         notificationStatus.className = 'notification-status denied';
@@ -7481,6 +7592,7 @@
     }
 
     async function requestNotificationPermission() {
+      if (isCapacitorNative()) return requestNativeNotifPermission();
       if (!('Notification' in window)) return false;
       if (Notification.permission === 'granted') return true;
       if (Notification.permission !== 'denied') {
@@ -7538,9 +7650,13 @@
           notificationSettings.enabled = true;
           notificationSettings.time = notificationTime.value;
           await saveNotificationSettings();
-          await saveStatsToDB();
-          await registerPeriodicSync();
-          triggerNotificationCheck();
+          if (isCapacitorNative()) {
+            await scheduleNativeDailyReminder(notificationSettings.time);
+          } else {
+            await saveStatsToDB();
+            await registerPeriodicSync();
+            triggerNotificationCheck();
+          }
           showAchievement("Daily reminders enabled!");
         } else {
           notificationToggle.checked = false;
@@ -7550,8 +7666,10 @@
       } else {
         notificationSettings.enabled = false;
         await saveNotificationSettings();
-        // Unregister periodic sync
-        if (swRegistration && 'periodicSync' in swRegistration) {
+        if (isCapacitorNative()) {
+          await cancelNativeDailyReminder();
+        } else if (swRegistration && 'periodicSync' in swRegistration) {
+          // Unregister periodic sync
           try {
             await swRegistration.periodicSync.unregister('daily-reminder-sync');
           } catch (e) { /* ignore */ }
@@ -7572,6 +7690,9 @@
         }
       }
       await saveNotificationSettings();
+      if (isCapacitorNative() && notificationSettings.enabled) {
+        await scheduleNativeDailyReminder(notificationSettings.time);
+      }
       updateNotificationStatus();
     }
 
@@ -7599,11 +7720,17 @@
       // Sync stats to IndexedDB so service worker can access
       await saveStatsToDB();
 
-      // Register periodic sync if notifications enabled
-      if (notificationSettings.enabled && Notification.permission === 'granted') {
-        await registerPeriodicSync();
-        // Check immediately when app opens
-        setTimeout(triggerNotificationCheck, 2000);
+      // Register periodic sync / native schedule if notifications enabled
+      if (notificationSettings.enabled) {
+        if (isCapacitorNative()) {
+          if (await requestNativeNotifPermission()) {
+            await scheduleNativeDailyReminder(notificationSettings.time);
+          }
+        } else if (('Notification' in window) && Notification.permission === 'granted') {
+          await registerPeriodicSync();
+          // Check immediately when app opens
+          setTimeout(triggerNotificationCheck, 2000);
+        }
       }
     }
 
@@ -7721,7 +7848,9 @@
         }
       } catch (e) {
         if (e.name === 'NotAllowedError') {
-          updateAudioInputStatus('Microphone permission denied — enable it in browser settings', true);
+          updateAudioInputStatus(isCapacitorNative()
+            ? 'Microphone permission denied — allow microphone access in your phone Settings → Apps → Speaker’s Gym → Permissions'
+            : 'Microphone permission denied — enable it in browser settings', true);
         } else {
           updateAudioInputStatus('Could not list audio devices: ' + e.message, true);
         }
@@ -7828,6 +7957,14 @@
     // Web SDK via signInWithCredential — so the rest of the app
     // (Firestore listeners, onAuthStateChanged, etc.) keeps working exactly
     // as it does on the web.
+    // Native vs web sign-in.
+    // On the web we use firebase.auth().signInWithPopup() — unchanged behaviour.
+    // Inside a Capacitor Android WebView, popups open an external Chrome tab and
+    // never return, so we delegate to @capacitor-firebase/authentication which
+    // drives the native Google dialog, then bridge the resulting ID token into
+    // the Firebase Web SDK via signInWithCredential — so the rest of the app
+    // (Firestore listeners, onAuthStateChanged, etc.) keeps working exactly as
+    // on the web.
     // ---------------------------------------------------------------------------
     function isCapacitorNative() {
       return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
@@ -7861,6 +7998,254 @@
       return auth.signOut();
     }
 
+    // ===========================================================================
+    // GOOGLE PLAY BILLING  (cordova-plugin-purchase v13 — CdvPurchase global)
+    // ---------------------------------------------------------------------------
+    // Entitlement model:
+    //   - The single source of truth is Firestore: users/{uid}.entitlement.active
+    //   - The backend (api/verify-purchase.js) validates the Play purchase token
+    //     against the Google Play Developer API and writes that doc. The client
+    //     never trusts the device alone.
+    //   - PAYWALL_BLOCKING controls whether a non-subscriber is hard-walled.
+    //     It is FALSE for now (paywall shows but is dismissible) — flip to true
+    //     to enforce a hard gate once products are live in Play Console.
+    // ===========================================================================
+    const PREMIUM_PRODUCT_ID = 'speaker_gym_premium';
+    let PAYWALL_BLOCKING = false;   // <-- flip to true for a hard gate
+    let hasPremium = false;
+    let billingReady = false;
+
+    function isPremiumEntitlement(ent) {
+      if (!ent || !ent.active) return false;
+      // expiryTime stored as epoch ms; treat missing expiry as still-active.
+      if (ent.expiryTime && Number(ent.expiryTime) < Date.now()) return false;
+      return true;
+    }
+
+    // Read entitlement from Firestore for the signed-in user.
+    async function checkEntitlement(user) {
+      if (!user || !db) { hasPremium = false; return; }
+      try {
+        const snap = await db.collection('users').doc(user.uid).get();
+        const ent = snap.exists ? (snap.data() || {}).entitlement : null;
+        hasPremium = isPremiumEntitlement(ent);
+        console.log('[Billing] entitlement.active =', hasPremium);
+      } catch (e) {
+        console.warn('[Billing] entitlement read failed:', e);
+        hasPremium = false;
+      }
+    }
+
+    // Show / hide the paywall based on entitlement + blocking mode.
+    function applyEntitlementGate() {
+      const paywall = document.getElementById('paywall');
+      const closeBtn = document.getElementById('paywallCloseBtn');
+      if (!paywall) return;
+      if (hasPremium || !currentUser) {
+        paywall.style.display = 'none';
+        return;
+      }
+      // Signed in but no active subscription.
+      if (closeBtn) closeBtn.style.display = PAYWALL_BLOCKING ? 'none' : 'block';
+      paywall.style.display = 'flex';
+    }
+
+    // Validate a purchase server-side, then refresh entitlement from Firestore.
+    async function verifyPurchaseWithBackend(transaction) {
+      try {
+        const user = auth && auth.currentUser;
+        if (!user) return false;
+        const idToken = await user.getIdToken();
+        const purchaseToken =
+          transaction?.nativePurchase?.purchaseToken ||
+          transaction?.purchaseId ||
+          transaction?.transactionId;
+        const res = await fetch(`${API_BASE}/api/verify-purchase`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firebaseIdToken: idToken,
+            purchaseToken,
+            productId: PREMIUM_PRODUCT_ID
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data && data.active) {
+          hasPremium = true;
+          applyEntitlementGate();
+          showAchievement('✅ Premium unlocked!');
+          return true;
+        }
+        console.warn('[Billing] backend did not confirm entitlement:', data);
+        return false;
+      } catch (e) {
+        console.error('[Billing] verify failed:', e);
+        return false;
+      }
+    }
+
+    // Initialise the store. Native-only; silently no-ops on the web.
+    async function initBilling() {
+      if (billingReady) return;
+      if (!isCapacitorNative() || !window.CdvPurchase) {
+        console.log('[Billing] plugin unavailable (web or not installed) — skipping.');
+        return;
+      }
+      try {
+        const { store, ProductType, Platform, LogLevel } = window.CdvPurchase;
+        store.verbosity = LogLevel.WARNING;
+
+        store.register([{
+          id: PREMIUM_PRODUCT_ID,
+          type: ProductType.PAID_SUBSCRIPTION,
+          platform: Platform.GOOGLE_PLAY
+        }]);
+
+        store.when()
+          .productUpdated(() => updatePaywallPrice())
+          .approved(txn => verifyPurchaseWithBackend(txn).then(ok => { if (ok) txn.finish(); }))
+          .finished(() => { if (currentUser) checkEntitlement(currentUser).then(applyEntitlementGate); });
+
+        store.error(err => console.warn('[Billing] store error:', err && err.message));
+
+        await store.initialize([Platform.GOOGLE_PLAY]);
+        await store.update();
+        // Requirement: restore purchases automatically on startup.
+        try { await store.restorePurchases(); } catch (e) { console.warn('[Billing] restore failed:', e); }
+        billingReady = true;
+        updatePaywallPrice();
+        console.log('[Billing] ready.');
+      } catch (e) {
+        console.error('[Billing] init failed:', e);
+      }
+    }
+
+    function getPremiumOffer() {
+      if (!window.CdvPurchase) return null;
+      const product = window.CdvPurchase.store.get(PREMIUM_PRODUCT_ID, window.CdvPurchase.Platform.GOOGLE_PLAY);
+      if (!product) return null;
+      return (product.getOffer && product.getOffer()) || (product.offers && product.offers[0]) || null;
+    }
+
+    function updatePaywallPrice() {
+      const el = document.getElementById('paywallPrice');
+      if (!el) return;
+      const offer = getPremiumOffer();
+      const phase = offer && offer.pricingPhases && offer.pricingPhases[0];
+      el.textContent = phase ? phase.price : '';
+    }
+
+    // Launch the Google Play purchase flow.
+    async function startPremiumPurchase() {
+      const errEl = document.getElementById('paywallError');
+      if (errEl) errEl.style.display = 'none';
+      if (!isCapacitorNative() || !window.CdvPurchase) {
+        if (errEl) { errEl.textContent = 'Purchases are only available in the Android app.'; errEl.style.display = 'block'; }
+        return;
+      }
+      const offer = getPremiumOffer();
+      if (!offer) {
+        if (errEl) { errEl.textContent = 'Subscription is not available yet. Please try again shortly.'; errEl.style.display = 'block'; }
+        return;
+      }
+      try {
+        await offer.order();
+      } catch (e) {
+        console.error('[Billing] order failed:', e);
+        if (errEl) { errEl.textContent = 'Purchase could not be completed.'; errEl.style.display = 'block'; }
+      }
+    }
+
+    // Wire paywall buttons + native deviceready.
+    function initBillingUI() {
+      const subBtn = document.getElementById('paywallSubscribeBtn');
+      const restoreBtn = document.getElementById('paywallRestoreBtn');
+      const closeBtn = document.getElementById('paywallCloseBtn');
+      if (subBtn) subBtn.addEventListener('click', startPremiumPurchase);
+      if (restoreBtn) restoreBtn.addEventListener('click', async () => {
+        if (window.CdvPurchase) { try { await window.CdvPurchase.store.restorePurchases(); } catch (e) {} }
+        if (currentUser) { await checkEntitlement(currentUser); applyEntitlementGate(); }
+      });
+      if (closeBtn) closeBtn.addEventListener('click', () => {
+        if (!PAYWALL_BLOCKING) document.getElementById('paywall').style.display = 'none';
+      });
+      // cordova-plugin-purchase exposes CdvPurchase after deviceready.
+      document.addEventListener('deviceready', () => { initBilling(); }, false);
+    }
+
+    // ===========================================================================
+    // PUSH NOTIFICATIONS  (@capacitor-firebase/messaging — FCM)
+    // ---------------------------------------------------------------------------
+    // Native-only. Requests POST_NOTIFICATIONS on Android 13+, fetches the FCM
+    // device token, and stores it on the signed-in user's Firestore doc at
+    // users/{uid}.fcmTokens (arrayUnion). Does not touch Auth, Billing, or the
+    // web build (guarded by isCapacitorNative()).
+    // ===========================================================================
+    let messagingListenersBound = false;
+    let lastFcmToken = null;
+
+    async function saveFcmToken(uid, token) {
+      if (!db || !uid || !token) return;
+      try {
+        await db.collection('users').doc(uid).set({
+          fcmTokens: firebase.firestore.FieldValue.arrayUnion(token),
+          fcmTokenUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        lastFcmToken = token;
+        console.log('[Messaging] FCM token saved for', uid);
+      } catch (e) {
+        console.warn('[Messaging] save token failed:', e);
+      }
+    }
+
+    async function initMessaging(user) {
+      if (!isCapacitorNative() || !user) return;
+      const plugin = window.Capacitor?.Plugins?.FirebaseMessaging;
+      if (!plugin) { console.log('[Messaging] plugin unavailable — skipping.'); return; }
+      try {
+        let perm = await plugin.checkPermissions();
+        if (perm.receive !== 'granted') {
+          perm = await plugin.requestPermissions();   // Android 13+ runtime prompt
+        }
+        if (perm.receive !== 'granted') {
+          console.log('[Messaging] notification permission not granted.');
+          return;
+        }
+        const { token } = await plugin.getToken();
+        if (token) await saveFcmToken(user.uid, token);
+
+        if (!messagingListenersBound) {
+          messagingListenersBound = true;
+          // Token can rotate; persist the new one against the current user.
+          plugin.addListener('tokenReceived', (event) => {
+            const t = event && event.token;
+            if (t && currentUser) saveFcmToken(currentUser.uid, t);
+          });
+          plugin.addListener('notificationReceived', (event) => {
+            console.log('[Messaging] notification received:', event && event.notification);
+          });
+        }
+      } catch (e) {
+        console.warn('[Messaging] init failed:', e);
+      }
+    }
+
+    // On sign-out: drop this device's token from the user doc and invalidate it.
+    async function removeFcmTokenOnSignOut() {
+      if (!isCapacitorNative()) return;
+      const plugin = window.Capacitor?.Plugins?.FirebaseMessaging;
+      try {
+        if (currentUser && lastFcmToken && db) {
+          await db.collection('users').doc(currentUser.uid).set({
+            fcmTokens: firebase.firestore.FieldValue.arrayRemove(lastFcmToken)
+          }, { merge: true });
+        }
+        if (plugin) await plugin.deleteToken();
+      } catch (e) {
+        console.warn('[Messaging] sign-out token cleanup failed:', e);
+      }
+      lastFcmToken = null;
+    }
     async function initializeFirebase() {
       console.log('[Firebase] Starting initialization...');
       try {
@@ -8230,6 +8615,9 @@
     // ===== AUTH STATE MANAGEMENT =====
 
     function setupAuthListeners() {
+      // Wire paywall buttons + native billing bootstrap.
+      initBillingUI();
+
       // Profile button and dropdown
       const profileBtn = document.getElementById('profileBtn');
       const profileDropdown = document.getElementById('profileDropdown');
@@ -8312,9 +8700,21 @@
               calculateStatsFromFirestore();
             });
 
+          // Subscription gate: check entitlement, then show/hide the paywall.
+          await checkEntitlement(user);
+          applyEntitlementGate();
+          // Make sure billing is initialised (in case deviceready already fired).
+          initBilling();
+
+          // Push notifications: request permission + register FCM token (native only).
+          initMessaging(user);
+
         } else {
           // User signed out — show the login gate
           if (loginGate) loginGate.style.display = 'flex';
+
+          // Drop this device's FCM token before clearing the user.
+          await removeFcmTokenOnSignOut();
 
           currentUser = null;
           console.log('[Auth] User signed out');
@@ -8326,6 +8726,10 @@
           // Reset profile button
           profileBtn.classList.remove('signed-in');
           profileIcon.textContent = '👤';
+
+          // Clear entitlement + hide paywall (login gate takes over).
+          hasPremium = false;
+          applyEntitlementGate();
 
           updateSyncStatus('offline', 'Not syncing');
         }
@@ -10345,7 +10749,9 @@
     function startSpotRecognition() {
       if (!spotRecognitionSupported || !spotRecognition) {
         const el = document.getElementById('spotLiveTranscript');
-        if (el) el.textContent = 'ℹ️ Live transcription is not supported in this browser — word detection is disabled. Try Chrome.';
+        if (el) el.textContent = isCapacitorNative()
+          ? 'ℹ️ Live word detection isn’t available on this device — your speech is still timed and recorded.'
+          : 'ℹ️ Live transcription is not supported in this browser — word detection is disabled. Try Chrome.';
         return;
       }
       spotRecognitionShouldRun = true;
@@ -10382,8 +10788,10 @@
       // the microphone is effectively single-tenant: a second getUserMedia
       // call here can starve SpeechRecognition of audio and silently break
       // word detection. Word detection is the core feature, so skip the
-      // audio recording on mobile rather than risk breaking it.
-      if (SPOT_IS_MOBILE) return;
+      // audio recording on mobile browsers rather than risk breaking it.
+      // In the native Android app there is no Web Speech API running, so
+      // there is no conflict — record normally.
+      if (SPOT_IS_MOBILE && !isCapacitorNative()) return;
       try {
         spotMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         spotRecordingChunks = [];
@@ -10691,9 +11099,13 @@
       } else {
         let reason = 'No transcript captured. ';
         if (!spotRecogDiag.apiSupported) {
-          reason += 'This browser does not support the Web Speech API. Try Chrome on desktop or Android.';
+          reason += isCapacitorNative()
+            ? 'Live word detection isn’t available on this device — your speech was still timed and recorded.'
+            : 'This browser does not support the Web Speech API. Try Chrome on desktop or Android.';
         } else if (spotRecogDiag.lastError === 'not-allowed' || spotRecogDiag.lastError === 'service-not-allowed') {
-          reason += 'Microphone permission was denied. Allow mic access for this site and try again.';
+          reason += isCapacitorNative()
+            ? 'Microphone permission was denied. Allow mic access in your phone Settings → Apps → Speaker’s Gym → Permissions.'
+            : 'Microphone permission was denied. Allow mic access for this site and try again.';
         } else if (spotRecogDiag.lastError === 'audio-capture') {
           reason += 'No microphone was detected.';
         } else if (spotRecogDiag.lastError === 'network') {
@@ -10726,7 +11138,7 @@
 
     function viewSpotRecording() {
       if (!spotRecordingUrl) {
-        showAchievement('⚠️ Recording unavailable on this browser/session.');
+        showAchievement('⚠️ No recording available for this session yet.');
         return;
       }
       const audio = new Audio(spotRecordingUrl);
@@ -10965,7 +11377,7 @@
 
       // Update version
       if (settingsAppVersion) {
-        settingsAppVersion.textContent = 'v3.1.0';
+        settingsAppVersion.textContent = LAST_UPDATED;
       }
     }
 

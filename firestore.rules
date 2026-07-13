@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // A user owns their own document tree.
+    match /users/{uid} {
+      // The owner may read their profile (including the entitlement field).
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      // The owner may create/update their own doc, BUT may never write the
+      // `entitlement` field themselves — only the backend (Firebase Admin SDK,
+      // which bypasses these rules) is allowed to set entitlement. This prevents
+      // a client from granting itself premium.
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && !( ('entitlement' in request.resource.data)
+              && ( !('entitlement' in resource.data)
+                   || request.resource.data.entitlement != resource.data.entitlement ) );
+
+      allow delete: if false;
+
+      // Subcollections (speeches, settings, etc.) — owner read/write.
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+  }
+}
