@@ -2088,6 +2088,18 @@
     .download-section.show { display: block; }
     .download-link { color: #22c55e; font-weight: 600; }
 
+    .recording-preview {
+      width: 100%;
+      display: block;
+      margin: 12px 0;
+      border-radius: 10px;
+      background: #020617;
+    }
+
+    audio.recording-preview {
+      min-height: 44px;
+    }
+
     .transcript-input {
       width: 100%;
       min-height: 90px;
@@ -2862,9 +2874,9 @@
       .stats-bar { grid-template-columns: repeat(2, 1fr); }
       .stat { padding: 12px 8px; }
 
-      /* Mobile: Reset header padding */
+      /* Keep the centered app title clear of the fixed menu/profile buttons. */
       .header {
-        padding-top: 0;
+        padding-top: 52px;
         padding-bottom: 8px;
       }
 
@@ -3963,6 +3975,7 @@
       </div>
       <div class="download-section" id="audioDownload">
         <p style="color: #22c55e; margin-bottom: 8px;">✅ Recording saved!</p>
+        <audio id="audioRecordingPreview" class="recording-preview" controls preload="metadata"></audio>
         <a href="#" id="audioDownloadLink" class="download-link" download="speech.webm">Download Recording</a>
       </div>
     </div>
@@ -3980,6 +3993,7 @@
       </div>
       <div class="download-section" id="videoDownload">
         <p style="color: #22c55e; margin-bottom: 8px;">✅ Recording saved!</p>
+        <video id="videoRecordingPreview" class="recording-preview" controls playsinline preload="metadata"></video>
         <a href="#" id="videoDownloadLink" class="download-link" download="speech.webm">Download Recording</a>
       </div>
     </div>
@@ -5755,7 +5769,7 @@
 
     // Release date shown in Settings > About and the app footer.
     // Update this with every Play Store release.
-    const LAST_UPDATED = 'July 13, 2026';
+    const LAST_UPDATED = 'July 14, 2026';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -5777,6 +5791,8 @@
     let recognitionActive = false;
     let liveTranscript = '';
     let currentAudioBlob = null;
+    let currentAudioRecordingUrl = null;
+    let currentVideoRecordingUrl = null;
     let lastSpeechMetrics = null; // Store metrics from last AI analysis for Firebase sync
 
     // Prompt Mode state (Random Words vs Conversation)
@@ -6207,6 +6223,18 @@
       timerCircle.classList.remove('warning', 'danger');
       document.getElementById('audioDownload').classList.remove('show');
       document.getElementById('videoDownload').classList.remove('show');
+      const audioPreview = document.getElementById('audioRecordingPreview');
+      const videoPreview = document.getElementById('videoRecordingPreview');
+      audioPreview.pause();
+      videoPreview.pause();
+      audioPreview.removeAttribute('src');
+      videoPreview.removeAttribute('src');
+      audioPreview.load();
+      videoPreview.load();
+      if (currentAudioRecordingUrl) URL.revokeObjectURL(currentAudioRecordingUrl);
+      if (currentVideoRecordingUrl) URL.revokeObjectURL(currentVideoRecordingUrl);
+      currentAudioRecordingUrl = null;
+      currentVideoRecordingUrl = null;
       document.getElementById('audioVisualizer').classList.remove('recording');
       document.getElementById('videoTimer').style.display = 'none';
 
@@ -7047,9 +7075,17 @@
       mediaRecorder = new MediaRecorder(recordingStream, audioOptions);
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
       mediaRecorder.onstop = () => {
-        const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+        const mimeType = mediaRecorder.mimeType || 'audio/webm';
+        const blob = new Blob(recordedChunks, { type: mimeType });
         currentAudioBlob = blob;
-        document.getElementById('audioDownloadLink').href = URL.createObjectURL(blob);
+        if (currentAudioRecordingUrl) URL.revokeObjectURL(currentAudioRecordingUrl);
+        currentAudioRecordingUrl = URL.createObjectURL(blob);
+        const preview = document.getElementById('audioRecordingPreview');
+        const downloadLink = document.getElementById('audioDownloadLink');
+        preview.src = currentAudioRecordingUrl;
+        preview.load();
+        downloadLink.href = currentAudioRecordingUrl;
+        downloadLink.download = mimeType.includes('mp4') ? 'speech.m4a' : 'speech.webm';
         document.getElementById('audioDownload').classList.add('show');
 
         // Send audio to API for Whisper transcription + analysis
@@ -7104,9 +7140,17 @@
       mediaRecorder = new MediaRecorder(stream);
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
       mediaRecorder.onstop = () => {
-        const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+        const mimeType = mediaRecorder.mimeType || 'video/webm';
+        const videoBlob = new Blob(recordedChunks, { type: mimeType });
         currentAudioBlob = videoBlob;
-        document.getElementById('videoDownloadLink').href = URL.createObjectURL(videoBlob);
+        if (currentVideoRecordingUrl) URL.revokeObjectURL(currentVideoRecordingUrl);
+        currentVideoRecordingUrl = URL.createObjectURL(videoBlob);
+        const preview = document.getElementById('videoRecordingPreview');
+        const downloadLink = document.getElementById('videoDownloadLink');
+        preview.src = currentVideoRecordingUrl;
+        preview.load();
+        downloadLink.href = currentVideoRecordingUrl;
+        downloadLink.download = mimeType.includes('mp4') ? 'speech.mp4' : 'speech.webm';
         document.getElementById('videoDownload').classList.add('show');
       };
 
@@ -7424,6 +7468,7 @@
     const notificationTime = document.getElementById('notificationTime');
     const notificationStatus = document.getElementById('notificationStatus');
     let swRegistration = null;
+    let notificationsInitialized = false;
 
     // IndexedDB for sharing data with service worker
     function openNotificationDB() {
@@ -7693,17 +7738,23 @@
     }
 
     async function initNotifications() {
-      // Load from IndexedDB first, then localStorage as fallback
-      const dbSettings = await loadSettingsFromDB();
-      if (dbSettings) {
-        notificationSettings = dbSettings;
-      } else {
-        const lsSettings = localStorage.getItem('sgNotifications');
-        if (lsSettings) {
-          notificationSettings = JSON.parse(lsSettings);
-          await saveSettingsToDB(notificationSettings);
+      if (notificationsInitialized) return;
+      notificationsInitialized = true;
+
+      // localStorage is the phone's source of truth. IndexedDB mirrors it for
+      // the service worker, but must never reset a newer device preference.
+      const lsSettings = localStorage.getItem('sgNotifications');
+      if (lsSettings) {
+        try {
+          notificationSettings = { ...notificationSettings, ...JSON.parse(lsSettings) };
+        } catch (e) {
+          console.warn('[Reminders] Ignoring invalid saved settings:', e);
         }
+      } else {
+        const dbSettings = await loadSettingsFromDB();
+        if (dbSettings) notificationSettings = { ...notificationSettings, ...dbSettings };
       }
+      await saveNotificationSettings();
 
       notificationToggle.checked = notificationSettings.enabled;
       notificationTime.value = notificationSettings.time;
@@ -8523,10 +8574,8 @@
               updateAIToggleUI();
             }
 
-            if (data.settings.notifications) {
-              notificationSettings = { ...notificationSettings, ...data.settings.notifications };
-              await saveSettingsToDB(notificationSettings);
-            }
+            // Reminder permission and scheduling are device-specific. Keep the
+            // phone's locally saved preference instead of replacing it from cloud data.
           }
 
           // Load gamification (levels + program), preferring whichever side
@@ -8589,8 +8638,7 @@
         // Upload settings only (NOT stats - they're calculated from speeches)
         console.log('[Migration] Syncing settings to Firebase...');
         await syncSettingsToFirebase({
-          aiEnabled: aiEnabled,
-          notifications: notificationSettings
+          aiEnabled: aiEnabled
         });
         console.log('[Migration] Settings synced successfully');
 
@@ -8801,8 +8849,7 @@
       originalUpdateAIToggleUI();
       if (syncEnabled && currentUser) {
         syncSettingsToFirebase({
-          aiEnabled: aiEnabled,
-          notifications: notificationSettings
+          aiEnabled: aiEnabled
         });
       }
     };
