@@ -3615,35 +3615,6 @@
     }
 
     /* ===== GAMIFICATION: LEVELS + PROGRAM ===== */
-    /* Compact level summary on the main page */
-    .levels-summary {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 20px;
-      cursor: pointer;
-    }
-    .level-mini {
-      background: rgba(30, 41, 59, 0.6);
-      border: 1px solid rgba(250, 204, 21, 0.18);
-      border-radius: 16px;
-      padding: 12px 14px;
-      min-width: 0; /* allow grid item to shrink below content size */
-      transition: transform 0.15s ease, border-color 0.15s ease;
-    }
-    .levels-summary:hover .level-mini { border-color: rgba(250, 204, 21, 0.4); }
-    .level-mini:active { transform: scale(0.98); }
-    .level-mini-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; min-width: 0; }
-    .level-mini-icon { font-size: 20px; flex-shrink: 0; }
-    .level-mini-track { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.04em; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-    .level-mini-num {
-      margin-left: auto; font-size: 12px; font-weight: 800; color: #0a0f1e;
-      background: #facc15; border-radius: 999px; padding: 2px 9px; flex-shrink: 0;
-    }
-    .level-mini-name { font-size: 14px; font-weight: 700; color: #e5e7eb; margin-bottom: 8px; }
-    .level-mini-bar { height: 7px; background: rgba(148, 163, 184, 0.2); border-radius: 999px; overflow: hidden; }
-    .level-mini-fill { height: 100%; background: linear-gradient(90deg, #f59e0b, #facc15); border-radius: 999px; transition: width 0.6s ease; }
-
     /* Levels page */
     .level-track-card {
       background: rgba(30, 41, 59, 0.6);
@@ -3884,28 +3855,6 @@
       <div class="stat">
         <span class="stat-value" id="totalSpeeches">0</span>
         <span class="stat-label">All Time</span>
-      </div>
-    </div>
-
-    <!-- Level Summary (tap to open Levels) -->
-    <div class="levels-summary" id="levelsSummary">
-      <div class="level-mini">
-        <div class="level-mini-top">
-          <span class="level-mini-icon">🎙️</span>
-          <span class="level-mini-track">Vocal Variety</span>
-          <span class="level-mini-num" id="vvMiniNum">1</span>
-        </div>
-        <div class="level-mini-name" id="vvMiniName">Monotone</div>
-        <div class="level-mini-bar"><div class="level-mini-fill" id="vvMiniFill" style="width:0%"></div></div>
-      </div>
-      <div class="level-mini">
-        <div class="level-mini-top">
-          <span class="level-mini-icon">🏛️</span>
-          <span class="level-mini-track">Structure</span>
-          <span class="level-mini-num" id="stMiniNum">1</span>
-        </div>
-        <div class="level-mini-name" id="stMiniName">Rambler</div>
-        <div class="level-mini-bar"><div class="level-mini-fill" id="stMiniFill" style="width:0%"></div></div>
       </div>
     </div>
 
@@ -8970,9 +8919,6 @@
     document.getElementById('levelsBackBtn').addEventListener('click', () => navigateToPage('main'));
     document.getElementById('programBackBtn').addEventListener('click', () => navigateToPage('main'));
 
-    // Tap the main-page level summary to open the Levels page
-    document.getElementById('levelsSummary').addEventListener('click', () => navigateToPage('levels'));
-
     // ============================================================
     // ===== GAMIFICATION: LEVELS ENGINE ==========================
     // ============================================================
@@ -9100,7 +9046,6 @@
         }
       });
       saveLevels();
-      updateLevelSummary();
       return events;
     }
 
@@ -9121,18 +9066,7 @@
       });
     }
 
-    // Update the compact level cards on the main page.
-    function updateLevelSummary() {
-      const vv = getLevelInfo('vocalVariety');
-      const st = getLevelInfo('structure');
-      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-      const fill = (id, pct) => { const el = document.getElementById(id); if (el) el.style.width = (pct * 100).toFixed(0) + '%'; };
-      set('vvMiniNum', vv.level); set('vvMiniName', vv.name); fill('vvMiniFill', vv.progress);
-      set('stMiniNum', st.level); set('stMiniName', st.name); fill('stMiniFill', st.progress);
-    }
-
     function renderLevelsPage() {
-      updateLevelSummary();
       const container = document.getElementById('levelsContent');
       container.innerHTML = ['vocalVariety', 'structure'].map(track => {
         const info = getLevelInfo(track);
@@ -9442,7 +9376,6 @@
     // Initialize gamification UI on load.
     function initGamification() {
       checkProgramStreak();
-      updateLevelSummary();
     }
     initGamification();
 
