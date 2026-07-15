@@ -3909,9 +3909,6 @@
       </div>
     </div>
 
-    <!-- Program Banner (only shown when enrolled) -->
-    <div class="nudge-banner" id="programBanner" style="display:none; cursor:pointer;"></div>
-
     <!-- Nudge Banner -->
     <div class="nudge-banner" id="nudgeBanner"></div>
 
@@ -5769,7 +5766,7 @@
 
     // Release date shown in Settings > About and the app footer.
     // Update this with every Play Store release.
-    const LAST_UPDATED = 'July 14, 2026';
+    const LAST_UPDATED = 'July 15, 2026';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -8975,7 +8972,6 @@
 
     // Tap the main-page level summary to open the Levels page
     document.getElementById('levelsSummary').addEventListener('click', () => navigateToPage('levels'));
-    document.getElementById('programBanner').addEventListener('click', () => navigateToPage('program'));
 
     // ============================================================
     // ===== GAMIFICATION: LEVELS ENGINE ==========================
@@ -9292,14 +9288,12 @@
       saveProgram();
       showAchievement('🗓️ Enrolled in the 6-Week Program! Day 1 is ready.');
       renderProgramPage();
-      updateProgramBanner();
     }
     function leaveProgram() {
       if (!confirm('Leave the program? Your day and streak progress will be kept, but the program will go back to optional.')) return;
       program.enrolled = false;
       saveProgram();
       renderProgramPage();
-      updateProgramBanner();
     }
     function resetProgram() {
       if (!confirm('Restart the program from Day 1? This clears your program progress and streak.')) return;
@@ -9309,7 +9303,6 @@
       program.startDate = todayStr();
       saveProgram();
       renderProgramPage();
-      updateProgramBanner();
     }
 
     // Mark the current day complete (auto-called when a speech finishes, or
@@ -9328,25 +9321,7 @@
       } else {
         showAchievement(`✅ Day ${program.currentDay - 1} done! 🔥 ${program.streak}-day program streak.`);
       }
-      updateProgramBanner();
       if (currentPage === 'program') renderProgramPage();
-    }
-
-    function updateProgramBanner() {
-      const banner = document.getElementById('programBanner');
-      if (!banner) return;
-      if (!program.enrolled) { banner.style.display = 'none'; return; }
-      banner.style.display = 'block';
-      if (programFinished()) {
-        banner.innerHTML = '🎓 6-Week Program complete! Tap to review or restart.';
-        return;
-      }
-      const day = PROGRAM_DAYS[program.currentDay - 1];
-      if (programDoneToday()) {
-        banner.innerHTML = `✅ Program Day ${program.currentDay - 1} done · 🔥 ${program.streak}-day streak · come back tomorrow`;
-      } else {
-        banner.innerHTML = `🗓️ Program Day ${program.currentDay}: <strong>${day.t}</strong> · tap to start`;
-      }
     }
 
     function renderProgramPage() {
@@ -9468,7 +9443,6 @@
     function initGamification() {
       checkProgramStreak();
       updateLevelSummary();
-      updateProgramBanner();
     }
     initGamification();
 
