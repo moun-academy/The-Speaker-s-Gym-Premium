@@ -334,6 +334,193 @@
       align-items: center;
       gap: 8px;
     }
+
+    /* AI Performance Tracker */
+    .performance-tracker {
+      margin-bottom: 28px;
+    }
+    .performance-hero {
+      background: linear-gradient(145deg, rgba(250, 204, 21, 0.11), rgba(15, 23, 42, 0.9));
+      border: 1px solid rgba(250, 204, 21, 0.22);
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .performance-hero-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .performance-hero-title {
+      color: #f8fafc;
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .performance-hero-subtitle {
+      color: #94a3b8;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .performance-overall {
+      min-width: 64px;
+      text-align: center;
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 900;
+      color: #facc15;
+    }
+    .performance-overall small {
+      display: block;
+      color: #64748b;
+      font-size: 9px;
+      letter-spacing: .08em;
+      margin-top: 5px;
+      text-transform: uppercase;
+    }
+    .performance-summary {
+      color: #cbd5e1;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+    .performance-review-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .performance-review {
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 15px;
+      padding: 15px;
+    }
+    .performance-review.vocal { border-top: 2px solid #f59e0b; }
+    .performance-review.verbal { border-top: 2px solid #2dd4bf; }
+    .performance-review-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .performance-review-name {
+      color: #e2e8f0;
+      font-size: 14px;
+      font-weight: 750;
+    }
+    .performance-review-score {
+      color: #f8fafc;
+      font-size: 20px;
+      font-weight: 850;
+    }
+    .performance-confidence {
+      color: #64748b;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-left: 5px;
+    }
+    .performance-dimension {
+      margin-top: 10px;
+    }
+    .performance-dimension-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: #94a3b8;
+      font-size: 11px;
+      margin-bottom: 5px;
+    }
+    .performance-dimension-line strong { color: #e2e8f0; }
+    .performance-bar {
+      height: 5px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.13);
+    }
+    .performance-bar > span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #f59e0b, #facc15);
+    }
+    .performance-review.verbal .performance-bar > span {
+      background: linear-gradient(90deg, #0d9488, #2dd4bf);
+    }
+    .performance-evidence {
+      color: #64748b;
+      font-size: 10px;
+      line-height: 1.45;
+      margin-top: 5px;
+    }
+    .performance-focus {
+      margin-top: 14px;
+      padding: 13px 14px;
+      border-radius: 12px;
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.17);
+      color: #cbd5e1;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .performance-focus strong { color: #93c5fd; }
+    .performance-history {
+      display: grid;
+      gap: 10px;
+    }
+    .performance-history-card {
+      width: 100%;
+      text-align: left;
+      color: inherit;
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 14px;
+      padding: 14px;
+      cursor: pointer;
+    }
+    .performance-history-card:hover { border-color: rgba(250, 204, 21, 0.3); }
+    .performance-history-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .performance-history-date { color: #e2e8f0; font-size: 12px; font-weight: 700; }
+    .performance-history-topic { color: #64748b; font-size: 10px; margin-top: 3px; }
+    .performance-history-scores { display: flex; gap: 7px; }
+    .performance-score-chip {
+      min-width: 42px;
+      padding: 6px;
+      border-radius: 9px;
+      text-align: center;
+      background: rgba(15, 23, 42, 0.7);
+      color: #f8fafc;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .performance-score-chip small {
+      display: block;
+      color: #64748b;
+      font-size: 7px;
+      letter-spacing: .04em;
+      margin-top: 2px;
+    }
+    .performance-empty {
+      color: #94a3b8;
+      text-align: center;
+      padding: 28px 18px;
+      border: 1px dashed rgba(148, 163, 184, 0.2);
+      border-radius: 15px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    @media (max-width: 620px) {
+      .performance-review-grid { grid-template-columns: 1fr; }
+      .performance-hero { padding: 16px; }
+      .performance-history-main { align-items: flex-start; }
+    }
     .chart-container {
       background: rgba(30, 41, 59, 0.5);
       border-radius: 16px;
@@ -3773,7 +3960,7 @@
       </div>
       <div class="menu-item" id="menuAnalytics" data-page="analytics">
         <span class="menu-item-icon">📊</span>
-        <span>Analytics</span>
+        <span>Performance Tracker</span>
       </div>
       <div class="menu-divider"></div>
       <div class="menu-item" id="menuSettings" data-page="settings">
@@ -4664,12 +4851,22 @@
   <div class="container page" id="analyticsPage">
     <button class="back-btn" id="analyticsBackBtn">← Back to Home</button>
     <div class="analytics-header">
-      <h2>Progress Analytics</h2>
-      <p>Track your speaking improvement over time</p>
+      <h2>Performance Tracker</h2>
+      <p>Evidence-based vocal and verbal progress from every analyzed speech</p>
     </div>
 
     <!-- Content shown when signed in -->
     <div id="analyticsContent" style="display: none;">
+
+      <!-- AI Performance Tracker -->
+      <div class="performance-tracker">
+        <div class="analytics-section-title">AI Vocal &amp; Verbal Review</div>
+        <div id="performanceTrackerLatest" class="performance-empty">
+          Record a speech in Audio or Video mode with AI feedback enabled to create your first full performance report.
+        </div>
+        <div class="analytics-section-title" style="margin-top: 22px;">Recent Performance Reports</div>
+        <div id="performanceTrackerHistory" class="performance-history"></div>
+      </div>
 
       <!-- Speaking Score -->
       <div class="speaking-score-container">
@@ -5740,6 +5937,129 @@
     let currentAudioRecordingUrl = null;
     let currentVideoRecordingUrl = null;
     let lastSpeechMetrics = null; // Store metrics from last AI analysis for Firebase sync
+    let lastSpeechReport = null;
+    let currentSpeechSessionId = null;
+    let acousticAnalysis = null;
+    let pendingAcousticMetrics = null;
+
+    function beginAnalyzedSpeechSession() {
+      currentSpeechSessionId = `speech_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      lastSpeechMetrics = null;
+      lastSpeechReport = null;
+      return currentSpeechSessionId;
+    }
+
+    function percentile(values, ratio) {
+      if (!values.length) return null;
+      const sorted = [...values].sort((a, b) => a - b);
+      const index = Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * ratio)));
+      return sorted[index];
+    }
+
+    function standardDeviation(values) {
+      if (values.length < 2) return 0;
+      const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+      return Math.sqrt(values.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / values.length);
+    }
+
+    function estimatePitch(samples, sampleRate) {
+      let rms = 0;
+      for (let i = 0; i < samples.length; i++) rms += samples[i] * samples[i];
+      rms = Math.sqrt(rms / samples.length);
+      if (rms < 0.012) return null;
+
+      const minLag = Math.floor(sampleRate / 400);
+      const maxLag = Math.min(Math.floor(sampleRate / 75), samples.length - 1);
+      let bestLag = -1;
+      let bestCorrelation = 0;
+      for (let lag = minLag; lag <= maxLag; lag++) {
+        let correlation = 0;
+        let energyA = 0;
+        let energyB = 0;
+        const limit = samples.length - lag;
+        for (let i = 0; i < limit; i++) {
+          const a = samples[i];
+          const b = samples[i + lag];
+          correlation += a * b;
+          energyA += a * a;
+          energyB += b * b;
+        }
+        const normalized = correlation / Math.sqrt(energyA * energyB || 1);
+        if (normalized > bestCorrelation) {
+          bestCorrelation = normalized;
+          bestLag = lag;
+        }
+      }
+      return bestLag > 0 && bestCorrelation >= 0.62 ? sampleRate / bestLag : null;
+    }
+
+    function startAcousticAnalysis(sourceStream) {
+      stopAcousticAnalysis();
+      const audioTrack = sourceStream?.getAudioTracks?.()[0];
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!audioTrack || !AudioContextClass) return;
+      try {
+        const context = new AudioContextClass();
+        const source = context.createMediaStreamSource(new MediaStream([audioTrack]));
+        const analyser = context.createAnalyser();
+        analyser.fftSize = 2048;
+        analyser.smoothingTimeConstant = 0;
+        source.connect(analyser);
+        const samples = new Float32Array(analyser.fftSize);
+        const volumes = [];
+        const pitches = [];
+        const interval = setInterval(() => {
+          analyser.getFloatTimeDomainData(samples);
+          let rms = 0;
+          for (let i = 0; i < samples.length; i++) rms += samples[i] * samples[i];
+          rms = Math.sqrt(rms / samples.length);
+          const volumeDb = 20 * Math.log10(Math.max(rms, 0.00001));
+          if (volumeDb > -55) {
+            volumes.push(volumeDb);
+            const pitch = estimatePitch(samples, context.sampleRate);
+            if (pitch) pitches.push(pitch);
+          }
+        }, 100);
+        acousticAnalysis = { context, source, analyser, interval, volumes, pitches };
+      } catch (error) {
+        console.warn('[Acoustics] Analysis unavailable:', error.message);
+      }
+    }
+
+    function stopAcousticAnalysis() {
+      if (!acousticAnalysis) return null;
+      const { context, source, interval, volumes, pitches } = acousticAnalysis;
+      clearInterval(interval);
+      try { source.disconnect(); } catch (_) {}
+      context.close().catch(() => {});
+      acousticAnalysis = null;
+      if (volumes.length < 10) return null;
+
+      const pitchSemitones = pitches.map(value => 12 * Math.log2(value));
+      const medianVolume = percentile(volumes, 0.5);
+      let energyPeakCount = 0;
+      for (let i = 1; i < volumes.length - 1; i++) {
+        if (volumes[i] > volumes[i - 1] && volumes[i] > volumes[i + 1] && volumes[i] > medianVolume + 3) {
+          energyPeakCount++;
+        }
+      }
+      const mean = values => values.length
+        ? values.reduce((sum, value) => sum + value, 0) / values.length
+        : 0;
+      const round = value => Math.round(value * 100) / 100;
+      return {
+        sampleCount: volumes.length,
+        voicedFrameCount: pitches.length,
+        meanPitchHz: round(mean(pitches)),
+        pitchRangeSemitones: round((percentile(pitchSemitones, 0.9) || 0) - (percentile(pitchSemitones, 0.1) || 0)),
+        pitchVariationSemitones: round(standardDeviation(pitchSemitones)),
+        meanVolumeDb: round(mean(volumes)),
+        volumeRangeDb: round((percentile(volumes, 0.9) || 0) - (percentile(volumes, 0.1) || 0)),
+        volumeVariationDb: round(standardDeviation(volumes)),
+        energyPeakCount,
+        voicedRatio: round(pitches.length / volumes.length)
+      };
+    }
 
     // Prompt Mode state (Random Words vs Conversation)
     let isConversationMode = localStorage.getItem('promptMode') === 'conversation';
@@ -6347,8 +6667,76 @@
       return { label: 'Smooth', cls: 'good' };
     }
 
+    const performanceDimensionLabels = {
+      pace: 'Pace',
+      pauses: 'Pauses',
+      pitchRange: 'Pitch range',
+      volumeVariation: 'Volume variation',
+      emphasis: 'Emphasis',
+      rhythm: 'Rhythm',
+      clarity: 'Clarity',
+      structure: 'Structure',
+      logicalFlow: 'Logical flow',
+      wordChoice: 'Word choice',
+      concision: 'Concision',
+      fillerControl: 'Filler control',
+      repetitionControl: 'Repetition control'
+    };
+
+    function performanceReviewHtml(review, type) {
+      const dimensions = review?.dimensions || {};
+      const rows = Object.entries(dimensions).map(([key, value]) => {
+        const score = typeof value?.score === 'number' ? value.score : null;
+        const evidence = value?.evidence ? `<div class="performance-evidence">${escapeHtml(value.evidence)}</div>` : '';
+        return `
+          <div class="performance-dimension">
+            <div class="performance-dimension-line">
+              <span>${escapeHtml(performanceDimensionLabels[key] || key)}</span>
+              <strong>${score == null ? 'Not measured' : `${score}/100`}</strong>
+            </div>
+            <div class="performance-bar"><span style="width:${score == null ? 0 : score}%"></span></div>
+            ${evidence}
+          </div>`;
+      }).join('');
+      const title = type === 'vocal' ? 'Vocal Review' : 'Verbal Review';
+      const icon = type === 'vocal' ? '🎙️' : '💬';
+      return `
+        <div class="performance-review ${type}">
+          <div class="performance-review-head">
+            <div class="performance-review-name">${icon} ${title}</div>
+            <div>
+              <span class="performance-review-score">${review?.score ?? '--'}</span>
+              <span class="performance-confidence">${escapeHtml(review?.confidence || 'low')} confidence</span>
+            </div>
+          </div>
+          ${rows}
+        </div>`;
+    }
+
+    function performanceReportHtml(report, subtitle = 'Latest analyzed speech') {
+      if (!report) return '';
+      const focusTitle = report.nextFocus?.title || 'Next speech focus';
+      const focusAction = report.nextFocus?.action || '';
+      return `
+        <div class="performance-hero">
+          <div class="performance-hero-head">
+            <div>
+              <div class="performance-hero-title">Full Performance Breakdown</div>
+              <div class="performance-hero-subtitle">${escapeHtml(subtitle)}</div>
+            </div>
+            <div class="performance-overall">${report.overallScore ?? '--'}<small>Overall</small></div>
+          </div>
+          <div class="performance-summary">${escapeHtml(report.summary || '')}</div>
+          <div class="performance-review-grid">
+            ${performanceReviewHtml(report.vocal, 'vocal')}
+            ${performanceReviewHtml(report.verbal, 'verbal')}
+          </div>
+          <div class="performance-focus"><strong>${escapeHtml(focusTitle)}:</strong> ${escapeHtml(focusAction)}</div>
+        </div>`;
+    }
+
     // Render the AI feedback as a visual scorecard into #aiFeedback.
-    function renderFeedbackScorecard({ feedbackText, metrics }) {
+    function renderFeedbackScorecard({ feedbackText, metrics, report = null }) {
       const m = metrics || {};
       const parsed = parseFeedbackSections(feedbackText || '');
       const cards = [];
@@ -6413,13 +6801,13 @@
 
       const hasParsed = parsed.summary || parsed.strengths.length || parsed.improvements.length || parsed.nextFocus;
 
-      let html = '';
+      let html = report ? performanceReportHtml(report) : '';
 
       if (cards.length) {
         html += `<div class="score-cards">${cards.join('')}</div>`;
       }
 
-      if (parsed.summary) {
+      if (parsed.summary && !report) {
         html += `<div class="feedback-summary">${escapeHtml(parsed.summary)}</div>`;
       }
 
@@ -6499,7 +6887,7 @@
       transcriptDisplay.innerHTML = `${caption}<div class="transcript-text">${html}</div>`;
     }
 
-    async function requestFeedbackWithAudio(audioBlob, duration) {
+    async function requestFeedbackWithAudio(audioBlob, duration, acousticMetrics = null, speechSessionId = null) {
       console.log('[DEBUG] requestFeedbackWithAudio called');
       console.log('[DEBUG] Audio blob:', audioBlob ? `${audioBlob.size} bytes, type: ${audioBlob.type}` : 'null');
       console.log('[DEBUG] Duration:', duration);
@@ -6541,6 +6929,9 @@
         const formData = new FormData();
         formData.append('audio', audioBlob, 'speech.webm');
         formData.append('duration', duration.toString());
+        if (acousticMetrics) {
+          formData.append('acousticMetrics', JSON.stringify(acousticMetrics));
+        }
         console.log('[INFO] Sending request to /api/feedback');
 
         const feedbackRes = await fetch(API_BASE + '/api/feedback', {
@@ -6562,7 +6953,17 @@
         const feedbackText = feedbackData.feedback?.trim() || 'No feedback generated.';
         const transcript = feedbackData.transcript || '';
         const metrics = feedbackData.metrics || {};
-        lastSpeechMetrics = metrics; // Save for Firebase sync
+        const report = feedbackData.report || null;
+        if (!speechSessionId || currentSpeechSessionId === speechSessionId) {
+          lastSpeechMetrics = metrics;
+          lastSpeechReport = report;
+        }
+        syncSpeechAnalysisToFirebase(speechSessionId, {
+          transcript,
+          feedback: feedbackText,
+          metrics,
+          report
+        });
 
         // Award level XP from the AI's vocal-variety & structure scores.
         applyAiScores(metrics);
@@ -6580,7 +6981,7 @@
         }
 
         // Display feedback as a visual scorecard
-        renderFeedbackScorecard({ feedbackText, metrics });
+        renderFeedbackScorecard({ feedbackText, metrics, report });
         setAiStatus('AI analysis complete! Scroll down to read your feedback.');
         console.log('[SUCCESS] AI analysis complete');
 
@@ -6617,16 +7018,22 @@
         if (!feedbackRes.ok) throw new Error('Feedback generation failed');
         const feedbackData = await feedbackRes.json();
         const feedbackText = feedbackData.feedback?.trim() || 'No feedback generated.';
+        lastSpeechMetrics = feedbackData.metrics || null;
+        lastSpeechReport = feedbackData.report || null;
 
         // Award level XP from the AI's vocal-variety & structure scores.
         applyAiScores(feedbackData.metrics);
 
         // Manual text path has no audio metrics — render scorecard with strengths/improvements only
-        renderFeedbackScorecard({ feedbackText, metrics: null });
+        renderFeedbackScorecard({
+          feedbackText,
+          metrics: feedbackData.metrics || null,
+          report: feedbackData.report || null
+        });
         setAiStatus('Feedback ready!');
 
         // Show chat panel for follow-up questions
-        showSpeechChat(trimmed, feedbackText, null);
+        showSpeechChat(trimmed, feedbackText, feedbackData.metrics || null);
       } catch (err) {
         console.error(err);
         setAiStatus('Unable to fetch feedback right now.', true);
@@ -6989,6 +7396,7 @@
     }
 
     function stopMedia() {
+      pendingAcousticMetrics = stopAcousticAnalysis();
       if (audioRecorder && audioRecorder.state !== 'inactive') audioRecorder.stop();
       audioRecorder = null;
       if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
@@ -6998,6 +7406,7 @@
 
     async function startAudioRecording() {
       if (!currentWord) { showAchievement(isConversationMode ? "Get a prompt first!" : "Generate a prompt first!"); return; }
+      const speechSessionId = beginAnalyzedSpeechSession();
 
       // In call audio mode, capture from tab via getDisplayMedia
       let recordingStream = stream;
@@ -7035,8 +7444,12 @@
         document.getElementById('audioDownload').classList.add('show');
 
         // Send audio to API for Whisper transcription + analysis
-        requestFeedbackWithAudio(blob, elapsedSeconds);
+        const acousticMetrics = pendingAcousticMetrics;
+        pendingAcousticMetrics = null;
+        requestFeedbackWithAudio(blob, elapsedSeconds, acousticMetrics, speechSessionId);
       };
+      pendingAcousticMetrics = null;
+      startAcousticAnalysis(recordingStream);
       mediaRecorder.start();
       document.getElementById('audioVisualizer').classList.add('recording');
       document.getElementById('startAudioBtn').style.display = 'none';
@@ -7052,6 +7465,7 @@
     }
 
     function stopAudioRecording() {
+      pendingAcousticMetrics = stopAcousticAnalysis();
       if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
       clearInterval(timerInterval);
       isRunning = false;
@@ -7071,6 +7485,7 @@
 
     async function startVideoRecording() {
       if (!currentWord) { showAchievement(isConversationMode ? "Get a prompt first!" : "Generate a prompt first!"); return; }
+      const speechSessionId = beginAnalyzedSpeechSession();
 
       // In call audio mode, capture call audio for the audio-only track
       let callStream = null;
@@ -7118,9 +7533,13 @@
       audioRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
       audioRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        requestFeedbackWithAudio(audioBlob, elapsedSeconds);
+        const acousticMetrics = pendingAcousticMetrics;
+        pendingAcousticMetrics = null;
+        requestFeedbackWithAudio(audioBlob, elapsedSeconds, acousticMetrics, speechSessionId);
       };
 
+      pendingAcousticMetrics = null;
+      startAcousticAnalysis(audioOnlyStream);
       mediaRecorder.start();
       audioRecorder.start();
       document.getElementById('videoTimer').style.display = 'block';
@@ -7137,6 +7556,7 @@
     }
 
     function stopVideoRecording() {
+      pendingAcousticMetrics = stopAcousticAnalysis();
       if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
       if (audioRecorder && audioRecorder.state !== 'inactive') audioRecorder.stop();
       clearInterval(timerInterval);
@@ -8375,25 +8795,46 @@
       }
     }
 
-    async function syncSpeechToFirebase(speechData) {
+    async function syncSpeechToFirebase(speechData, speechSessionId = null) {
       if (!syncEnabled || !currentUser) return;
 
       try {
         console.log('[Firebase] Syncing speech to Firestore...');
         updateSyncStatus('syncing', 'Syncing...');
 
-        await db.collection('users').doc(currentUser.uid)
-          .collection('speeches').add({
-            ...speechData,
-            userId: currentUser.uid,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
+        const speeches = db.collection('users').doc(currentUser.uid).collection('speeches');
+        const payload = {
+          ...speechData,
+          userId: currentUser.uid,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        if (speechSessionId) {
+          await speeches.doc(speechSessionId).set(payload, { merge: true });
+        } else {
+          await speeches.add(payload);
+        }
 
         console.log('[Firebase] Speech synced successfully');
         updateSyncStatus('synced', 'Synced');
       } catch (error) {
         console.error('[Firebase] Error syncing speech:', error);
         updateSyncStatus('offline', 'Sync failed');
+      }
+    }
+
+    async function syncSpeechAnalysisToFirebase(speechSessionId, analysis) {
+      if (!speechSessionId || !syncEnabled || !currentUser) return;
+      try {
+        await db.collection('users').doc(currentUser.uid)
+          .collection('speeches').doc(speechSessionId).set({
+            ...analysis,
+            userId: currentUser.uid,
+            analysisVersion: 2,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+      } catch (error) {
+        console.warn('[Firebase] Performance report sync failed:', error);
       }
     }
 
@@ -8771,6 +9212,7 @@
       if (syncEnabled && currentUser) {
         const transcript = currentTranscript || '';
         const feedback = aiFeedback?.textContent || '';
+        const speechSessionId = currentSpeechSessionId;
 
         // Always sync the speech (even without transcript/feedback for stats tracking)
         syncSpeechToFirebase({
@@ -8781,9 +9223,13 @@
           feedback: feedback,
           rating: stats.ratings[stats.ratings.length - 1] || null,
           mode: currentMode,
-          metrics: lastSpeechMetrics || null
-        });
+          metrics: lastSpeechMetrics || null,
+          report: lastSpeechReport || null,
+          analysisVersion: lastSpeechReport ? 2 : null
+        }, speechSessionId);
         lastSpeechMetrics = null; // Clear after sync
+        lastSpeechReport = null;
+        currentSpeechSessionId = null;
       }
     };
 
@@ -9384,6 +9830,83 @@
     let analyticsSpeeches = [];
     let analyticsCharts = { wpm: null, filler: null, rating: null };
 
+    function performanceTrendText(reports) {
+      if (reports.length < 2) return 'Baseline report';
+      const first = reports[0].report;
+      const recent = reports.slice(-3);
+      const average = (path) => {
+        const values = recent.map(item => path(item.report)).filter(value => typeof value === 'number');
+        return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+      };
+      const vocalNow = average(report => report?.vocal?.score);
+      const verbalNow = average(report => report?.verbal?.score);
+      const vocalStart = first?.vocal?.score;
+      const verbalStart = first?.verbal?.score;
+      const parts = [];
+      if (typeof vocalNow === 'number' && typeof vocalStart === 'number') {
+        const change = Math.round(vocalNow - vocalStart);
+        parts.push(`Vocal ${change >= 0 ? '+' : ''}${change}`);
+      }
+      if (typeof verbalNow === 'number' && typeof verbalStart === 'number') {
+        const change = Math.round(verbalNow - verbalStart);
+        parts.push(`Verbal ${change >= 0 ? '+' : ''}${change}`);
+      }
+      return parts.length ? `${parts.join(' · ')} since baseline` : 'Performance history';
+    }
+
+    function renderPerformanceTracker(selectedSpeech = null) {
+      const latestEl = document.getElementById('performanceTrackerLatest');
+      const historyEl = document.getElementById('performanceTrackerHistory');
+      if (!latestEl || !historyEl) return;
+
+      const reports = analyticsSpeeches.filter(speech => speech.report?.version >= 2);
+      if (!reports.length) {
+        latestEl.className = 'performance-empty';
+        latestEl.innerHTML = 'Record a speech in Audio or Video mode with AI feedback enabled to create your first full performance report.';
+        historyEl.innerHTML = '';
+        return;
+      }
+
+      const selected = selectedSpeech || reports[reports.length - 1];
+      const date = selected._date
+        ? selected._date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : 'Analyzed speech';
+      const trend = performanceTrendText(reports);
+      latestEl.className = '';
+      latestEl.innerHTML = performanceReportHtml(selected.report, `${date} · ${trend}`);
+
+      historyEl.innerHTML = [...reports].reverse().slice(0, 10).map((speech, index) => {
+        const speechDate = speech._date
+          ? speech._date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+          : 'Recent speech';
+        const topic = speech.word || speech.definition || 'Open practice';
+        return `
+          <button class="performance-history-card" data-performance-index="${reports.length - 1 - index}">
+            <div class="performance-history-main">
+              <div>
+                <div class="performance-history-date">${escapeHtml(speechDate)}</div>
+                <div class="performance-history-topic">${escapeHtml(topic)}</div>
+              </div>
+              <div class="performance-history-scores">
+                <span class="performance-score-chip">${speech.report.vocal?.score ?? '--'}<small>VOCAL</small></span>
+                <span class="performance-score-chip">${speech.report.verbal?.score ?? '--'}<small>VERBAL</small></span>
+                <span class="performance-score-chip">${speech.report.overallScore ?? '--'}<small>OVERALL</small></span>
+              </div>
+            </div>
+          </button>`;
+      }).join('');
+
+      historyEl.querySelectorAll('[data-performance-index]').forEach(button => {
+        button.addEventListener('click', () => {
+          const speech = reports[Number(button.dataset.performanceIndex)];
+          if (speech) {
+            renderPerformanceTracker(speech);
+            latestEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      });
+    }
+
     // Badge definitions — tied to real metric improvements
     const MILESTONE_BADGES = [
       { id: 'first_speech', icon: '🎙️', name: 'First Words', desc: 'Complete your first speech', check: s => s.length >= 1 },
@@ -9452,6 +9975,7 @@
         renderCharts('rating', 7);
         renderBadges();
         generateWeeklyInsight();
+        renderPerformanceTracker();
         setupChartPeriodButtons();
         setupTrackRecordTabs();
       } catch (error) {
