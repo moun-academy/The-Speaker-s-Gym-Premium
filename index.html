@@ -466,6 +466,27 @@
       line-height: 1.55;
     }
     .performance-focus strong { color: #93c5fd; }
+
+    .performance-score-basis { margin-top: 8px; color: #94a3b8; font-size: 12px; line-height: 1.45; }
+    .performance-comparison { margin-top: 18px; padding: 16px; border: 1px solid rgba(96, 165, 250, 0.24); border-radius: 14px; background: rgba(30, 64, 175, 0.1); }
+    .performance-comparison-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-weight: 800; color: #dbeafe; }
+    .performance-change { color: #93c5fd; white-space: nowrap; }
+    .performance-change.up { color: #86efac; }
+    .performance-change.down { color: #fca5a5; }
+    .challenge-result { padding: 10px 0; border-top: 1px solid rgba(148, 163, 184, 0.14); }
+    .challenge-result:first-of-type { border-top: 0; }
+    .challenge-result-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .challenge-result-line strong { color: #f8fafc; }
+    .challenge-result-evidence { margin-top: 5px; color: #cbd5e1; font-size: 13px; line-height: 1.5; }
+    .challenge-status { padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+    .challenge-status.fixed { color: #86efac; background: rgba(34, 197, 94, 0.14); }
+    .challenge-status.improved { color: #bfdbfe; background: rgba(59, 130, 246, 0.16); }
+    .challenge-status.still_present { color: #fde68a; background: rgba(245, 158, 11, 0.14); }
+    .challenge-status.not_measurable { color: #cbd5e1; background: rgba(148, 163, 184, 0.14); }
+    .previous-report-link { margin-top: 12px; border: 1px solid rgba(147, 197, 253, 0.35); background: rgba(59, 130, 246, 0.12); color: #bfdbfe; padding: 8px 12px; border-radius: 9px; cursor: pointer; font-weight: 700; }
+    .common-challenges { margin-top: 16px; }
+    .common-challenges-title { color: #facc15; font-weight: 800; margin-bottom: 8px; }
+    .common-challenge { color: #e2e8f0; font-size: 13px; line-height: 1.5; margin-top: 7px; }
     .performance-history {
       display: grid;
       gap: 10px;
@@ -4081,13 +4102,12 @@
 
     <!-- Mode Selector -->
     <div class="mode-selector">
-      <button class="mode-btn active" id="timerOnlyBtn">⏱️ Timer</button>
       <button class="mode-btn" id="audioBtn">🎙️ Audio</button>
-      <button class="mode-btn" id="cameraBtn">📹 Video</button>
+      <button class="mode-btn active" id="cameraBtn">📹 Video</button>
     </div>
 
     <!-- Timer Section -->
-    <div class="timer-section" id="timerSection">
+    <div class="timer-section" id="timerSection" style="display: none;">
       <div id="timerCircle" class="timer-circle">0:00</div>
       <div class="timer-legend">🟢 0-1min | 🟠 1-1.5min | 🔴 1.5-2.5min</div>
       <div class="record-controls">
@@ -4114,7 +4134,7 @@
     </div>
 
     <!-- Camera Section -->
-    <div class="camera-section" id="cameraSection">
+    <div class="camera-section active" id="cameraSection">
       <div id="callAudioIndicatorVideo" class="call-audio-indicator">📞 Recording audio from call tab</div>
       <div class="video-container">
         <video id="videoElement" autoplay muted playsinline></video>
@@ -5912,14 +5932,14 @@
 
     // Release date shown in Settings > About and the app footer.
     // Update this with every Play Store release.
-    const LAST_UPDATED = 'July 15, 2026';
+    const LAST_UPDATED = 'August 5, 2026';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
       todaySpeeches: 0, totalSpeeches: 0, streak: 0, ratings: [], weekHistory: {}, lastDate: null
     };
 
-    let currentMode = 'timer';
+    let currentMode = 'video';
     let currentFormula = 'one-thing';
     let currentWord = null;
     let timerInterval = null;
@@ -6717,6 +6737,36 @@
       if (!report) return '';
       const focusTitle = report.nextFocus?.title || 'Next speech focus';
       const focusAction = report.nextFocus?.action || '';
+      const previous = report.previousPerformance;
+      const statusLabels = {
+        fixed: 'Fixed',
+        improved: 'Improved',
+        still_present: 'Still present',
+        not_measurable: 'Not measurable'
+      };
+      const comparisonHtml = previous?.available ? `
+        <div class="performance-comparison">
+          <div class="performance-comparison-head">
+            <span>Progress since previous speech</span>
+            ${typeof previous.overallChange === 'number'
+              ? `<span class="performance-change ${previous.overallChange > 0 ? 'up' : previous.overallChange < 0 ? 'down' : ''}">${previous.overallChange > 0 ? '+' : ''}${previous.overallChange} overall</span>`
+              : ''}
+          </div>
+          ${(previous.challenges || []).map(challenge => `
+            <div class="challenge-result">
+              <div class="challenge-result-line">
+                <strong>${escapeHtml(challenge.category || 'Previous challenge')}</strong>
+                <span class="challenge-status ${escapeHtml(challenge.status || 'not_measurable')}">${escapeHtml(statusLabels[challenge.status] || 'Not measurable')}</span>
+              </div>
+              <div class="challenge-result-evidence">${escapeHtml(challenge.evidence || '')}</div>
+            </div>`).join('')}
+          ${previous.previousReportId ? `<button class="previous-report-link" data-previous-report-id="${escapeHtml(previous.previousReportId)}">View previous report</button>` : ''}
+        </div>` : '<div class="performance-score-basis">This is your baseline report. Your next analyzed speech will show progress against it.</div>';
+      const commonChallengesHtml = Array.isArray(report.commonChallenges) && report.commonChallenges.length ? `
+        <div class="common-challenges">
+          <div class="common-challenges-title">Common challenges</div>
+          ${report.commonChallenges.map(item => `<div class="common-challenge"><strong>${escapeHtml(item.category)}</strong> · seen in ${item.count} recent reports — ${escapeHtml(item.summary)}</div>`).join('')}
+        </div>` : '';
       return `
         <div class="performance-hero">
           <div class="performance-hero-head">
@@ -6726,12 +6776,15 @@
             </div>
             <div class="performance-overall">${report.overallScore ?? '--'}<small>Overall</small></div>
           </div>
+          <div class="performance-score-basis">Overall score is calculated from the measurable vocal and verbal dimensions in this speech.</div>
           <div class="performance-summary">${escapeHtml(report.summary || '')}</div>
           <div class="performance-review-grid">
             ${performanceReviewHtml(report.vocal, 'vocal')}
             ${performanceReviewHtml(report.verbal, 'verbal')}
           </div>
           <div class="performance-focus"><strong>${escapeHtml(focusTitle)}:</strong> ${escapeHtml(focusAction)}</div>
+          ${comparisonHtml}
+          ${commonChallengesHtml}
         </div>`;
     }
 
@@ -6831,7 +6884,7 @@
           </div>`;
       }
 
-      if (parsed.nextFocus) {
+      if (parsed.nextFocus && !report) {
         html += `<div class="next-focus"><span class="next-focus-label">Next speech focus</span>${escapeHtml(parsed.nextFocus)}</div>`;
       }
 
@@ -6887,6 +6940,32 @@
       transcriptDisplay.innerHTML = `${caption}<div class="transcript-text">${html}</div>`;
     }
 
+    async function loadRecentPerformanceContext(excludedSpeechId = null) {
+      if (!syncEnabled || !currentUser) return [];
+      try {
+        const snapshot = await db.collection('users').doc(currentUser.uid)
+          .collection('speeches')
+          .orderBy('createdAt', 'desc')
+          .limit(6)
+          .get();
+        const reports = [];
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          if (doc.id === excludedSpeechId || !data.report || data.report.version < 2) return;
+          const dateValue = data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt;
+          reports.push({
+            id: doc.id,
+            date: dateValue ? new Date(dateValue).toISOString() : '',
+            report: data.report
+          });
+        });
+        return reports.slice(0, 5);
+      } catch (error) {
+        console.warn('[Performance] Could not load comparison history:', error);
+        return [];
+      }
+    }
+
     async function requestFeedbackWithAudio(audioBlob, duration, acousticMetrics = null, speechSessionId = null) {
       console.log('[DEBUG] requestFeedbackWithAudio called');
       console.log('[DEBUG] Audio blob:', audioBlob ? `${audioBlob.size} bytes, type: ${audioBlob.type}` : 'null');
@@ -6932,6 +7011,8 @@
         if (acousticMetrics) {
           formData.append('acousticMetrics', JSON.stringify(acousticMetrics));
         }
+        const previousReports = await loadRecentPerformanceContext(speechSessionId);
+        formData.append('previousReports', JSON.stringify(previousReports));
         console.log('[INFO] Sending request to /api/feedback');
 
         const feedbackRes = await fetch(API_BASE + '/api/feedback', {
@@ -7012,7 +7093,10 @@
         const feedbackRes = await fetch(API_BASE + '/api/feedback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: trimmed })
+          body: JSON.stringify({
+            text: trimmed,
+            previousReports: await loadRecentPerformanceContext(currentSpeechSessionId)
+          })
         });
 
         if (!feedbackRes.ok) throw new Error('Feedback generation failed');
@@ -7262,19 +7346,16 @@
       }
     }
 
-    // Mode switching (Timer, Audio, Video only - Rapid Fire is now a separate page)
+    // Main recording modes: Audio and Video. Video is the default.
     function setMode(mode) {
-      currentMode = mode;
+      currentMode = mode === 'audio' ? 'audio' : 'video';
       document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
       document.getElementById('timerSection').style.display = 'none';
       document.getElementById('audioSection').classList.remove('active');
       document.getElementById('cameraSection').classList.remove('active');
       stopMedia();
 
-      if (mode === 'timer') {
-        document.getElementById('timerOnlyBtn').classList.add('active');
-        document.getElementById('timerSection').style.display = 'flex';
-      } else if (mode === 'audio') {
+      if (currentMode === 'audio') {
         document.getElementById('audioBtn').classList.add('active');
         document.getElementById('audioSection').classList.add('active');
         initAudio();
@@ -7367,7 +7448,7 @@
             return;
           } catch (e2) { /* fall through */ }
         }
-        showAchievement("⚠️ Camera access denied"); setMode('timer');
+        showAchievement("⚠️ Camera access denied. You can switch to Audio mode.");
       }
     }
 
@@ -7391,7 +7472,7 @@
             return;
           } catch (e2) { /* fall through */ }
         }
-        showAchievement("⚠️ Mic access denied"); setMode('timer');
+        showAchievement("⚠️ Mic access denied");
       }
     }
 
@@ -7485,6 +7566,8 @@
 
     async function startVideoRecording() {
       if (!currentWord) { showAchievement(isConversationMode ? "Get a prompt first!" : "Generate a prompt first!"); return; }
+      if (!stream) await initCamera();
+      if (!stream) { showAchievement("⚠️ Camera and microphone access are required for Video mode"); return; }
       const speechSessionId = beginAnalyzedSpeechSession();
 
       // In call audio mode, capture call audio for the audio-only track
@@ -7777,13 +7860,10 @@
 
     // Event listeners
     document.getElementById('newWordBtn').addEventListener('click', newWord);
-    document.getElementById('timerOnlyBtn').addEventListener('click', () => setMode('timer'));
     document.getElementById('audioBtn').addEventListener('click', () => setMode('audio'));
     document.getElementById('cameraBtn').addEventListener('click', () => setMode('video'));
     document.getElementById('skipRating').addEventListener('click', () => submitRating(null));
 
-    document.getElementById('startTimerBtn').addEventListener('click', startTimer);
-    document.getElementById('stopTimerBtn').addEventListener('click', () => stopTimer());
     document.getElementById('startAudioBtn').addEventListener('click', startAudioRecording);
     document.getElementById('stopAudioBtn').addEventListener('click', stopAudioRecording);
     document.getElementById('startVideoBtn').addEventListener('click', startVideoRecording);
@@ -8829,7 +8909,7 @@
           .collection('speeches').doc(speechSessionId).set({
             ...analysis,
             userId: currentUser.uid,
-            analysisVersion: 2,
+            analysisVersion: 3,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           }, { merge: true });
@@ -9139,6 +9219,7 @@
           // Subscription gate: check entitlement, then show/hide the paywall.
           await checkEntitlement(user);
           applyEntitlementGate();
+          if (currentMode === 'video' && !stream) initCamera();
           // Make sure billing is initialised (in case deviceready already fired).
           initBilling();
 
@@ -9225,7 +9306,7 @@
           mode: currentMode,
           metrics: lastSpeechMetrics || null,
           report: lastSpeechReport || null,
-          analysisVersion: lastSpeechReport ? 2 : null
+          analysisVersion: lastSpeechReport ? 3 : null
         }, speechSessionId);
         lastSpeechMetrics = null; // Clear after sync
         lastSpeechReport = null;
@@ -9829,6 +9910,7 @@
 
     let analyticsSpeeches = [];
     let analyticsCharts = { wpm: null, filler: null, rating: null };
+    let pendingPerformanceReportId = null;
 
     function performanceTrendText(reports) {
       if (reports.length < 2) return 'Baseline report';
@@ -9907,6 +9989,20 @@
       });
     }
 
+    document.addEventListener('click', event => {
+      const link = event.target.closest('[data-previous-report-id]');
+      if (!link) return;
+      const reportId = link.dataset.previousReportId;
+      const existing = analyticsSpeeches.find(speech => speech._id === reportId);
+      if (currentPage === 'analytics' && existing) {
+        renderPerformanceTracker(existing);
+        document.getElementById('performanceTrackerLatest')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      pendingPerformanceReportId = reportId;
+      navigateToPage('analytics');
+    });
+
     // Badge definitions — tied to real metric improvements
     const MILESTONE_BADGES = [
       { id: 'first_speech', icon: '🎙️', name: 'First Words', desc: 'Complete your first speech', check: s => s.length >= 1 },
@@ -9945,6 +10041,7 @@
         analyticsSpeeches = [];
         snapshot.forEach(doc => {
           const data = doc.data();
+          data._id = doc.id;
           if (data.createdAt) {
             data._date = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
           }
@@ -9975,7 +10072,11 @@
         renderCharts('rating', 7);
         renderBadges();
         generateWeeklyInsight();
-        renderPerformanceTracker();
+        const requestedReport = pendingPerformanceReportId
+          ? analyticsSpeeches.find(speech => speech._id === pendingPerformanceReportId)
+          : null;
+        renderPerformanceTracker(requestedReport);
+        pendingPerformanceReportId = null;
         setupChartPeriodButtons();
         setupTrackRecordTabs();
       } catch (error) {

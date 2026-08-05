@@ -65,6 +65,7 @@ async function parseJsonBody(req) {
 }
 
 const clampScore = value => {
+  if (value === null || value === undefined || value === "") return null;
   const number = Math.round(Number(value));
   return Number.isFinite(number) ? Math.max(0, Math.min(100, number)) : null;
 };
@@ -161,37 +162,149 @@ function normalizeDimension(value) {
 function normalizeReview(value, dimensionNames) {
   const dimensions = {};
   for (const name of dimensionNames) dimensions[name] = normalizeDimension(value?.dimensions?.[name]);
+  const measuredScores = Object.values(dimensions)
+    .map(dimension => dimension.score)
+    .filter(score => typeof score === "number");
   return {
-    score: clampScore(value?.score),
+    score: measuredScores.length
+      ? Math.round(measuredScores.reduce((sum, score) => sum + score, 0) / measuredScores.length)
+      : null,
     confidence: ["high", "medium", "low"].includes(value?.confidence) ? value.confidence : "low",
     dimensions,
   };
 }
 
-function normalizeReport(raw) {
-  const report = raw && typeof raw === "object" ? raw : {};
-  const cleanItems = items => (Array.isArray(items) ? items : []).slice(0, 4).map(item => ({
+function cleanReportItems(items) {
+  return (Array.isArray(items) ? items : []).slice(0, 4).map(item => ({
     category: String(item?.category || "").slice(0, 80),
     point: String(item?.point || "").slice(0, 500),
     evidence: String(item?.evidence || "").slice(0, 500),
   }));
+}
+
+function normalizeHistory(raw) {
+  const history = Array.isArray(raw) ? raw : [];
+  return history.slice(0, 5).map(item => ({
+    id: String(item?.id || "").slice(0, 160),
+    date: String(item?.date || "").slice(0, 80),
+    report: {
+      overallScore: clampScore(item?.report?.overallScore),
+      vocalScore: clampScore(item?.report?.vocal?.score),
+      verbalScore: clampScore(item?.report?.verbal?.score),
+      improvements: cleanReportItems(item?.report?.improvements),
+      nextFocus: {
+        title: String(item?.report?.nextFocus?.title || "").slice(0, 160),
+        action: String(item?.report?.nextFocus?.action || "").slice(0, 500),
+      },
+    },
+  })).filter(item => item.id || item.report.improvements.length || item.report.nextFocus.title);
+}
+
+function challengeKey(value) {
+  const key = String(value || "general").trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() || "general";
+  if (/filler|verbal tic/.test(key)) return "filler control";
+  if (/pace|pacing|speaking speed|wpm/.test(key)) return "pace";
+  if (/pause/.test(key)) return "pauses";
+  if (/structure|organization|organisation/.test(key)) return "structure";
+  if (/logical flow|coherence|transition/.test(key)) return "logical flow";
+  if (/clarity|articulation/.test(key)) return "clarity";
+  if (/repeat|repetition/.test(key)) return "repetition control";
+  if (/pitch|volume|emphasis|rhythm|vocal variety/.test(key)) return "vocal variety";
+  if (/concise|concision|wordiness/.test(key)) return "concision";
+  return key;
+}
+
+function previousChallenges(previous) {
+  if (!previous) return [];
+  const challenges = [...previous.report.improvements];
+  const focus = previous.report.nextFocus;
+  if (focus.title && !challenges.some(item => challengeKey(item.category) === challengeKey(focus.title))) {
+    challenges.push({ category: focus.title, point: focus.action, evidence: "" });
+  }
+  return challenges.slice(0, 4);
+}
+
+function normalizePreviousPerformance(raw, previous, currentOverallScore) {
+  if (!previous) return { available: false, previousReportId: "", previousDate: "", previousOverallScore: null, overallChange: null, challenges: [] };
+  const rawChallenges = Array.isArray(raw?.challenges) ? raw.challenges : [];
+  const challenges = previousChallenges(previous).map(challenge => {
+    const key = challengeKey(challenge.category);
+    const match = rawChallenges.find(item => challengeKey(item?.category) === key) || {};
+    const allowedStatuses = ["fixed", "improved", "still_present", "not_measurable"];
+    return {
+      category: challenge.category || "Previous focus",
+      previousChallenge: challenge.point || challenge.evidence || "Previous coaching challenge",
+      status: allowedStatuses.includes(match.status) ? match.status : "not_measurable",
+      evidence: String(match.evidence || "The current speech does not provide enough direct evidence for a reliable comparison.").slice(0, 500),
+    };
+  });
+  const previousOverallScore = previous.report.overallScore;
   return {
-    version: 2,
+    available: true,
+    previousReportId: previous.id,
+    previousDate: previous.date,
+    previousOverallScore,
+    overallChange: typeof previousOverallScore === "number" && typeof currentOverallScore === "number"
+      ? currentOverallScore - previousOverallScore
+      : null,
+    challenges,
+  };
+}
+
+function buildCommonChallenges(history, currentImprovements) {
+  const reports = [
+    ...history.map(item => item.report.improvements),
+    currentImprovements,
+  ];
+  const counts = new Map();
+  for (const improvements of reports) {
+    const seen = new Set();
+    for (const item of improvements) {
+      const key = challengeKey(item.category || item.point);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const existing = counts.get(key) || { category: item.category || "General", count: 0, summary: item.point || "" };
+      existing.count += 1;
+      if (item.point) existing.summary = item.point;
+      counts.set(key, existing);
+    }
+  }
+  return [...counts.values()]
+    .filter(item => item.count >= 2)
+    .sort((a, b) => b.count - a.count || a.category.localeCompare(b.category))
+    .slice(0, 3);
+}
+
+function normalizeReport(raw, history = []) {
+  const report = raw && typeof raw === "object" ? raw : {};
+  const vocal = normalizeReview(report.vocal, [
+    "pace", "pauses", "pitchRange", "volumeVariation", "emphasis", "rhythm",
+  ]);
+  const verbal = normalizeReview(report.verbal, [
+    "clarity", "structure", "logicalFlow", "wordChoice",
+    "concision", "fillerControl", "repetitionControl",
+  ]);
+  const reviewScores = [vocal.score, verbal.score].filter(score => typeof score === "number");
+  const overallScore = reviewScores.length
+    ? Math.round(reviewScores.reduce((sum, score) => sum + score, 0) / reviewScores.length)
+    : null;
+  const improvements = cleanReportItems(report.improvements);
+  const previousPerformance = normalizePreviousPerformance(report.previousPerformance, history[0], overallScore);
+  return {
+    version: 3,
     summary: String(report.summary || "Speech analysis complete.").slice(0, 1000),
-    overallScore: clampScore(report.overallScore),
-    vocal: normalizeReview(report.vocal, [
-      "pace", "pauses", "pitchRange", "volumeVariation", "emphasis", "rhythm",
-    ]),
-    verbal: normalizeReview(report.verbal, [
-      "clarity", "structure", "logicalFlow", "wordChoice",
-      "concision", "fillerControl", "repetitionControl",
-    ]),
-    strengths: cleanItems(report.strengths),
-    improvements: cleanItems(report.improvements),
+    overallScore,
+    scoreBasis: "Average of the measurable vocal and verbal review scores; each review is the average of its measurable dimensions.",
+    vocal,
+    verbal,
+    strengths: cleanReportItems(report.strengths),
+    improvements,
     nextFocus: {
       title: String(report.nextFocus?.title || "One clear improvement").slice(0, 160),
       action: String(report.nextFocus?.action || "Apply one focused change in your next speech.").slice(0, 700),
     },
+    previousPerformance,
+    commonChallenges: buildCommonChallenges(history, improvements),
   };
 }
 
@@ -213,7 +326,7 @@ function reportToFeedback(report) {
   ].join("\n");
 }
 
-async function generatePerformanceReport({ transcript, metrics, hasAudioMetrics }) {
+async function generatePerformanceReport({ transcript, metrics, hasAudioMetrics, history = [] }) {
   const requiredShape = {
     summary: "string",
     overallScore: 0,
@@ -245,6 +358,9 @@ async function generatePerformanceReport({ transcript, metrics, hasAudioMetrics 
     strengths: [{ category: "string", point: "string", evidence: "exact quote or metric" }],
     improvements: [{ category: "string", point: "string", evidence: "exact quote or metric" }],
     nextFocus: { title: "string", action: "specific practice instruction" },
+    previousPerformance: {
+      challenges: [{ category: "must match a previous improvement category", status: "fixed|improved|still_present|not_measurable", evidence: "current speech quote or metric" }],
+    },
   };
 
   const completion = await client.chat.completions.create({
@@ -262,6 +378,9 @@ async function generatePerformanceReport({ transcript, metrics, hasAudioMetrics 
           "When a dimension cannot be supported, use null for its score and explain the limitation in evidence.",
           "Quote short exact phrases from the transcript as evidence for verbal judgments.",
           "Do not infer personality, emotion, identity, health, or confidence from the voice.",
+          "Calibrate every dimension independently. Do not reuse a generic score or default to 78.",
+          "Use the full 0-100 scale: below 50 needs substantial work, 50-69 developing, 70-84 solid, and 85+ exceptional evidence.",
+          "For each challenge in the immediately previous report, assess whether it is fixed, improved, still present, or not measurable in this speech.",
           `Use this exact object shape: ${JSON.stringify(requiredShape)}`,
           "Give three strengths and three improvements. Make the next focus measurable.",
           `Acoustic measurements available: ${hasAudioMetrics ? "yes" : "no"}.`,
@@ -269,13 +388,13 @@ async function generatePerformanceReport({ transcript, metrics, hasAudioMetrics 
       },
       {
         role: "user",
-        content: `Measurements:\n${JSON.stringify(metrics, null, 2)}\n\nTranscript:\n${transcript}`,
+        content: `Measurements:\n${JSON.stringify(metrics, null, 2)}\n\nRecent performance history (newest first):\n${JSON.stringify(history, null, 2)}\n\nTranscript:\n${transcript}`,
       },
     ],
   });
 
   const raw = completion.choices?.[0]?.message?.content?.trim() || "{}";
-  return normalizeReport(JSON.parse(raw));
+  return normalizeReport(JSON.parse(raw), history);
 }
 
 export default async function handler(req, res) {
@@ -294,6 +413,7 @@ export default async function handler(req, res) {
     const contentType = req.headers["content-type"] || "";
     let transcript = "";
     let metrics;
+    let history = [];
 
     if (contentType.includes("multipart/form-data")) {
       const { files, fields } = await parseMultipartForm(req);
@@ -311,19 +431,26 @@ export default async function handler(req, res) {
       const duration = fields.duration ? parseFloat(fields.duration) : transcription.duration || 0;
       const acousticMetrics = parseAcousticMetrics(fields.acousticMetrics);
       metrics = analyzeMetrics(transcription.words || [], duration, transcript, acousticMetrics);
+      try {
+        history = normalizeHistory(JSON.parse(fields.previousReports || "[]"));
+      } catch {
+        history = [];
+      }
     } else {
-      const { text } = await parseJsonBody(req);
+      const { text, previousReports } = await parseJsonBody(req);
       if (!text || typeof text !== "string" || !text.trim()) {
         return res.status(400).json({ error: "Missing transcript text or audio file" });
       }
       transcript = text.trim();
       metrics = analyzeMetrics([], 0, transcript, null);
+      history = normalizeHistory(previousReports);
     }
 
     const report = await generatePerformanceReport({
       transcript,
       metrics,
       hasAudioMetrics: Boolean(metrics.acoustic),
+      history,
     });
     metrics.vocalVariety = report.vocal.score;
     metrics.structure = report.verbal.dimensions.structure.score;
