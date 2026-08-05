@@ -4102,8 +4102,8 @@
 
     <!-- Mode Selector -->
     <div class="mode-selector">
-      <button class="mode-btn" id="audioBtn">🎙️ Audio</button>
-      <button class="mode-btn active" id="cameraBtn">📹 Video</button>
+      <button class="mode-btn active" id="audioBtn">🎙️ Audio</button>
+      <button class="mode-btn" id="cameraBtn">📹 Video</button>
     </div>
 
     <!-- Timer Section -->
@@ -4117,7 +4117,7 @@
     </div>
 
     <!-- Audio Section -->
-    <div class="audio-section" id="audioSection">
+    <div class="audio-section active" id="audioSection">
       <div id="callAudioIndicator" class="call-audio-indicator">📞 Recording from call tab</div>
       <div class="audio-visualizer" id="audioVisualizer">🎙️</div>
       <div id="audioTimer" style="font-size: 28px; font-weight: bold;">0:00</div>
@@ -4134,7 +4134,7 @@
     </div>
 
     <!-- Camera Section -->
-    <div class="camera-section active" id="cameraSection">
+    <div class="camera-section" id="cameraSection">
       <div id="callAudioIndicatorVideo" class="call-audio-indicator">📞 Recording audio from call tab</div>
       <div class="video-container">
         <video id="videoElement" autoplay muted playsinline></video>
@@ -5939,7 +5939,7 @@
       todaySpeeches: 0, totalSpeeches: 0, streak: 0, ratings: [], weekHistory: {}, lastDate: null
     };
 
-    let currentMode = 'video';
+    let currentMode = 'audio';
     let currentFormula = 'one-thing';
     let currentWord = null;
     let timerInterval = null;
@@ -9219,7 +9219,7 @@
           // Subscription gate: check entitlement, then show/hide the paywall.
           await checkEntitlement(user);
           applyEntitlementGate();
-          if (currentMode === 'video' && !stream) initCamera();
+          if (currentMode === 'audio' && !stream) initAudio();
           // Make sure billing is initialised (in case deviceready already fired).
           initBilling();
 
