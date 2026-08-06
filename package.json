@@ -8,7 +8,7 @@
     "build:web": "node build-web.js",
     "cap:sync": "npm run build:web && npx cap sync",
     "cap:open:android": "npx cap open android",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test"
   },
   "dependencies": {
     "@capacitor-firebase/authentication": "^6.0.0",

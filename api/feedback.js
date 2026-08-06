@@ -179,6 +179,174 @@ function scoreDimensions(dimensions) {
     : null;
 }
 
+const nullableScoreSchema = {
+  anyOf: [
+    { type: "integer", minimum: 0, maximum: 100 },
+    { type: "null" },
+  ],
+};
+
+const measuredScoreSchema = { type: "integer", minimum: 0, maximum: 100 };
+
+const dimensionSchema = scoreSchema => ({
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    score: scoreSchema,
+    evidence: { type: "string" },
+  },
+  required: ["score", "evidence"],
+});
+
+const reportItemSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    category: { type: "string" },
+    point: { type: "string" },
+    evidence: { type: "string" },
+  },
+  required: ["category", "point", "evidence"],
+};
+
+const performanceReportSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    summary: { type: "string" },
+    overallScore: nullableScoreSchema,
+    vocal: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        score: nullableScoreSchema,
+        confidence: { type: "string", enum: ["high", "medium", "low"] },
+        dimensions: {
+          type: "object",
+          additionalProperties: false,
+          properties: Object.fromEntries(
+            ["pace", "pauses", "pitchRange", "volumeVariation", "emphasis", "rhythm"]
+              .map(name => [name, dimensionSchema(nullableScoreSchema)])
+          ),
+          required: ["pace", "pauses", "pitchRange", "volumeVariation", "emphasis", "rhythm"],
+        },
+      },
+      required: ["score", "confidence", "dimensions"],
+    },
+    verbal: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        score: measuredScoreSchema,
+        confidence: { type: "string", enum: ["high", "medium", "low"] },
+        dimensions: {
+          type: "object",
+          additionalProperties: false,
+          properties: Object.fromEntries(
+            ["clarity", "structure", "logicalFlow", "wordChoice", "concision", "fillerControl", "repetitionControl"]
+              .map(name => [name, dimensionSchema(measuredScoreSchema)])
+          ),
+          required: ["clarity", "structure", "logicalFlow", "wordChoice", "concision", "fillerControl", "repetitionControl"],
+        },
+      },
+      required: ["score", "confidence", "dimensions"],
+    },
+    prep: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        score: measuredScoreSchema,
+        confidence: { type: "string", enum: ["high", "medium", "low"] },
+        steps: {
+          type: "object",
+          additionalProperties: false,
+          properties: Object.fromEntries(
+            ["point", "reason", "example", "finalPoint"]
+              .map(name => [name, dimensionSchema(measuredScoreSchema)])
+          ),
+          required: ["point", "reason", "example", "finalPoint"],
+        },
+      },
+      required: ["score", "confidence", "steps"],
+    },
+    strengths: {
+      type: "array",
+      items: reportItemSchema,
+      minItems: 3,
+      maxItems: 3,
+    },
+    improvements: {
+      type: "array",
+      items: reportItemSchema,
+      minItems: 3,
+      maxItems: 3,
+    },
+    nextFocus: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        title: { type: "string" },
+        action: { type: "string" },
+      },
+      required: ["title", "action"],
+    },
+    previousPerformance: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        challenges: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              category: { type: "string" },
+              status: { type: "string", enum: ["fixed", "improved", "still_present", "not_measurable"] },
+              evidence: { type: "string" },
+            },
+            required: ["category", "status", "evidence"],
+          },
+        },
+      },
+      required: ["challenges"],
+    },
+  },
+  required: [
+    "summary", "overallScore", "vocal", "verbal", "prep", "strengths",
+    "improvements", "nextFocus", "previousPerformance",
+  ],
+};
+
+const hasMeasuredScore = value => typeof value?.score === "number" && Number.isFinite(value.score);
+
+export function validatePerformanceReport(raw, { hasAudioMetrics = false } = {}) {
+  const issues = [];
+  const verbalNames = [
+    "clarity", "structure", "logicalFlow", "wordChoice",
+    "concision", "fillerControl", "repetitionControl",
+  ];
+  const prepNames = ["point", "reason", "example", "finalPoint"];
+  const vocalNames = hasAudioMetrics
+    ? ["pace", "pauses", "pitchRange", "volumeVariation", "emphasis", "rhythm"]
+    : [];
+
+  for (const name of verbalNames) {
+    if (!hasMeasuredScore(raw?.verbal?.dimensions?.[name])) issues.push(`verbal.${name}`);
+  }
+  for (const name of prepNames) {
+    if (!hasMeasuredScore(raw?.prep?.steps?.[name])) issues.push(`prep.${name}`);
+  }
+  for (const name of vocalNames) {
+    if (!hasMeasuredScore(raw?.vocal?.dimensions?.[name])) issues.push(`vocal.${name}`);
+  }
+  if (!String(raw?.summary || "").trim()) issues.push("summary");
+  if (!String(raw?.nextFocus?.title || "").trim()) issues.push("nextFocus.title");
+  if (!String(raw?.nextFocus?.action || "").trim()) issues.push("nextFocus.action");
+  if (!Array.isArray(raw?.strengths) || raw.strengths.length < 3) issues.push("strengths");
+  if (!Array.isArray(raw?.improvements) || raw.improvements.length < 3) issues.push("improvements");
+  return issues;
+}
+
 function normalizeReview(value, dimensionNames) {
   const dimensions = {};
   for (const name of dimensionNames) dimensions[name] = normalizeDimension(value?.dimensions?.[name]);
@@ -302,7 +470,7 @@ function buildCommonChallenges(history, currentImprovements) {
     .slice(0, 3);
 }
 
-function normalizeReport(raw, history = []) {
+export function normalizeReport(raw, history = []) {
   const report = raw && typeof raw === "object" ? raw : {};
   const prep = normalizePrep(report.prep);
   const vocal = normalizeReview(report.vocal, [
@@ -413,11 +581,7 @@ async function generatePerformanceReport({ transcript, promptContext, metrics, h
     },
   };
 
-  const completion = await client.chat.completions.create({
-    model: "gpt-5.6-luna",
-    reasoning_effort: "none",
-    response_format: { type: "json_object" },
-    messages: [
+  const messages = [
       {
         role: "system",
         content: [
@@ -427,11 +591,13 @@ async function generatePerformanceReport({ transcript, promptContext, metrics, h
           "Score the recorded speech from 0 to 100 using the transcript and supplied measurements.",
           "Never claim pitch, volume, or vocal energy was measured when acoustic measurements are absent.",
           "When a dimension cannot be supported, use null for its score and explain the limitation in evidence.",
+          "Every transcript-based verbal dimension must have a numeric score. Never return null for clarity, structure, logical flow, word choice, concision, filler control, or repetition control when a transcript is present.",
           "Quote short exact phrases from the transcript as evidence for verbal judgments.",
           "Do not infer personality, emotion, identity, health, or confidence from the voice.",
           "Calibrate every dimension independently. Do not reuse a generic score or default to 78.",
           "Use the full 0-100 scale: below 50 needs substantial work, 50-69 developing, 70-84 solid, and 85+ exceptional evidence.",
           "Score PREP explicitly as Point, Reason, Example, and Final Point. A missing step scores 0. Do not invent an implied step that is not supported by the transcript.",
+          "Every PREP step must have a numeric score. Use 0 when the transcript does not contain that step, never null.",
           "Point measures whether the answer states one clear position. Reason measures whether it gives a relevant why. Example measures whether it gives a specific personal or practical example. Final Point measures whether it returns to the main idea or gives a clear takeaway or recommendation.",
           "The PREP score is the average of the four PREP step scores. The verbal structure dimension must use that same PREP score so PREP contributes once to the verbal review and overall score.",
           "For each challenge in the immediately previous report, assess whether it is fixed, improved, still present, or not measurable in this speech.",
@@ -444,11 +610,55 @@ async function generatePerformanceReport({ transcript, promptContext, metrics, h
         role: "user",
         content: `Question or topic:\n${promptContext || "Not provided"}\n\nMeasurements:\n${JSON.stringify(metrics, null, 2)}\n\nRecent performance history (newest first):\n${JSON.stringify(history, null, 2)}\n\nTranscript:\n${transcript}`,
       },
-    ],
-  });
+    ];
 
-  const raw = completion.choices?.[0]?.message?.content?.trim() || "{}";
-  return sanitizeGeneratedCopy(normalizeReport(JSON.parse(raw), history));
+  let lastIssues = ["empty response"];
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const completion = await client.chat.completions.create({
+      model: "gpt-5.6-luna",
+      reasoning_effort: "none",
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "speech_performance_report",
+          strict: true,
+          schema: performanceReportSchema,
+        },
+      },
+      messages,
+    });
+
+    const raw = completion.choices?.[0]?.message?.content?.trim() || "{}";
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      lastIssues = ["invalid JSON"];
+      parsed = null;
+    }
+
+    if (parsed) {
+      lastIssues = validatePerformanceReport(parsed, { hasAudioMetrics });
+      if (!lastIssues.length) {
+        return sanitizeGeneratedCopy(normalizeReport(parsed, history));
+      }
+    }
+
+    if (attempt === 0) {
+      messages.push(
+        { role: "assistant", content: raw },
+        {
+          role: "user",
+          content: `The report is incomplete. Correct these fields and return the complete object: ${lastIssues.join(", ")}. All verbal and PREP scores must be numeric.`,
+        }
+      );
+    }
+  }
+
+  const error = new Error(`AI report remained incomplete after retry: ${lastIssues.join(", ")}`);
+  error.code = "incomplete_ai_report";
+  error.status = 502;
+  throw error;
 }
 
 export default async function handler(req, res) {
@@ -523,6 +733,12 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error("Feedback generation failed:", error);
+    if (error.code === "incomplete_ai_report") {
+      return res.status(502).json({
+        error: "Incomplete AI report",
+        details: "The analysis did not include every required verbal and PREP score after an automatic retry.",
+      });
+    }
     if (error.status) {
       return res.status(error.status).json({
         error: "OpenAI API error",
