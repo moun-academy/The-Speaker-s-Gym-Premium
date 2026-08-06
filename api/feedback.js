@@ -70,6 +70,17 @@ const clampScore = value => {
   return Number.isFinite(number) ? Math.max(0, Math.min(100, number)) : null;
 };
 
+const removeLongDashes = value => String(value || "").replace(/[\u2013\u2014]/g, ",");
+
+function sanitizeGeneratedCopy(value) {
+  if (typeof value === "string") return removeLongDashes(value);
+  if (Array.isArray(value)) return value.map(sanitizeGeneratedCopy);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, sanitizeGeneratedCopy(item)]));
+  }
+  return value;
+}
+
 function parseAcousticMetrics(raw) {
   if (!raw) return null;
   try {
@@ -321,7 +332,7 @@ function normalizeReport(raw, history = []) {
     version: 4,
     summary: String(report.summary || "Speech analysis complete.").slice(0, 1000),
     overallScore,
-    scoreBasis: "Average of the measurable vocal and verbal review scores. PREP is the verbal Structure dimension and is calculated from Point, Reason, Example, and Final Point.",
+    scoreBasis: "Average of the measurable vocal and verbal review scores. Structure is calculated using PREP: Point, Reason, Example, and Final Point.",
     vocal,
     verbal,
     prep,
@@ -338,11 +349,11 @@ function normalizeReport(raw, history = []) {
 
 function reportToFeedback(report) {
   const formatItems = items => items.map(item =>
-    `• ${item.point}${item.evidence ? ` — ${item.evidence}` : ""}`
+    `• ${item.point}${item.evidence ? `. ${item.evidence}` : ""}`
   ).join("\n");
   return [
     `Summary: ${report.summary}`,
-    `PREP structure: ${report.prep?.score ?? "Not measured"}/100`,
+    `PREP structure (Point, Reason, Example, Point): ${report.prep?.score ?? "Not measured"}/100`,
     "",
     "What you did well:",
     formatItems(report.strengths) || "• Keep practicing to build a stronger evidence base.",
@@ -412,6 +423,7 @@ async function generatePerformanceReport({ transcript, promptContext, metrics, h
         content: [
           "You are an expert evidence-based public-speaking coach.",
           "Return only one JSON object. Do not use markdown.",
+          "Do not use em dashes or en dashes anywhere in the response.",
           "Score the recorded speech from 0 to 100 using the transcript and supplied measurements.",
           "Never claim pitch, volume, or vocal energy was measured when acoustic measurements are absent.",
           "When a dimension cannot be supported, use null for its score and explain the limitation in evidence.",
@@ -436,7 +448,7 @@ async function generatePerformanceReport({ transcript, promptContext, metrics, h
   });
 
   const raw = completion.choices?.[0]?.message?.content?.trim() || "{}";
-  return normalizeReport(JSON.parse(raw), history);
+  return sanitizeGeneratedCopy(normalizeReport(JSON.parse(raw), history));
 }
 
 export default async function handler(req, res) {

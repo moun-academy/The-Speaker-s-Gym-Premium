@@ -2525,23 +2525,56 @@
 
     .prep-step.reason .prep-letter { background: #111827; border: 1px solid #475569; }
     .prep-step.example .prep-letter { background: #f6c453; color: #111827; }
+    .prep-step-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .prep-step-title { color: #f8fafc; font-weight: 800; font-size: 14px; }
+    .prep-step-status {
+      flex: 0 0 auto;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.1);
+      color: #94a3b8;
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .prep-step.complete .prep-step-status { background: rgba(34, 197, 94, 0.14); color: #86efac; }
     .prep-step-question { color: #cbd5e1; font-size: 13px; margin: 2px 0 8px; line-height: 1.45; }
     .prep-starters { color: #94a3b8; font-size: 12px; margin-bottom: 8px; }
-    .prep-keyword {
+    .prep-answer {
       width: 100%;
+      min-height: 72px;
+      resize: none;
+      overflow-y: hidden;
       border: 1px solid #334155;
       background: rgba(15, 23, 42, 0.8);
       color: #f8fafc;
       border-radius: 9px;
       padding: 9px 11px;
       font-size: 13px;
+      line-height: 1.5;
+      font-family: inherit;
     }
-    .prep-keyword:focus { outline: none; border-color: #facc15; box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.12); }
-    .prep-example-toggle { margin-top: 12px; color: #facc15; font-size: 13px; }
-    .prep-example-toggle summary { cursor: pointer; font-weight: 700; }
-    .prep-example { margin-top: 10px; font-size: 12px; line-height: 1.55; color: #cbd5e1; }
+    .prep-answer:focus { outline: none; border-color: #facc15; box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.12); }
+    .prep-tools { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 12px; }
+    .prep-tool-btn {
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      border-radius: 9px;
+      padding: 9px 12px;
+      background: rgba(250, 204, 21, 0.08);
+      color: #facc15;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .prep-tool-btn.secondary { border-color: rgba(148, 163, 184, 0.25); background: rgba(148, 163, 184, 0.08); color: #cbd5e1; }
+    .prep-tool-btn:disabled { opacity: .55; cursor: wait; }
+    .prep-example { margin-top: 12px; padding: 13px; border-radius: 11px; background: rgba(15, 23, 42, 0.5); font-size: 12px; line-height: 1.6; color: #cbd5e1; }
     .prep-example b { color: #f8fafc; }
+    .prep-example-error { color: #fca5a5; }
+    .prep-preview { margin-top: 14px; padding: 14px; border-radius: 12px; background: rgba(45, 212, 191, 0.07); border: 1px solid rgba(45, 212, 191, 0.18); }
+    .prep-preview-title { color: #99f6e4; font-size: 13px; font-weight: 900; margin-bottom: 8px; }
+    .prep-preview-body { color: #e2e8f0; font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
+    .prep-preview-body.empty { color: #64748b; }
+    .prep-scoring-note { color: #64748b; font-size: 11px; line-height: 1.5; margin-top: 10px; }
 
     .structure-section {
       background: rgba(15, 23, 42, 0.4);
@@ -4025,7 +4058,7 @@
       <img src="logo.png" alt="The Speaker's Gym" class="login-logo-img">
       <h1>Unlock Premium</h1>
       <p class="login-subtitle">The Speaker's Gym</p>
-      <p class="login-desc">Subscribe to unlock the full training experience — every drill, the 6‑week program, levels, and AI feedback.</p>
+      <p class="login-desc">Subscribe to unlock the full training experience: every drill, the 6-week program, levels, and AI feedback.</p>
       <div id="paywallPrice" class="paywall-price"></div>
       <button id="paywallSubscribeBtn" class="login-google-btn paywall-subscribe-btn">Subscribe</button>
       <button id="paywallRestoreBtn" class="paywall-link-btn">Restore purchases</button>
@@ -4253,11 +4286,11 @@
     </div>
 
     <div id="structureBox" class="structure-box">
-      <h3 style="font-size: 18px; color: #facc15; margin-bottom: 16px; text-align: center;">Answer with PREP</h3>
-      <p class="prep-intro">Plan one keyword per step, then speak naturally. This is a roadmap—not a script to memorize.</p>
+      <h3 style="font-size: 18px; color: #facc15; margin-bottom: 16px; text-align: center;">Structure your answer using Point, Reason, Example, Point</h3>
+      <p class="prep-intro">Build a clear answer in four steps, then speak naturally. Use notes or full sentences. This is a roadmap, not a script to memorize.</p>
 
       <div class="structure-content" id="structureContent">
-        Get a prompt first to build your PREP roadmap.
+        Get a prompt first to build your Point, Reason, Example, Point roadmap.
       </div>
     </div>
 
@@ -4576,9 +4609,9 @@
             <p class="exercise-instruction">Build breath control and vocal cord engagement.</p>
             <ul class="exercise-steps">
               <li>Take a deep breath in</li>
-              <li>Exhale on a long "SSSSSSS" sound — go as long as possible</li>
+              <li>Exhale on a long "SSSSSSS" sound. Go as long as possible.</li>
               <li>Rest, then repeat with a "ZZZZZZZ" sound</li>
-              <li>Notice how "Z" vibrates — that's your vocal cords engaging</li>
+              <li>Notice how "Z" vibrates. That is your vocal cords engaging.</li>
               <li>Alternate 3 times each</li>
             </ul>
             <div class="exercise-tip">Try to sustain each sound for 15-20 seconds. The "Z" trains vocal power.</div>
@@ -4644,7 +4677,7 @@
             <p class="exercise-instruction">Relax your lips and engage breath support simultaneously.</p>
             <ul class="exercise-steps">
               <li>Relax your lips and blow air through them to create a "brrrrr" vibration</li>
-              <li>Add voice — hum while doing the lip trill</li>
+              <li>Add voice by humming while doing the lip trill.</li>
               <li>Slide from low pitch to high pitch and back down</li>
               <li>Repeat 5 times</li>
             </ul>
@@ -4671,11 +4704,11 @@
           <div class="exercise-details-inner">
             <p class="exercise-instruction">Sharpen your articulation and diction for crystal-clear speech.</p>
             <ul class="exercise-steps">
-              <li>"Red leather, yellow leather" — repeat 5x, getting faster</li>
-              <li>"Unique New York, you know you need unique New York" — repeat 5x</li>
-              <li>"She sells seashells by the seashore" — repeat 5x</li>
-              <li>"Peter Piper picked a peck of pickled peppers" — repeat 5x</li>
-              <li>"Toy boat, toy boat, toy boat" — repeat 10x fast</li>
+              <li>"Red leather, yellow leather." Repeat 5x, getting faster.</li>
+              <li>"Unique New York, you know you need unique New York." Repeat 5x.</li>
+              <li>"She sells seashells by the seashore." Repeat 5x.</li>
+              <li>"Peter Piper picked a peck of pickled peppers." Repeat 5x.</li>
+              <li>"Toy boat, toy boat, toy boat." Repeat 10x fast.</li>
             </ul>
             <div class="exercise-tip">Start slowly and prioritize clarity. Speed comes with practice!</div>
             <div class="warmup-timer-section">
@@ -4746,7 +4779,7 @@
               <li>Hum "Happy Birthday" or any familiar melody</li>
               <li>Repeat, trying to extend your range slightly each time</li>
             </ul>
-            <div class="exercise-tip">Place your fingers on your nose — you should feel buzzing. That's good resonance!</div>
+            <div class="exercise-tip">Place your fingers on your nose. You should feel buzzing. That is good resonance!</div>
             <div class="warmup-timer-section">
               <button class="warmup-timer-btn" data-seconds="120">▶ Start Timer (2:00)</button>
               <div class="warmup-timer-display">0:00</div>
@@ -4802,7 +4835,7 @@
               <li>Move up one note and repeat</li>
               <li>Continue up 5 notes, then come back down</li>
               <li>Exaggerate your mouth movements</li>
-              <li>Keep the sound forward — feel it in your mask (nose/cheeks area)</li>
+              <li>Keep the sound forward. Feel it in your mask (nose and cheeks area).</li>
             </ul>
             <div class="exercise-tip">This is what professional actors do backstage before every show.</div>
             <div class="warmup-timer-section">
@@ -4839,8 +4872,8 @@
             <p class="exercise-instruction">Activate your diaphragm for powerful, projected speech.</p>
             <ul class="exercise-steps">
               <li>Stand up and place your hand on your belly</li>
-              <li>Say "HA!" sharply — feel your belly punch inward</li>
-              <li>Repeat: "HA! HA! HA! HA! HA!" — 5 quick bursts</li>
+              <li>Say "HA!" sharply and feel your belly punch inward.</li>
+              <li>Repeat "HA! HA! HA! HA! HA!" for 5 quick bursts.</li>
               <li>Now do it louder, projecting to an imaginary back wall</li>
               <li>3 sets of 5 bursts</li>
             </ul>
@@ -4901,7 +4934,7 @@
               <li>Place a cork or pen horizontally between your front teeth</li>
               <li>Read any paragraph aloud, trying to be as clear as possible</li>
               <li>Speak for 1 minute with the cork in</li>
-              <li>Remove it and read the same paragraph — notice how much clearer you sound!</li>
+              <li>Remove it and read the same paragraph. Notice how much clearer you sound!</li>
             </ul>
             <div class="exercise-tip">This is the #1 trick used by news anchors before going on air.</div>
             <div class="warmup-timer-section">
@@ -4937,11 +4970,11 @@
           <div class="exercise-details-inner">
             <p class="exercise-instruction">The ultimate pre-speech routine. Do this before any presentation!</p>
             <ul class="exercise-steps">
-              <li><strong>Minute 1:</strong> Diaphragmatic breathing — 6 deep belly breaths</li>
+              <li><strong>Minute 1:</strong> Diaphragmatic breathing with 6 deep belly breaths</li>
               <li><strong>Minute 2:</strong> Lip trills sliding from low to high, 5 times</li>
               <li><strong>Minute 3:</strong> Humming scales up and down your range</li>
-              <li><strong>Minute 4:</strong> Tongue twisters — "Red leather, yellow leather" x5, "Unique New York" x5</li>
-              <li><strong>Minute 5:</strong> Volume ladder — whisper to full projection and back</li>
+              <li><strong>Minute 4:</strong> Tongue twisters: "Red leather, yellow leather" x5, "Unique New York" x5</li>
+              <li><strong>Minute 5:</strong> Volume ladder from whisper to full projection and back</li>
             </ul>
             <div class="exercise-tip">Do this routine 10 minutes before your next talk and feel the difference!</div>
             <div class="warmup-timer-section">
@@ -5344,7 +5377,7 @@
     </p>
     <div id="levelsContent"></div>
     <p style="text-align:center; color:#64748b; font-size:12px; margin-top:8px;">
-      Levels grow from speeches you record with AI feedback on. Practice anytime — no program required.
+      Levels grow from speeches you record with AI feedback on. Practice anytime. No program is required.
     </p>
   </div>
   <!-- END LEVELS PAGE -->
@@ -5354,7 +5387,7 @@
     <button class="back-btn" id="programBackBtn">← Back to Home</button>
     <h2 style="font-size: 24px; color: #facc15; margin-bottom: 6px; text-align: center;">🗓️ 6-Week Program</h2>
     <p style="text-align:center; color:#9ca3af; font-size:13px; margin-bottom:22px;">
-      An optional guided path: one assignment a day, building vocal variety and structure. Miss a day and the streak resets — but your progress stays.
+      An optional guided path: one assignment a day, building vocal variety and structure. Miss a day and the streak resets, but your progress stays.
     </p>
     <div id="programContent"></div>
   </div>
@@ -5901,8 +5934,13 @@
       "Your brain is faster than you think."
     ];
 
-    // PREP speaking roadmap from the Week 1 workshop.
-    let prepKeywords = { point: '', reason: '', example: '', finalPoint: '' };
+    // Point, Reason, Example, Point speaking roadmap from the Week 1 workshop.
+    const emptyPrepAnswers = () => ({ point: '', reason: '', example: '', finalPoint: '' });
+    let prepAnswers = emptyPrepAnswers();
+    let prepExample = null;
+    let prepExamplePrompt = '';
+    let prepExampleLoading = false;
+    let prepExampleError = '';
 
     function currentPromptContext() {
       if (isConversationMode && currentConversationQuestion) {
@@ -5912,38 +5950,117 @@
       return '';
     }
 
-    function prepStepHtml({ key, letter, title, question, starters, cssClass = '' }) {
+    function prepStepHtml({ key, letter, title, explanation, starters, cssClass = '' }) {
+      const answer = prepAnswers[key] || '';
+      const complete = Boolean(answer.trim());
       return `
-        <div class="prep-step ${cssClass}">
+        <div class="prep-step ${cssClass} ${complete ? 'complete' : ''}" data-prep-step="${key}">
           <div class="prep-letter">${letter}</div>
           <div>
-            <div class="prep-step-title">${title}</div>
-            <div class="prep-step-question">${question}</div>
+            <div class="prep-step-head">
+              <div class="prep-step-title">${title}</div>
+              <span class="prep-step-status">${complete ? 'Ready' : 'Add your answer'}</span>
+            </div>
+            <div class="prep-step-question">${explanation}</div>
             <div class="prep-starters">Try: ${starters}</div>
-            <input class="prep-keyword" data-prep-key="${key}" maxlength="40"
-              value="${escapeHtml(prepKeywords[key] || '')}" placeholder="One keyword or short phrase">
+            <textarea class="prep-answer" data-prep-key="${key}" rows="2"
+              placeholder="Write notes or complete sentences">${escapeHtml(answer)}</textarea>
           </div>
         </div>`;
     }
 
+    function prepExampleHtml() {
+      if (prepExampleError) return `<div class="prep-example prep-example-error">${escapeHtml(prepExampleError)}</div>`;
+      if (!prepExample) return '';
+      return `
+        <div class="prep-example" id="prepExampleResult">
+          <b>Point:</b> ${escapeHtml(prepExample.point)}<br>
+          <b>Reason:</b> ${escapeHtml(prepExample.reason)}<br>
+          <b>Example:</b> ${escapeHtml(prepExample.example)}<br>
+          <b>Final Point:</b> ${escapeHtml(prepExample.finalPoint)}
+        </div>`;
+    }
+
+    function prepPreviewHtml() {
+      const labels = { point: 'Point', reason: 'Reason', example: 'Example', finalPoint: 'Final Point' };
+      const completed = Object.entries(labels)
+        .filter(([key]) => prepAnswers[key].trim())
+        .map(([key, label]) => `<b>${label}:</b> ${escapeHtml(prepAnswers[key].trim())}`);
+      return completed.length
+        ? completed.join('<br><br>')
+        : 'Start writing above. Your four parts will appear here as one answer.';
+    }
+
     function getStructure() {
       const prompt = currentPromptContext();
-      if (!prompt) return 'Get a prompt first to build your PREP roadmap.';
+      if (!prompt) return 'Get a prompt first to build your Point, Reason, Example, Point roadmap.';
       return `
         <div class="prep-question">${escapeHtml(prompt)}</div>
-        ${prepStepHtml({ key: 'point', letter: 'P', title: 'Point', question: 'What am I trying to say?', starters: '“I believe…” or “In my opinion…”' })}
-        ${prepStepHtml({ key: 'reason', letter: 'R', title: 'Reason', question: 'Why do I believe it?', starters: '“The main reason is…” or “This matters because…”', cssClass: 'reason' })}
-        ${prepStepHtml({ key: 'example', letter: 'E', title: 'Example', question: 'When have I seen it?', starters: '“For instance…” or “For example…”', cssClass: 'example' })}
-        ${prepStepHtml({ key: 'finalPoint', letter: 'P', title: 'Final Point', question: 'What should they remember?', starters: '“That’s why I recommend…” or “The takeaway is…”' })}
-        <details class="prep-example-toggle">
-          <summary>See a completed PREP example</summary>
-          <div class="prep-example">
-            <b>P:</b> A short walk is one of the best ways to reset your mind.<br>
-            <b>R:</b> Movement creates distance from whatever is making you feel stuck.<br>
-            <b>E:</b> After a stressful meeting, I return from a walk calmer and think more clearly.<br>
-            <b>P:</b> That’s why I recommend a short walk when your mind feels crowded.
-          </div>
-        </details>`;
+        ${prepStepHtml({ key: 'point', letter: 'P', title: 'Point', explanation: 'Answer the question directly.', starters: '“My answer is...” or “I believe...”' })}
+        ${prepStepHtml({ key: 'reason', letter: 'R', title: 'Reason', explanation: 'Explain why you think that.', starters: '“The main reason is...” or “This matters because...”', cssClass: 'reason' })}
+        ${prepStepHtml({ key: 'example', letter: 'E', title: 'Example', explanation: 'Provide a specific example, experience, or evidence.', starters: '“For example...” or “One time...”', cssClass: 'example' })}
+        ${prepStepHtml({ key: 'finalPoint', letter: 'P', title: 'Final Point', explanation: 'Restate your answer and leave one clear takeaway.', starters: '“That is why...” or “The takeaway is...”' })}
+        <div class="prep-tools">
+          <button class="prep-tool-btn" type="button" data-prep-action="example" ${prepExampleLoading ? 'disabled' : ''}>${prepExampleLoading ? 'Creating example...' : prepExamplePrompt === prompt ? 'Refresh example' : 'Show an example for this question'}</button>
+          <button class="prep-tool-btn secondary" type="button" data-prep-action="clear">Clear my answer</button>
+        </div>
+        ${prepExampleHtml()}
+        <div class="prep-preview">
+          <div class="prep-preview-title">Your complete answer</div>
+          <div class="prep-preview-body ${Object.values(prepAnswers).some(value => value.trim()) ? '' : 'empty'}" id="prepPreviewBody">${prepPreviewHtml()}</div>
+        </div>
+        <div class="prep-scoring-note">The AI report scores the structure you say in your recording. These notes help you prepare, but they are not scored.</div>`;
+    }
+
+    function autoResizePrepAnswer(textarea) {
+      if (!textarea) return;
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.max(72, textarea.scrollHeight)}px`;
+    }
+
+    function updatePrepProgress(key) {
+      const step = structureContent.querySelector(`[data-prep-step="${key}"]`);
+      const complete = Boolean(prepAnswers[key]?.trim());
+      if (step) {
+        step.classList.toggle('complete', complete);
+        const status = step.querySelector('.prep-step-status');
+        if (status) status.textContent = complete ? 'Ready' : 'Add your answer';
+      }
+      const preview = document.getElementById('prepPreviewBody');
+      if (preview) {
+        preview.innerHTML = prepPreviewHtml();
+        preview.classList.toggle('empty', !Object.values(prepAnswers).some(value => value.trim()));
+      }
+    }
+
+    async function requestPrepExample() {
+      const prompt = currentPromptContext();
+      if (!prompt || prepExampleLoading) return;
+      prepExampleLoading = true;
+      prepExampleError = '';
+      updateStructure();
+      try {
+        const response = await fetch(API_BASE + '/api/structure-example', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'Could not create an example.');
+        const example = data.example || {};
+        if (!['point', 'reason', 'example', 'finalPoint'].every(key => typeof example[key] === 'string' && example[key].trim())) {
+          throw new Error('The example was incomplete. Please try again.');
+        }
+        if (currentPromptContext() === prompt) {
+          prepExample = example;
+          prepExamplePrompt = prompt;
+        }
+      } catch (error) {
+        prepExampleError = error.message || 'Could not create an example. Please try again.';
+      } finally {
+        prepExampleLoading = false;
+        if (currentPromptContext() === prompt) updateStructure();
+      }
     }
 
     const SPOT_CHALLENGE_QUESTIONS = [
@@ -6207,7 +6324,7 @@
       parts.push(`results: ${spotRecogDiag.resultCount} (final ${spotRecogDiag.finalResultCount})`);
       parts.push(`onend: ${spotRecogDiag.endCount}`);
       if (spotRecogDiag.errorCount) {
-        parts.push(`errors: ${spotRecogDiag.errorCount} (last: ${spotRecogDiag.lastError}${spotRecogDiag.lastErrorMessage ? ' — ' + spotRecogDiag.lastErrorMessage : ''})`);
+        parts.push(`errors: ${spotRecogDiag.errorCount} (last: ${spotRecogDiag.lastError}${spotRecogDiag.lastErrorMessage ? ': ' + spotRecogDiag.lastErrorMessage : ''})`);
       }
       return parts.join(' • ');
     }
@@ -6347,7 +6464,10 @@
       reset();
       currentWord = null;
       currentConversationQuestion = null;
-      prepKeywords = { point: '', reason: '', example: '', finalPoint: '' };
+      prepAnswers = emptyPrepAnswers();
+      prepExample = null;
+      prepExamplePrompt = '';
+      prepExampleError = '';
       wordEl.textContent = 'Ready?';
       definitionEl.textContent = isConversationMode ? 'Click "Next Question" to get started' : 'Click "New Word" to get started';
       conversationQuestionText.textContent = 'Click "Next Question" to get started';
@@ -6381,7 +6501,10 @@
     function nextConversationQuestion() {
       reset();
       hideSpeechChat();
-      prepKeywords = { point: '', reason: '', example: '', finalPoint: '' };
+      prepAnswers = emptyPrepAnswers();
+      prepExample = null;
+      prepExamplePrompt = '';
+      prepExampleError = '';
       const question = getNextConversationQuestion();
 
       currentConversationQuestion = { category: currentConversationCategory, question };
@@ -6498,7 +6621,10 @@
     function formatTime(sec) { return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
 
     function updateStructure() {
-      if (currentWord) structureContent.innerHTML = getStructure();
+      if (currentWord) {
+        structureContent.innerHTML = getStructure();
+        structureContent.querySelectorAll('.prep-answer').forEach(autoResizePrepAnswer);
+      }
     }
 
     function newWord() {
@@ -6510,7 +6636,10 @@
 
       reset();
       hideSpeechChat();
-      prepKeywords = { point: '', reason: '', example: '', finalPoint: '' };
+      prepAnswers = emptyPrepAnswers();
+      prepExample = null;
+      prepExamplePrompt = '';
+      prepExampleError = '';
       currentWord = words[Math.floor(Math.random() * words.length)];
       wordEl.textContent = currentWord.word;
       definitionEl.textContent = currentWord.definition;
@@ -6746,7 +6875,7 @@
       emphasis: 'Emphasis',
       rhythm: 'Rhythm',
       clarity: 'Clarity',
-      structure: 'PREP structure',
+      structure: 'Point, Reason, Example, Point structure',
       logicalFlow: 'Logical flow',
       wordChoice: 'Word choice',
       concision: 'Concision',
@@ -6791,7 +6920,7 @@
       return `
         <div class="performance-prep">
           <div class="performance-prep-head">
-            <div class="performance-prep-title">PREP Structure Breakdown</div>
+            <div class="performance-prep-title">PREP Structure: Point, Reason, Example, Point</div>
             <div class="performance-prep-score">${prep.score}<small>/ 100</small></div>
           </div>
           <div class="performance-prep-grid">
@@ -6839,7 +6968,7 @@
       const commonChallengesHtml = Array.isArray(report.commonChallenges) && report.commonChallenges.length ? `
         <div class="common-challenges">
           <div class="common-challenges-title">Common challenges</div>
-          ${report.commonChallenges.map(item => `<div class="common-challenge"><strong>${escapeHtml(item.category)}</strong> · seen in ${item.count} recent reports — ${escapeHtml(item.summary)}</div>`).join('')}
+          ${report.commonChallenges.map(item => `<div class="common-challenge"><strong>${escapeHtml(item.category)}</strong> · seen in ${item.count} recent reports. ${escapeHtml(item.summary)}</div>`).join('')}
         </div>` : '';
       return `
         <div class="performance-hero">
@@ -6850,7 +6979,7 @@
             </div>
             <div class="performance-overall">${report.overallScore ?? '--'}<small>Overall</small></div>
           </div>
-          <div class="performance-score-basis">Overall score uses the measurable vocal and verbal dimensions. PREP is the scored Structure dimension.</div>
+          <div class="performance-score-basis">Overall score uses the measurable vocal and verbal dimensions. Structure is scored using PREP: Point, Reason, Example, Point.</div>
           <div class="performance-summary">${escapeHtml(report.summary || '')}</div>
           <div class="performance-review-grid">
             ${performanceReviewHtml(report.vocal, 'vocal')}
@@ -6923,7 +7052,7 @@
           <div class="score-card ${cls}">
             <div class="score-card-icon">🧱</div>
             <div class="score-card-value">${s}</div>
-            <div class="score-card-label">PREP structure</div>
+            <div class="score-card-label">Point, Reason, Example, Point</div>
             <div class="score-card-rating">/ 100</div>
           </div>`);
       }
@@ -7075,7 +7204,7 @@
 
       isRequestingFeedback = true;
       aiFeedback.classList.remove('rich');
-      aiFeedback.textContent = '✨ Your AI coaching feedback is on its way — sit tight while we listen back to your speech and put together your personalised report...';
+      aiFeedback.textContent = '✨ Your AI coaching feedback is on its way. Sit tight while we listen back to your speech and put together your personalised report...';
       setAiStatus('Transcribing and analysing your speech with AI...');
       console.log('[INFO] Starting AI analysis...');
 
@@ -7255,7 +7384,7 @@
         chatOpen = true;
         speechChatToggle.classList.add('active');
         speechChatMessages.innerHTML = '';
-        appendChatMessage('assistant', 'Record a speech and get your AI feedback first — then come back here to ask me anything about it!');
+        appendChatMessage('assistant', 'Record a speech and get your AI feedback first. Then come back here to ask me anything about it!');
         speechChatInput.disabled = true;
         speechChatSend.disabled = true;
         return;
@@ -7478,7 +7607,7 @@
 
         // Handle tab close / audio stop
         audioTracks[0].addEventListener('ended', () => {
-          showAchievement("📞 Call audio stopped — tab may have been closed");
+          showAchievement("📞 Call audio stopped. The tab may have been closed.");
           if (isRunning) {
             if (currentMode === 'audio') stopAudioRecording();
             else if (currentMode === 'video') stopVideoRecording();
@@ -7969,8 +8098,19 @@
 
     structureContent.addEventListener('input', event => {
       const key = event.target?.dataset?.prepKey;
-      if (key && Object.prototype.hasOwnProperty.call(prepKeywords, key)) {
-        prepKeywords[key] = event.target.value.slice(0, 40);
+      if (key && Object.prototype.hasOwnProperty.call(prepAnswers, key)) {
+        prepAnswers[key] = event.target.value;
+        autoResizePrepAnswer(event.target);
+        updatePrepProgress(key);
+      }
+    });
+
+    structureContent.addEventListener('click', event => {
+      const action = event.target?.closest?.('[data-prep-action]')?.dataset?.prepAction;
+      if (action === 'example') requestPrepExample();
+      if (action === 'clear') {
+        prepAnswers = emptyPrepAnswers();
+        updateStructure();
       }
     });
 
@@ -8421,8 +8561,8 @@
       } catch (e) {
         if (e.name === 'NotAllowedError') {
           updateAudioInputStatus(isCapacitorNative()
-            ? 'Microphone permission denied — allow microphone access in your phone Settings → Apps → Speaker’s Gym → Permissions'
-            : 'Microphone permission denied — enable it in browser settings', true);
+            ? 'Microphone permission denied. Allow microphone access in your phone Settings → Apps → Speaker’s Gym → Permissions.'
+            : 'Microphone permission denied. Enable it in browser settings.', true);
         } else {
           updateAudioInputStatus('Could not list audio devices: ' + e.message, true);
         }
@@ -9525,8 +9665,8 @@
       },
       {
         target: '#toggleStructureBtn',
-        title: 'Plan with PREP',
-        copy: 'Open the guide and note one keyword for your Point, Reason, Example and Final Point.'
+        title: 'Plan with Point, Reason, Example, Point',
+        copy: 'Open the guide and build your Point, Reason, Example and Final Point using notes or full sentences.'
       },
       {
         target: '.mode-selector',
@@ -9536,7 +9676,7 @@
       {
         target: '#aiFeedbackPanel',
         title: 'Review your performance',
-        copy: 'After recording, read your transcript, PREP score and personalised AI coaching report.'
+        copy: 'After recording, read your transcript, your Point, Reason, Example, Point score and personalised AI coaching report.'
       }
     ];
 
@@ -9757,7 +9897,7 @@
       events.forEach((ev, i) => {
         const meta = TRACK_META[ev.track];
         setTimeout(() => {
-          showAchievement(`${meta.icon} Level ${ev.to} — ${meta.label}: ${ev.name}!`);
+          showAchievement(`${meta.icon} Level ${ev.to}. ${meta.label}: ${ev.name}!`);
         }, 600 + i * 1800);
       });
     }
@@ -9770,7 +9910,7 @@
         const names = LEVEL_NAMES[track];
         let gateHtml = '';
         if (info.atMax) {
-          gateHtml = `<div class="level-gate-note met">🏆 Top level reached — you've mastered this skill.</div>`;
+          gateHtml = `<div class="level-gate-note met">🏆 Top level reached. You have mastered this skill.</div>`;
         } else if (info.gateBlocked) {
           gateHtml = `<div class="level-gate-note">🔒 You have the XP for Level ${info.level + 1}. Score <strong>${info.gateNeeded}+</strong> on a recent speech to unlock it. Your recent best: ${info.bestRecent}.</div>`;
         } else if (LEVEL_GATES[info.level + 1] != null) {
@@ -9815,7 +9955,7 @@
     // focus tags drive which skill it builds. mode maps to navigateToPage().
     const PROGRAM_WEEKS = [
       { title: 'Week 1 · Foundations', theme: 'Find your voice and give every speech a shape.' },
-      { title: 'Week 2 · Vocal Range', theme: 'Pace, pause, and emphasis — make your delivery move.' },
+      { title: 'Week 2 · Vocal Range', theme: 'Use pace, pause, and emphasis to make your delivery move.' },
       { title: 'Week 3 · Structure Basics', theme: 'Strong openings, clear points, deliberate closes.' },
       { title: 'Week 4 · Storytelling', theme: 'Combine a clear arc with expressive delivery.' },
       { title: 'Week 5 · Persuasion & Impact', theme: 'Advanced structure that lands and convinces.' },
@@ -9824,7 +9964,7 @@
 
     const PROGRAM_DAYS = [
       // Week 1 — Foundations
-      { t: 'Baseline speech', d: 'Record a 60-second speech on any random word. This is your starting line — speak naturally and get your first scores.', focus: ['Vocal Variety', 'Structure'], mode: 'main' },
+      { t: 'Baseline speech', d: 'Record a 60-second speech on any random word. This is your starting line. Speak naturally and get your first scores.', focus: ['Vocal Variety', 'Structure'], mode: 'main' },
       { t: 'Open, point, close', d: 'Give a 60s speech with a clear opening line, one point, and a closing line. Aim for shape over polish.', focus: ['Structure'], mode: 'main' },
       { t: 'Warm up the instrument', d: 'Run a full vocal warm-up, then record a short speech right after. Notice how your voice feels looser.', focus: ['Vocal Variety'], mode: 'warmup' },
       { t: 'One clear idea', d: 'Speak for 60s making exactly ONE point. No tangents. Land it cleanly.', focus: ['Structure'], mode: 'main' },
@@ -9842,16 +9982,16 @@
       // Week 3 — Structure Basics
       { t: 'Hook openings', d: 'Record a 60s speech that opens with a question, a bold claim, or a vivid image.', focus: ['Structure'], mode: 'main' },
       { t: 'Three points', d: 'Give a 90s speech with exactly three distinct points. Signpost each one.', focus: ['Structure'], mode: 'main' },
-      { t: 'Point + example', d: 'Make one point and back it with a concrete example or story. 60–90s.', focus: ['Structure'], mode: 'main' },
-      { t: 'Strong closings', d: 'Record a 60s speech and nail a deliberate closing line — a call to action or a callback.', focus: ['Structure'], mode: 'main' },
+      { t: 'Point + example', d: 'Make one point and back it with a concrete example or story. Speak for 60 to 90 seconds.', focus: ['Structure'], mode: 'main' },
+      { t: 'Strong closings', d: 'Record a 60-second speech and finish with a deliberate closing line, such as a call to action or a callback.', focus: ['Structure'], mode: 'main' },
       { t: 'Spot challenge structure', d: 'Do a Speak on the Spot challenge but force a clear beginning, middle, and end.', focus: ['Structure'], mode: 'spot' },
-      { t: 'PREP method', d: 'Speak 90s using Point → Reason → Example → Point. A clean, repeatable frame.', focus: ['Structure'], mode: 'main' },
+      { t: 'Point, Reason, Example, Point', d: 'Speak for 90 seconds using Point → Reason → Example → Point. A clean, repeatable structure.', focus: ['Structure'], mode: 'main' },
       { t: 'Week 3 review speech', d: 'Record 90s with a hook, three signposted points, and a strong close. Push your Structure score up.', focus: ['Structure'], mode: 'main' },
       // Week 4 — Storytelling
       { t: 'A small story', d: 'Tell a 90s personal story with a clear beginning, turn, and resolution.', focus: ['Structure', 'Vocal Variety'], mode: 'main' },
       { t: 'Show, don\'t tell', d: 'Retell a moment using sensory detail and varied delivery instead of summary.', focus: ['Vocal Variety'], mode: 'main' },
       { t: 'Build tension', d: 'Tell a 90s story that slows and quiets toward a turning point, then releases.', focus: ['Vocal Variety', 'Structure'], mode: 'main' },
-      { t: 'Character voices', d: 'Tell a story with 2 people in it — shift your voice for each. 90s.', focus: ['Vocal Variety'], mode: 'main' },
+      { t: 'Character voices', d: 'Tell a story with 2 people in it. Shift your voice for each person. Speak for 90 seconds.', focus: ['Vocal Variety'], mode: 'main' },
       { t: 'Rapid fire imagery', d: 'Run a Rapid Fire session leaning into vivid, surprising images.', focus: ['Vocal Variety'], mode: 'rapidfire' },
       { t: 'Story with a point', d: 'Tell a 90s story that clearly makes ONE point by the end. Arc + meaning.', focus: ['Structure', 'Vocal Variety'], mode: 'main' },
       { t: 'Week 4 review speech', d: 'Record a 2-minute story: clear arc, expressive delivery, one landing point.', focus: ['Structure', 'Vocal Variety'], mode: 'main' },
@@ -9864,12 +10004,12 @@
       { t: 'High-stakes delivery', d: 'Record a 90s speech as if the room must act now. Urgency in voice and shape.', focus: ['Vocal Variety', 'Structure'], mode: 'main' },
       { t: 'Week 5 review speech', d: 'Deliver a 2-minute persuasive speech: hook, argument, contrast, call to action.', focus: ['Structure', 'Vocal Variety'], mode: 'main' },
       // Week 6 — Mastery
-      { t: 'Cold open challenge', d: 'Speak on the Spot with no prep — apply everything: shape, pace, emphasis.', focus: ['Vocal Variety', 'Structure'], mode: 'spot' },
+      { t: 'Cold open challenge', d: 'Speak on the Spot with no preparation. Apply everything: shape, pace, and emphasis.', focus: ['Vocal Variety', 'Structure'], mode: 'spot' },
       { t: 'Two-minute keynote', d: 'Record a polished 2-minute speech on a topic you care about. Full toolkit.', focus: ['Structure', 'Vocal Variety'], mode: 'main' },
       { t: 'Vocabulary upgrade', d: 'Play a Word Upgrade round, then record a 60s speech using sharper words.', focus: ['Vocal Variety'], mode: 'vocab' },
       { t: 'Story + persuade', d: 'Tell a story that argues a point in 2 minutes. Blend Week 4 and Week 5.', focus: ['Structure', 'Vocal Variety'], mode: 'main' },
       { t: 'Rapid fire finale', d: 'Run a fast Rapid Fire session and keep your expression high throughout.', focus: ['Vocal Variety'], mode: 'rapidfire' },
-      { t: 'Free masterpiece', d: 'Record your best 2-minute speech yet. No constraints — show your range.', focus: ['Vocal Variety', 'Structure'], mode: 'main' },
+      { t: 'Free masterpiece', d: 'Record your best 2-minute speech yet. There are no constraints, so show your range.', focus: ['Vocal Variety', 'Structure'], mode: 'main' },
       { t: 'Graduation speech', d: 'Record a final 2-minute speech reflecting on these 6 weeks. Aim for personal-best scores.', focus: ['Vocal Variety', 'Structure'], mode: 'main' }
     ];
 
@@ -9947,7 +10087,7 @@
       program.currentDay += 1;
       saveProgram();
       if (programFinished()) {
-        showAchievement('🎓 Program complete — all 42 days done! Incredible work.');
+        showAchievement('🎓 Program complete. All 42 days are done! Incredible work.');
       } else {
         showAchievement(`✅ Day ${program.currentDay - 1} done! 🔥 ${program.streak}-day program streak.`);
       }
@@ -9966,7 +10106,7 @@
           <div class="program-hero">
             <p style="color:#cbd5e1; font-size:15px; line-height:1.6; margin-bottom:18px;">
               A 6-week guided path that builds your <strong>Vocal Variety</strong> and <strong>Structure</strong> levels with one short assignment a day.
-              It's completely optional — you can keep practising freely whenever you like.
+              It is completely optional. You can keep practising freely whenever you like.
             </p>
             <button class="program-cta" id="programEnrollBtn">Start the 6-Week Program</button>
           </div>
@@ -9997,7 +10137,7 @@
             <div class="program-today-tag">Week ${weekNum} · Day ${program.currentDay} of 42</div>
             <div class="program-today-title">${day.t}</div>
             <div class="program-today-focus">${chips}</div>
-            <div class="program-done-msg">✅ Done for today — come back tomorrow to keep your streak alive.</div>
+            <div class="program-done-msg">✅ Done for today. Come back tomorrow to keep your streak alive.</div>
           </div>`;
         } else {
           todayCard = `<div class="program-today">
@@ -10977,7 +11117,7 @@
 
       if (dataPoints.length === 0) {
         const labels = { wpm: 'WPM', filler: 'filler words', rating: 'rating' };
-        summaryEl.innerHTML = `<span class="chart-summary-detail">No ${labels[type]} data yet — use audio/video mode to track</span>`;
+        summaryEl.innerHTML = `<span class="chart-summary-detail">No ${labels[type]} data yet. Use audio or video mode to track it.</span>`;
         return;
       }
 
@@ -11123,7 +11263,7 @@
       const thisWeek = speeches.filter(s => s._date && s._date >= weekAgo);
       const lastWeek = speeches.filter(s => s._date && s._date >= twoWeeksAgo && s._date < weekAgo);
 
-      dateEl.textContent = `Week of ${weekAgo.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      dateEl.textContent = `Week of ${weekAgo.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} to ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 
       const insights = [];
 
@@ -11135,19 +11275,19 @@
         const avgLast = lastWeekFillers.reduce((s, sp) => s + sp.metrics.fillerWordCount, 0) / lastWeekFillers.length;
         if (avgLast > 0) {
           const change = Math.round(((avgLast - avgThis) / avgLast) * 100);
-          if (change > 0) insights.push(`Your filler words dropped ${change}% this week — great progress!`);
-          else if (change < -20) insights.push(`Filler words increased ${Math.abs(change)}% this week. Try pausing instead of filling silence — silence is powerful.`);
+          if (change > 0) insights.push(`Your filler words dropped ${change}% this week. Great progress!`);
+          else if (change < -20) insights.push(`Filler words increased ${Math.abs(change)}% this week. Try pausing instead of filling silence. Silence is powerful.`);
         }
-        if (avgThis === 0) insights.push(`Zero filler words this week — exceptional clarity!`);
+        if (avgThis === 0) insights.push(`Zero filler words this week. Exceptional clarity!`);
       }
 
       // WPM trend
       const thisWeekWpm = thisWeek.filter(s => s.metrics && s.metrics.wordsPerMinute);
       if (thisWeekWpm.length > 0) {
         const avgWpm = Math.round(thisWeekWpm.reduce((s, sp) => s + sp.metrics.wordsPerMinute, 0) / thisWeekWpm.length);
-        if (avgWpm > 160) insights.push(`Your average pace is ${avgWpm} WPM — still a bit rushed. Try the 4-4-4 breathing warm-up before your next session.`);
-        else if (avgWpm < 110) insights.push(`Your pace is ${avgWpm} WPM — quite slow. Try to keep energy up and aim for 120-150 WPM for dynamic delivery.`);
-        else insights.push(`Your pacing is ${avgWpm} WPM — right in the sweet spot for engaging delivery.`);
+        if (avgWpm > 160) insights.push(`Your average pace is ${avgWpm} WPM, which is still a bit rushed. Try the 4-4-4 breathing warm-up before your next session.`);
+        else if (avgWpm < 110) insights.push(`Your pace is ${avgWpm} WPM, which is quite slow. Try to keep energy up and aim for 120-150 WPM for dynamic delivery.`);
+        else insights.push(`Your pacing is ${avgWpm} WPM, which is in the sweet spot for engaging delivery.`);
       }
 
       // Rating trend
@@ -11156,12 +11296,12 @@
       if (thisWeekRated.length > 0 && lastWeekRated.length > 0) {
         const avgThis = thisWeekRated.reduce((s, sp) => s + sp.rating, 0) / thisWeekRated.length;
         const avgLast = lastWeekRated.reduce((s, sp) => s + sp.rating, 0) / lastWeekRated.length;
-        if (avgThis > avgLast) insights.push(`Your confidence rating improved from ${avgLast.toFixed(1)} to ${avgThis.toFixed(1)} — you're feeling the growth!`);
+        if (avgThis > avgLast) insights.push(`Your confidence rating improved from ${avgLast.toFixed(1)} to ${avgThis.toFixed(1)}. You are feeling the growth!`);
       }
 
       // Practice frequency
       if (thisWeek.length > 0) {
-        insights.push(`You completed ${thisWeek.length} session${thisWeek.length !== 1 ? 's' : ''} this week${thisWeek.length >= 5 ? ' — outstanding dedication!' : '. Aim for 5+ sessions to build momentum.'}`);
+        insights.push(`You completed ${thisWeek.length} session${thisWeek.length !== 1 ? 's' : ''} this week${thisWeek.length >= 5 ? '. Outstanding dedication!' : '. Aim for 5+ sessions to build momentum.'}`);
       }
 
       // Fallback insight based on all-time data
@@ -11499,8 +11639,8 @@
       if (!spotRecognitionSupported || !spotRecognition) {
         const el = document.getElementById('spotLiveTranscript');
         if (el) el.textContent = isCapacitorNative()
-          ? 'ℹ️ Live word detection isn’t available on this device — your speech is still timed and recorded.'
-          : 'ℹ️ Live transcription is not supported in this browser — word detection is disabled. Try Chrome.';
+          ? 'ℹ️ Live word detection is not available on this device. Your speech is still timed and recorded.'
+          : 'ℹ️ Live transcription is not supported in this browser. Word detection is disabled. Try Chrome.';
         return;
       }
       spotRecognitionShouldRun = true;
@@ -11841,7 +11981,7 @@
       document.getElementById('spotWordsUsedValue').textContent = `${used}/${spotSession.words.length}`;
       document.getElementById('spotTimeValue').textContent = `${elapsed}s`;
       const resultsList = document.getElementById('spotWordResultsList');
-      resultsList.innerHTML = spotSession.words.map(w => `<div class="spot-chip ${w.used ? 'used' : 'missed'}">${w.used ? '✅ Used' : '❌ Missed'} — ${w.word}</div>`).join('');
+      resultsList.innerHTML = spotSession.words.map(w => `<div class="spot-chip ${w.used ? 'used' : 'missed'}">${w.used ? '✅ Used' : '❌ Missed'}: ${w.word}</div>`).join('');
       const finalTranscriptEl = document.getElementById('spotFinalTranscript');
       if (spotTranscript) {
         finalTranscriptEl.textContent = spotTranscript;
@@ -11849,7 +11989,7 @@
         let reason = 'No transcript captured. ';
         if (!spotRecogDiag.apiSupported) {
           reason += isCapacitorNative()
-            ? 'Live word detection isn’t available on this device — your speech was still timed and recorded.'
+            ? 'Live word detection is not available on this device. Your speech was still timed and recorded.'
             : 'This browser does not support the Web Speech API. Try Chrome on desktop or Android.';
         } else if (spotRecogDiag.lastError === 'not-allowed' || spotRecogDiag.lastError === 'service-not-allowed') {
           reason += isCapacitorNative()
@@ -11860,7 +12000,7 @@
         } else if (spotRecogDiag.lastError === 'network') {
           reason += 'Speech recognition needs an internet connection (it streams audio to the browser vendor for transcription).';
         } else if (spotRecogDiag.startedCount === 0) {
-          reason += 'The recognizer never started — usually a browser permission or HTTPS issue.';
+          reason += 'The recognizer never started. This is usually a browser permission or HTTPS issue.';
         } else if (spotRecogDiag.resultCount === 0) {
           reason += 'The recognizer started but never heard speech. Check that the mic isn’t muted and try speaking louder.';
         } else {
@@ -11905,8 +12045,8 @@
     let warmupCompletedCount = parseInt(localStorage.getItem('warmupCompleted') || '0');
     const warmupQuotes = [
       '"Your voice is your most powerful instrument. Warm it up."',
-      '"The voice is the muscle of the soul." — Alfred Wolfsohn',
-      '"Speak clearly, if you speak at all." — Oliver Wendell Holmes',
+      '"The voice is the muscle of the soul." by Alfred Wolfsohn',
+      '"Speak clearly, if you speak at all." by Oliver Wendell Holmes',
       '"A warm voice is a confident voice."',
       '"Before you move the room, move your breath."',
       '"Great speakers are made, not born. Start with the warm up."',

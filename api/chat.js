@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       metricsContext = `\nSpeech Metrics:
 - Speaking pace: ${metrics.wordsPerMinute || 'N/A'} WPM (${metrics.pacingVariation || 'unknown'})
 - Pauses: ${metrics.pauseCount || 0} notable pauses (avg ${metrics.averagePauseDuration || 0}s, longest ${metrics.longestPause || 0}s)
-- Filler words: ${metrics.fillerWordCount || 0}${metrics.fillerWordsUsed && Object.keys(metrics.fillerWordsUsed).length > 0 ? ` — ${Object.entries(metrics.fillerWordsUsed).map(([w, c]) => `"${w}" (${c}x)`).join(', ')}` : ''}`;
+- Filler words: ${metrics.fillerWordCount || 0}${metrics.fillerWordsUsed && Object.keys(metrics.fillerWordsUsed).length > 0 ? `. ${Object.entries(metrics.fillerWordsUsed).map(([w, c]) => `"${w}" (${c}x)`).join(', ')}` : ''}`;
     }
 
     // Build conversation history for multi-turn chat
@@ -45,8 +45,9 @@ export default async function handler(req, res) {
         content: [
           'You are an expert speaking coach having a conversation about a specific speech the user just gave.',
           'You have the full transcript, AI evaluation, and speech metrics for this speech.',
-          'Answer questions ONLY based on this specific speech — quote the speaker\'s actual words when relevant.',
+          'Answer questions ONLY based on this specific speech. Quote the speaker\'s actual words when relevant.',
           'Be concise, specific, and actionable. Use the transcript and metrics to give concrete advice.',
+          'Do not use em dashes or en dashes.',
           'If the user asks about something unrelated to their speech or public speaking, gently redirect them.',
           '',
           '=== SPEECH TRANSCRIPT ===',
@@ -77,7 +78,8 @@ export default async function handler(req, res) {
       messages,
     });
 
-    const reply = completion.choices?.[0]?.message?.content?.trim() || 'Sorry, I couldn\'t generate a response.';
+    const reply = (completion.choices?.[0]?.message?.content?.trim() || 'Sorry, I couldn\'t generate a response.')
+      .replace(/[\u2013\u2014]/g, ',');
 
     return res.status(200).json({ reply });
 
