@@ -467,6 +467,22 @@
     }
     .performance-focus strong { color: #93c5fd; }
 
+    .performance-prep {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 14px;
+      background: rgba(250, 204, 21, 0.07);
+      border: 1px solid rgba(250, 204, 21, 0.2);
+    }
+    .performance-prep-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .performance-prep-title { color: #fde68a; font-size: 13px; font-weight: 900; }
+    .performance-prep-score { color: #facc15; font-size: 20px; font-weight: 900; }
+    .performance-prep-score small { color: #94a3b8; font-size: 9px; margin-left: 3px; text-transform: uppercase; }
+    .performance-prep-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+    .performance-prep-step { background: rgba(15, 23, 42, 0.65); border-radius: 10px; padding: 9px; }
+    .performance-prep-step-line { display: flex; justify-content: space-between; gap: 8px; color: #e2e8f0; font-size: 10px; font-weight: 800; }
+    .performance-prep-evidence { color: #64748b; font-size: 9px; line-height: 1.4; margin-top: 5px; }
+
     .performance-score-basis { margin-top: 8px; color: #94a3b8; font-size: 12px; line-height: 1.45; }
     .performance-comparison { margin-top: 18px; padding: 16px; border: 1px solid rgba(96, 165, 250, 0.24); border-radius: 14px; background: rgba(30, 64, 175, 0.1); }
     .performance-comparison-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-weight: 800; color: #dbeafe; }
@@ -539,6 +555,7 @@
     }
     @media (max-width: 620px) {
       .performance-review-grid { grid-template-columns: 1fr; }
+      .performance-prep-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .performance-hero { padding: 16px; }
       .performance-history-main { align-items: flex-start; }
     }
@@ -2462,31 +2479,69 @@
       animation: fadeIn 0.3s ease;
     }
 
-    .formula-selector {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }
-
-    .formula-btn {
-      flex: 1;
-      min-width: 100px;
-      padding: 11px 14px;
-      border-radius: 12px;
-      border: 2px solid rgba(55, 65, 81, 0.5);
-      background: rgba(31, 41, 55, 0.5);
-      color: #d1d5db;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      transition: all 0.25s ease;
-    }
-
-    .formula-btn:hover { border-color: rgba(250, 204, 21, 0.5); background: rgba(31, 41, 55, 0.7); }
-    .formula-btn.active { background: linear-gradient(135deg, #facc15, #fbbf24); color: #0f172a; border-color: #facc15; box-shadow: 0 4px 16px rgba(250, 204, 21, 0.25); }
-
     .structure-content { color: #e2e8f0; line-height: 1.7; font-size: 14px; }
+
+    .prep-intro {
+      color: #94a3b8;
+      font-size: 13px;
+      line-height: 1.55;
+      text-align: center;
+      margin: -8px 0 16px;
+    }
+
+    .prep-question {
+      background: rgba(250, 204, 21, 0.08);
+      border: 1px solid rgba(250, 204, 21, 0.28);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    .prep-step {
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      gap: 12px;
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+
+    .prep-letter {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f97360;
+      color: #fff;
+      font-weight: 900;
+      font-size: 17px;
+    }
+
+    .prep-step.reason .prep-letter { background: #111827; border: 1px solid #475569; }
+    .prep-step.example .prep-letter { background: #f6c453; color: #111827; }
+    .prep-step-title { color: #f8fafc; font-weight: 800; font-size: 14px; }
+    .prep-step-question { color: #cbd5e1; font-size: 13px; margin: 2px 0 8px; line-height: 1.45; }
+    .prep-starters { color: #94a3b8; font-size: 12px; margin-bottom: 8px; }
+    .prep-keyword {
+      width: 100%;
+      border: 1px solid #334155;
+      background: rgba(15, 23, 42, 0.8);
+      color: #f8fafc;
+      border-radius: 9px;
+      padding: 9px 11px;
+      font-size: 13px;
+    }
+    .prep-keyword:focus { outline: none; border-color: #facc15; box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.12); }
+    .prep-example-toggle { margin-top: 12px; color: #facc15; font-size: 13px; }
+    .prep-example-toggle summary { cursor: pointer; font-weight: 700; }
+    .prep-example { margin-top: 10px; font-size: 12px; line-height: 1.55; color: #cbd5e1; }
+    .prep-example b { color: #f8fafc; }
 
     .structure-section {
       background: rgba(15, 23, 42, 0.4);
@@ -2522,6 +2577,44 @@
       color: #a7f3d0;
       font-size: 13px;
     }
+
+    /* Optional first-use tutorial */
+    .tutorial-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      background: rgba(2, 6, 23, 0.72);
+      pointer-events: none;
+    }
+    .tutorial-overlay.show { display: block; }
+    .tutorial-highlight {
+      position: relative !important;
+      z-index: 9999 !important;
+      border-radius: 14px;
+      box-shadow: 0 0 0 4px #facc15, 0 0 0 9999px rgba(2, 6, 23, 0.18), 0 12px 36px rgba(0, 0, 0, 0.45) !important;
+    }
+    .tutorial-card {
+      position: fixed;
+      left: 50%;
+      bottom: max(22px, env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      width: min(420px, calc(100vw - 28px));
+      background: #111827;
+      border: 1px solid rgba(250, 204, 21, 0.38);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 20px 55px rgba(0, 0, 0, 0.55);
+      pointer-events: auto;
+      z-index: 10000;
+    }
+    .tutorial-progress { color: #facc15; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.09em; }
+    .tutorial-title { color: #f8fafc; font-size: 20px; margin: 6px 0; }
+    .tutorial-copy { color: #cbd5e1; font-size: 14px; line-height: 1.55; margin-bottom: 16px; }
+    .tutorial-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .tutorial-skip { background: transparent; color: #94a3b8; border: none; padding: 9px 4px; font-weight: 700; }
+    .tutorial-next { background: #facc15; color: #111827; border: none; border-radius: 10px; padding: 10px 18px; font-weight: 900; }
+    .tutorial-replay-btn { width: 100%; margin-top: 12px; }
 
     /* Recording buttons */
     .record-controls {
@@ -4160,21 +4253,16 @@
     </div>
 
     <div id="structureBox" class="structure-box">
-      <h3 style="font-size: 18px; color: #facc15; margin-bottom: 16px; text-align: center;">Your Speaking Roadmap</h3>
-
-      <div class="formula-selector">
-        <button class="formula-btn active" data-formula="one-thing">One Thing</button>
-        <button class="formula-btn" data-formula="two-types">Two Types</button>
-        <button class="formula-btn" data-formula="three-steps">Three Steps</button>
-      </div>
+      <h3 style="font-size: 18px; color: #facc15; margin-bottom: 16px; text-align: center;">Answer with PREP</h3>
+      <p class="prep-intro">Plan one keyword per step, then speak naturally. This is a roadmap—not a script to memorize.</p>
 
       <div class="structure-content" id="structureContent">
-        Generate a word first to see your personalized speaking structure
+        Get a prompt first to build your PREP roadmap.
       </div>
     </div>
 
     <!-- AI Feedback -->
-    <div class="ai-panel">
+    <div class="ai-panel" id="aiFeedbackPanel">
       <div class="ai-header">
         <h3>🤖 AI Speech Analysis</h3>
         <label class="ai-toggle">
@@ -5419,9 +5507,23 @@
         <span class="settings-row-label">Developer</span>
         <span class="settings-row-value">MOUN Academy</span>
       </div>
+      <button id="replayTutorialBtn" class="secondary tutorial-replay-btn">▶ How to Use the App</button>
     </div>
   </div>
   <!-- END SETTINGS PAGE -->
+
+  <!-- Optional First-Use Tutorial -->
+  <div class="tutorial-overlay" id="tutorialOverlay" aria-hidden="true">
+    <div class="tutorial-card" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
+      <div class="tutorial-progress" id="tutorialProgress">Step 1 of 5</div>
+      <h2 class="tutorial-title" id="tutorialTitle">Welcome to Speaker's Gym</h2>
+      <p class="tutorial-copy" id="tutorialCopy">Take a 60-second tour or skip and start practising.</p>
+      <div class="tutorial-actions">
+        <button class="tutorial-skip" id="tutorialSkipBtn">Skip tutorial</button>
+        <button class="tutorial-next" id="tutorialNextBtn">Next</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Rating Modal -->
   <div class="rating-modal" id="ratingModal">
@@ -5799,107 +5901,49 @@
       "Your brain is faster than you think."
     ];
 
-    // Structure templates
-    function getStructure(word, formula) {
-      const topic = word.toLowerCase();
-      const isConversationPrompt = isConversationMode && currentConversationQuestion;
+    // PREP speaking roadmap from the Week 1 workshop.
+    let prepKeywords = { point: '', reason: '', example: '', finalPoint: '' };
 
-      const structures = {
-        'one-thing': `
-          <div class="structure-section">
-            <h4>1. PICK YOUR ANSWER (10-15 seconds)</h4>
-            <strong>${isConversationPrompt ? '"Without hesitation, I would pick..."' : `"The one thing about ${topic} is..."`}</strong>
-            <div class="example-box">
-              ${isConversationPrompt
-                ? `• "If I had to choose right now, it would be..."<br>
-              • "My honest answer is... and here is why..."`
-                : `• "The one thing about ${topic} is that it's not what you think..."<br>
-              • "The one thing about ${topic} is that everyone gets it wrong..."`
-              }
-            </div>
-          </div>
-          <div class="structure-section">
-            <h4>2. PAINT THE PICTURE (60-90 seconds)</h4>
-            <strong>${isConversationPrompt ? 'Bring your answer to life with a story or vivid example:' : 'Prove it with a personal moment:'}</strong>
-            <em>→ Set the scene: "Imagine this... / Picture yourself..."</em>
-            <em>→ Make it personal: "I once experienced... / This reminds me of..."</em>
-            <em>→ Show the impact: "And that is when I realized... / That changed everything because..."</em>
-          </div>
-          <div class="structure-section">
-            <h4>3. LAND THE MESSAGE (10-15 seconds)</h4>
-            <strong>${isConversationPrompt ? 'End with a memorable thought:' : 'What should they remember?'}</strong>
-            <em>→ "So if you ever get the chance to..."</em>
-            <em>→ "That is exactly why I believe..."</em>
-          </div>
-        `,
-        'two-types': `
-          <div class="structure-section">
-            <h4>1. SET UP THE CHOICE (10-15 seconds)</h4>
-            <strong>${isConversationPrompt ? '"There are two ways to look at this..."' : `"There are two types of ${topic}..."`}</strong>
-            <div class="example-box">
-              ${isConversationPrompt
-                ? `• "On one hand... but on the other hand..."<br>
-              • "The safe answer is... but the honest answer is..."`
-                : `• "There are two types of ${topic} - the kind that helps and the kind that hurts..."<br>
-              • "There are two ways to think about ${topic}..."`
-              }
-            </div>
-          </div>
-          <div class="structure-section">
-            <h4>2. EXPLORE BOTH SIDES (60-90 seconds)</h4>
-            <strong>${isConversationPrompt ? 'Show the tension between both perspectives:' : 'Show both types:'}</strong>
-            <em>→ Side 1: "Most people would say... because..."</em>
-            <em>→ Side 2: "But I actually think... For example..."</em>
-            <em>→ The twist: "The real answer is somewhere in between... / What surprised me is..."</em>
-          </div>
-          <div class="structure-section">
-            <h4>3. PICK YOUR SIDE (10-15 seconds)</h4>
-            <strong>${isConversationPrompt ? 'Commit to your answer:' : 'Which type should they choose?'}</strong>
-            <em>→ "At the end of the day, I would choose... because..."</em>
-            <em>→ "And that tells you a lot about what I value..."</em>
-          </div>
-        `,
-        'three-steps': `
-          <div class="structure-section">
-            <h4>1. DROP YOUR ANSWER (10-15 seconds)</h4>
-            <strong>${isConversationPrompt ? '"I would break my answer into three parts..."' : `"There are three steps to ${topic}..."`}</strong>
-            <div class="example-box">
-              ${isConversationPrompt
-                ? `• "First, what I would pick" → "Second, why it matters" → "Third, what it says about me"<br>
-              • "The what" → "The why" → "The so-what"`
-                : `• "If you want real ${topic}, follow these three steps..."<br>
-              • "I learned three steps to ${topic} the hard way..."`
-              }
-            </div>
-          </div>
-          <div class="structure-section">
-            <h4>2. WALK THROUGH IT (60-90 seconds)</h4>
-            <strong>${isConversationPrompt ? 'Unpack each part with examples:' : 'Walk through each:'}</strong>
-            <em>→ "First, my answer is... because this has always resonated with me..."</em>
-            <em>→ "Second, the reason this matters is... Let me give you an example..."</em>
-            <em>→ "Finally, what this really says is... and that is the deeper point..."</em>
-          </div>
-          <div class="structure-section">
-            <h4>3. CLOSE STRONG (10-15 seconds)</h4>
-            <strong>${isConversationPrompt ? 'Leave them thinking:' : 'Why these steps matter:'}</strong>
-            <em>→ "So next time someone asks you this, think about..."</em>
-            <em>→ "And that is why this question matters more than you think."</em>
-          </div>
-        `
-      };
-
-      if (isConversationPrompt) {
-        return `
-          <div class="structure-section">
-            <h4>QUESTION</h4>
-            <strong>${currentConversationQuestion.question}</strong>
-            <em>Pick your answer, back it up with a story or example, and end with a strong takeaway.</em>
-          </div>
-          ${structures[formula]}
-        `;
+    function currentPromptContext() {
+      if (isConversationMode && currentConversationQuestion) {
+        return currentConversationQuestion.question;
       }
+      if (currentWord?.word) return `What do you think about ${currentWord.word.toLowerCase()}?`;
+      return '';
+    }
 
-      return structures[formula];
+    function prepStepHtml({ key, letter, title, question, starters, cssClass = '' }) {
+      return `
+        <div class="prep-step ${cssClass}">
+          <div class="prep-letter">${letter}</div>
+          <div>
+            <div class="prep-step-title">${title}</div>
+            <div class="prep-step-question">${question}</div>
+            <div class="prep-starters">Try: ${starters}</div>
+            <input class="prep-keyword" data-prep-key="${key}" maxlength="40"
+              value="${escapeHtml(prepKeywords[key] || '')}" placeholder="One keyword or short phrase">
+          </div>
+        </div>`;
+    }
+
+    function getStructure() {
+      const prompt = currentPromptContext();
+      if (!prompt) return 'Get a prompt first to build your PREP roadmap.';
+      return `
+        <div class="prep-question">${escapeHtml(prompt)}</div>
+        ${prepStepHtml({ key: 'point', letter: 'P', title: 'Point', question: 'What am I trying to say?', starters: '“I believe…” or “In my opinion…”' })}
+        ${prepStepHtml({ key: 'reason', letter: 'R', title: 'Reason', question: 'Why do I believe it?', starters: '“The main reason is…” or “This matters because…”', cssClass: 'reason' })}
+        ${prepStepHtml({ key: 'example', letter: 'E', title: 'Example', question: 'When have I seen it?', starters: '“For instance…” or “For example…”', cssClass: 'example' })}
+        ${prepStepHtml({ key: 'finalPoint', letter: 'P', title: 'Final Point', question: 'What should they remember?', starters: '“That’s why I recommend…” or “The takeaway is…”' })}
+        <details class="prep-example-toggle">
+          <summary>See a completed PREP example</summary>
+          <div class="prep-example">
+            <b>P:</b> A short walk is one of the best ways to reset your mind.<br>
+            <b>R:</b> Movement creates distance from whatever is making you feel stuck.<br>
+            <b>E:</b> After a stressful meeting, I return from a walk calmer and think more clearly.<br>
+            <b>P:</b> That’s why I recommend a short walk when your mind feels crowded.
+          </div>
+        </details>`;
     }
 
     const SPOT_CHALLENGE_QUESTIONS = [
@@ -5936,7 +5980,7 @@
 
     // Release date shown in Settings > About and the app footer.
     // Update this with every Play Store release.
-    const APP_VERSION = '20';
+    const APP_VERSION = '21';
     const LAST_UPDATED = 'August 6, 2026';
 
     // State
@@ -5945,7 +5989,6 @@
     };
 
     let currentMode = 'audio';
-    let currentFormula = 'one-thing';
     let currentWord = null;
     let timerInterval = null;
     let elapsedSeconds = 0;
@@ -6304,6 +6347,7 @@
       reset();
       currentWord = null;
       currentConversationQuestion = null;
+      prepKeywords = { point: '', reason: '', example: '', finalPoint: '' };
       wordEl.textContent = 'Ready?';
       definitionEl.textContent = isConversationMode ? 'Click "Next Question" to get started' : 'Click "New Word" to get started';
       conversationQuestionText.textContent = 'Click "Next Question" to get started';
@@ -6337,6 +6381,7 @@
     function nextConversationQuestion() {
       reset();
       hideSpeechChat();
+      prepKeywords = { point: '', reason: '', example: '', finalPoint: '' };
       const question = getNextConversationQuestion();
 
       currentConversationQuestion = { category: currentConversationCategory, question };
@@ -6453,7 +6498,7 @@
     function formatTime(sec) { return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
 
     function updateStructure() {
-      if (currentWord) structureContent.innerHTML = getStructure(currentWord.word, currentFormula);
+      if (currentWord) structureContent.innerHTML = getStructure();
     }
 
     function newWord() {
@@ -6465,6 +6510,7 @@
 
       reset();
       hideSpeechChat();
+      prepKeywords = { point: '', reason: '', example: '', finalPoint: '' };
       currentWord = words[Math.floor(Math.random() * words.length)];
       wordEl.textContent = currentWord.word;
       definitionEl.textContent = currentWord.definition;
@@ -6700,7 +6746,7 @@
       emphasis: 'Emphasis',
       rhythm: 'Rhythm',
       clarity: 'Clarity',
-      structure: 'Structure',
+      structure: 'PREP structure',
       logicalFlow: 'Logical flow',
       wordChoice: 'Word choice',
       concision: 'Concision',
@@ -6735,6 +6781,29 @@
             </div>
           </div>
           ${rows}
+        </div>`;
+    }
+
+    function performancePrepHtml(prep) {
+      if (!prep || typeof prep.score !== 'number') return '';
+      const labels = { point: 'Point', reason: 'Reason', example: 'Example', finalPoint: 'Final Point' };
+      const steps = prep.steps || {};
+      return `
+        <div class="performance-prep">
+          <div class="performance-prep-head">
+            <div class="performance-prep-title">PREP Structure Breakdown</div>
+            <div class="performance-prep-score">${prep.score}<small>/ 100</small></div>
+          </div>
+          <div class="performance-prep-grid">
+            ${Object.entries(labels).map(([key, label]) => {
+              const step = steps[key] || {};
+              const score = typeof step.score === 'number' ? step.score : null;
+              return `<div class="performance-prep-step">
+                <div class="performance-prep-step-line"><span>${label}</span><strong>${score == null ? '--' : score}</strong></div>
+                <div class="performance-prep-evidence">${escapeHtml(step.evidence || 'Not enough evidence.')}</div>
+              </div>`;
+            }).join('')}
+          </div>
         </div>`;
     }
 
@@ -6781,12 +6850,13 @@
             </div>
             <div class="performance-overall">${report.overallScore ?? '--'}<small>Overall</small></div>
           </div>
-          <div class="performance-score-basis">Overall score is calculated from the measurable vocal and verbal dimensions in this speech.</div>
+          <div class="performance-score-basis">Overall score uses the measurable vocal and verbal dimensions. PREP is the scored Structure dimension.</div>
           <div class="performance-summary">${escapeHtml(report.summary || '')}</div>
           <div class="performance-review-grid">
             ${performanceReviewHtml(report.vocal, 'vocal')}
             ${performanceReviewHtml(report.verbal, 'verbal')}
           </div>
+          ${performancePrepHtml(report.prep)}
           <div class="performance-focus"><strong>${escapeHtml(focusTitle)}:</strong> ${escapeHtml(focusAction)}</div>
           ${comparisonHtml}
           ${commonChallengesHtml}
@@ -6845,14 +6915,15 @@
       }
 
       // Structure card (only if a structure score is provided)
-      if (typeof m.structureScore === 'number') {
-        const s = m.structureScore;
+      const structureScore = typeof m.structure === 'number' ? m.structure : m.structureScore;
+      if (typeof structureScore === 'number') {
+        const s = structureScore;
         const cls = s >= 70 ? 'good' : s >= 40 ? 'warn' : 'bad';
         cards.push(`
           <div class="score-card ${cls}">
             <div class="score-card-icon">🧱</div>
             <div class="score-card-value">${s}</div>
-            <div class="score-card-label">Structure</div>
+            <div class="score-card-label">PREP structure</div>
             <div class="score-card-rating">/ 100</div>
           </div>`);
       }
@@ -7013,6 +7084,7 @@
         const formData = new FormData();
         formData.append('audio', audioBlob, 'speech.webm');
         formData.append('duration', duration.toString());
+        formData.append('promptContext', currentPromptContext());
         if (acousticMetrics) {
           formData.append('acousticMetrics', JSON.stringify(acousticMetrics));
         }
@@ -7100,6 +7172,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             text: trimmed,
+            promptContext: currentPromptContext(),
             previousReports: await loadRecentPerformanceContext(currentSpeechSessionId)
           })
         });
@@ -7351,7 +7424,7 @@
       }
     }
 
-    // Main recording modes: Audio and Video. Video is the default.
+    // Main recording modes: Audio and Video. Audio is the default.
     function setMode(mode) {
       currentMode = mode === 'audio' ? 'audio' : 'video';
       document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
@@ -7493,6 +7566,9 @@
     async function startAudioRecording() {
       if (!currentWord) { showAchievement(isConversationMode ? "Get a prompt first!" : "Generate a prompt first!"); return; }
       const speechSessionId = beginAnalyzedSpeechSession();
+
+      // Ask for microphone access only after the user explicitly starts recording.
+      if (!callAudioMode && !stream) await initAudio();
 
       // In call audio mode, capture from tab via getDisplayMedia
       let recordingStream = stream;
@@ -7891,13 +7967,11 @@
       }
     });
 
-    document.querySelectorAll('.formula-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.formula-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentFormula = btn.dataset.formula;
-        updateStructure();
-      });
+    structureContent.addEventListener('input', event => {
+      const key = event.target?.dataset?.prepKey;
+      if (key && Object.prototype.hasOwnProperty.call(prepKeywords, key)) {
+        prepKeywords[key] = event.target.value.slice(0, 40);
+      }
     });
 
     document.querySelectorAll('.star').forEach(star => {
@@ -8391,8 +8465,8 @@
       });
     }
 
-    // Load devices on first visit to settings
-    loadAudioInputDevices();
+    // Device enumeration is user-triggered with the refresh button so the app
+    // never requests microphone permission during the optional tutorial.
 
     // Update IndexedDB when stats change (hook into completeSpeech)
     const originalCompleteSpeech = completeSpeech;
@@ -8914,7 +8988,7 @@
           .collection('speeches').doc(speechSessionId).set({
             ...analysis,
             userId: currentUser.uid,
-            analysisVersion: 3,
+            analysisVersion: 4,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           }, { merge: true });
@@ -9224,7 +9298,7 @@
           // Subscription gate: check entitlement, then show/hide the paywall.
           await checkEntitlement(user);
           applyEntitlementGate();
-          if (currentMode === 'audio' && !stream) initAudio();
+          maybeShowTutorial();
           // Make sure billing is initialised (in case deviceready already fired).
           initBilling();
 
@@ -9311,7 +9385,7 @@
           mode: currentMode,
           metrics: lastSpeechMetrics || null,
           report: lastSpeechReport || null,
-          analysisVersion: lastSpeechReport ? 3 : null
+          analysisVersion: lastSpeechReport ? 4 : null
         }, speechSessionId);
         lastSpeechMetrics = null; // Clear after sync
         lastSpeechReport = null;
@@ -9427,6 +9501,96 @@
       document.getElementById('menuSidebar').classList.remove('show');
       document.getElementById('menuOverlay').classList.remove('show');
     }
+
+    // ===== OPTIONAL FIRST-USE TUTORIAL =====
+    const TUTORIAL_STORAGE_KEY = 'speakerGymTutorialCompletedV1';
+    const tutorialOverlay = document.getElementById('tutorialOverlay');
+    const tutorialProgress = document.getElementById('tutorialProgress');
+    const tutorialTitle = document.getElementById('tutorialTitle');
+    const tutorialCopy = document.getElementById('tutorialCopy');
+    const tutorialNextBtn = document.getElementById('tutorialNextBtn');
+    let tutorialStepIndex = 0;
+    let tutorialHighlighted = null;
+
+    const tutorialSteps = [
+      {
+        target: '.prompt-mode-toggle',
+        title: 'Choose how you want to practise',
+        copy: 'Use Questions for everyday answers, or Random Words for quick-thinking practice.'
+      },
+      {
+        target: '#newWordBtn',
+        title: 'Get your prompt',
+        copy: 'Tap here whenever you want a new question or speaking topic.'
+      },
+      {
+        target: '#toggleStructureBtn',
+        title: 'Plan with PREP',
+        copy: 'Open the guide and note one keyword for your Point, Reason, Example and Final Point.'
+      },
+      {
+        target: '.mode-selector',
+        title: 'Choose Audio or Video',
+        copy: 'Audio is the default. The app only asks for microphone or camera access when you start recording.'
+      },
+      {
+        target: '#aiFeedbackPanel',
+        title: 'Review your performance',
+        copy: 'After recording, read your transcript, PREP score and personalised AI coaching report.'
+      }
+    ];
+
+    function clearTutorialHighlight() {
+      if (tutorialHighlighted) tutorialHighlighted.classList.remove('tutorial-highlight');
+      tutorialHighlighted = null;
+    }
+
+    function renderTutorialStep() {
+      clearTutorialHighlight();
+      const step = tutorialSteps[tutorialStepIndex];
+      const target = document.querySelector(step.target);
+      if (target) {
+        tutorialHighlighted = target;
+        target.classList.add('tutorial-highlight');
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      tutorialProgress.textContent = `Step ${tutorialStepIndex + 1} of ${tutorialSteps.length}`;
+      tutorialTitle.textContent = step.title;
+      tutorialCopy.textContent = step.copy;
+      tutorialNextBtn.textContent = tutorialStepIndex === tutorialSteps.length - 1 ? 'Start practising' : 'Next';
+    }
+
+    function startTutorial() {
+      navigateToPage('main');
+      closeMenu();
+      tutorialStepIndex = 0;
+      tutorialOverlay.classList.add('show');
+      tutorialOverlay.setAttribute('aria-hidden', 'false');
+      setTimeout(renderTutorialStep, 80);
+    }
+
+    function finishTutorial() {
+      clearTutorialHighlight();
+      tutorialOverlay.classList.remove('show');
+      tutorialOverlay.setAttribute('aria-hidden', 'true');
+      localStorage.setItem(TUTORIAL_STORAGE_KEY, '1');
+    }
+
+    function maybeShowTutorial() {
+      if (!currentUser || localStorage.getItem(TUTORIAL_STORAGE_KEY) === '1') return;
+      if ((stats.totalSpeeches || 0) > 0) return;
+      setTimeout(startTutorial, 700);
+    }
+
+    tutorialNextBtn.addEventListener('click', () => {
+      if (tutorialStepIndex >= tutorialSteps.length - 1) {
+        finishTutorial();
+        return;
+      }
+      tutorialStepIndex++;
+      renderTutorialStep();
+    });
+    document.getElementById('tutorialSkipBtn').addEventListener('click', finishTutorial);
 
     // Setup hamburger menu event listeners
     document.getElementById('hamburgerBtn').addEventListener('click', openMenu);
@@ -11991,6 +12155,8 @@
         console.error('[Auth] Sign out error:', error);
       }
     });
+
+    document.getElementById('replayTutorialBtn').addEventListener('click', startTutorial);
 
     // Manual sync button
     document.getElementById('manualSyncBtn').addEventListener('click', async () => {

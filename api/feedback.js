@@ -159,18 +159,34 @@ function normalizeDimension(value) {
   };
 }
 
-function normalizeReview(value, dimensionNames) {
-  const dimensions = {};
-  for (const name of dimensionNames) dimensions[name] = normalizeDimension(value?.dimensions?.[name]);
+function scoreDimensions(dimensions) {
   const measuredScores = Object.values(dimensions)
     .map(dimension => dimension.score)
     .filter(score => typeof score === "number");
+  return measuredScores.length
+    ? Math.round(measuredScores.reduce((sum, score) => sum + score, 0) / measuredScores.length)
+    : null;
+}
+
+function normalizeReview(value, dimensionNames) {
+  const dimensions = {};
+  for (const name of dimensionNames) dimensions[name] = normalizeDimension(value?.dimensions?.[name]);
   return {
-    score: measuredScores.length
-      ? Math.round(measuredScores.reduce((sum, score) => sum + score, 0) / measuredScores.length)
-      : null,
+    score: scoreDimensions(dimensions),
     confidence: ["high", "medium", "low"].includes(value?.confidence) ? value.confidence : "low",
     dimensions,
+  };
+}
+
+function normalizePrep(value) {
+  const stepNames = ["point", "reason", "example", "finalPoint"];
+  const steps = {};
+  for (const name of stepNames) steps[name] = normalizeDimension(value?.steps?.[name]);
+  const score = scoreDimensions(steps);
+  return {
+    score,
+    confidence: ["high", "medium", "low"].includes(value?.confidence) ? value.confidence : "low",
+    steps,
   };
 }
 
@@ -277,6 +293,7 @@ function buildCommonChallenges(history, currentImprovements) {
 
 function normalizeReport(raw, history = []) {
   const report = raw && typeof raw === "object" ? raw : {};
+  const prep = normalizePrep(report.prep);
   const vocal = normalizeReview(report.vocal, [
     "pace", "pauses", "pitchRange", "volumeVariation", "emphasis", "rhythm",
   ]);
@@ -284,6 +301,16 @@ function normalizeReport(raw, history = []) {
     "clarity", "structure", "logicalFlow", "wordChoice",
     "concision", "fillerControl", "repetitionControl",
   ]);
+  if (typeof prep.score === "number") {
+    const stepSummary = Object.entries(prep.steps)
+      .map(([name, value]) => `${name === "finalPoint" ? "final point" : name} ${value.score ?? "not measured"}`)
+      .join(", ");
+    verbal.dimensions.structure = {
+      score: prep.score,
+      evidence: `PREP breakdown: ${stepSummary}.`,
+    };
+    verbal.score = scoreDimensions(verbal.dimensions);
+  }
   const reviewScores = [vocal.score, verbal.score].filter(score => typeof score === "number");
   const overallScore = reviewScores.length
     ? Math.round(reviewScores.reduce((sum, score) => sum + score, 0) / reviewScores.length)
@@ -291,12 +318,13 @@ function normalizeReport(raw, history = []) {
   const improvements = cleanReportItems(report.improvements);
   const previousPerformance = normalizePreviousPerformance(report.previousPerformance, history[0], overallScore);
   return {
-    version: 3,
+    version: 4,
     summary: String(report.summary || "Speech analysis complete.").slice(0, 1000),
     overallScore,
-    scoreBasis: "Average of the measurable vocal and verbal review scores; each review is the average of its measurable dimensions.",
+    scoreBasis: "Average of the measurable vocal and verbal review scores. PREP is the verbal Structure dimension and is calculated from Point, Reason, Example, and Final Point.",
     vocal,
     verbal,
+    prep,
     strengths: cleanReportItems(report.strengths),
     improvements,
     nextFocus: {
@@ -314,6 +342,7 @@ function reportToFeedback(report) {
   ).join("\n");
   return [
     `Summary: ${report.summary}`,
+    `PREP structure: ${report.prep?.score ?? "Not measured"}/100`,
     "",
     "What you did well:",
     formatItems(report.strengths) || "• Keep practicing to build a stronger evidence base.",
@@ -326,7 +355,7 @@ function reportToFeedback(report) {
   ].join("\n");
 }
 
-async function generatePerformanceReport({ transcript, metrics, hasAudioMetrics, history = [] }) {
+async function generatePerformanceReport({ transcript, promptContext, metrics, hasAudioMetrics, history = [] }) {
   const requiredShape = {
     summary: "string",
     overallScore: 0,
@@ -355,6 +384,16 @@ async function generatePerformanceReport({ transcript, metrics, hasAudioMetrics,
         repetitionControl: { score: 0, evidence: "string" },
       },
     },
+    prep: {
+      score: 0,
+      confidence: "high|medium|low",
+      steps: {
+        point: { score: 0, evidence: "exact quote or explanation" },
+        reason: { score: 0, evidence: "exact quote or explanation" },
+        example: { score: 0, evidence: "exact quote or explanation" },
+        finalPoint: { score: 0, evidence: "exact quote or explanation" },
+      },
+    },
     strengths: [{ category: "string", point: "string", evidence: "exact quote or metric" }],
     improvements: [{ category: "string", point: "string", evidence: "exact quote or metric" }],
     nextFocus: { title: "string", action: "specific practice instruction" },
@@ -380,6 +419,9 @@ async function generatePerformanceReport({ transcript, metrics, hasAudioMetrics,
           "Do not infer personality, emotion, identity, health, or confidence from the voice.",
           "Calibrate every dimension independently. Do not reuse a generic score or default to 78.",
           "Use the full 0-100 scale: below 50 needs substantial work, 50-69 developing, 70-84 solid, and 85+ exceptional evidence.",
+          "Score PREP explicitly as Point, Reason, Example, and Final Point. A missing step scores 0. Do not invent an implied step that is not supported by the transcript.",
+          "Point measures whether the answer states one clear position. Reason measures whether it gives a relevant why. Example measures whether it gives a specific personal or practical example. Final Point measures whether it returns to the main idea or gives a clear takeaway or recommendation.",
+          "The PREP score is the average of the four PREP step scores. The verbal structure dimension must use that same PREP score so PREP contributes once to the verbal review and overall score.",
           "For each challenge in the immediately previous report, assess whether it is fixed, improved, still present, or not measurable in this speech.",
           `Use this exact object shape: ${JSON.stringify(requiredShape)}`,
           "Give three strengths and three improvements. Make the next focus measurable.",
@@ -388,7 +430,7 @@ async function generatePerformanceReport({ transcript, metrics, hasAudioMetrics,
       },
       {
         role: "user",
-        content: `Measurements:\n${JSON.stringify(metrics, null, 2)}\n\nRecent performance history (newest first):\n${JSON.stringify(history, null, 2)}\n\nTranscript:\n${transcript}`,
+        content: `Question or topic:\n${promptContext || "Not provided"}\n\nMeasurements:\n${JSON.stringify(metrics, null, 2)}\n\nRecent performance history (newest first):\n${JSON.stringify(history, null, 2)}\n\nTranscript:\n${transcript}`,
       },
     ],
   });
@@ -412,6 +454,7 @@ export default async function handler(req, res) {
   try {
     const contentType = req.headers["content-type"] || "";
     let transcript = "";
+    let promptContext = "";
     let metrics;
     let history = [];
 
@@ -428,6 +471,7 @@ export default async function handler(req, res) {
       });
 
       transcript = transcription.text || "";
+      promptContext = String(fields.promptContext || "").trim().slice(0, 500);
       const duration = fields.duration ? parseFloat(fields.duration) : transcription.duration || 0;
       const acousticMetrics = parseAcousticMetrics(fields.acousticMetrics);
       metrics = analyzeMetrics(transcription.words || [], duration, transcript, acousticMetrics);
@@ -437,17 +481,19 @@ export default async function handler(req, res) {
         history = [];
       }
     } else {
-      const { text, previousReports } = await parseJsonBody(req);
+      const { text, promptContext: rawPromptContext, previousReports } = await parseJsonBody(req);
       if (!text || typeof text !== "string" || !text.trim()) {
         return res.status(400).json({ error: "Missing transcript text or audio file" });
       }
       transcript = text.trim();
+      promptContext = String(rawPromptContext || "").trim().slice(0, 500);
       metrics = analyzeMetrics([], 0, transcript, null);
       history = normalizeHistory(previousReports);
     }
 
     const report = await generatePerformanceReport({
       transcript,
+      promptContext,
       metrics,
       hasAudioMetrics: Boolean(metrics.acoustic),
       history,
