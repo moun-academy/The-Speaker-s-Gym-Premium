@@ -5408,8 +5408,12 @@
     <div class="settings-section">
       <h3>ℹ️ About</h3>
       <div class="settings-row">
-        <span class="settings-row-label">Last Update</span>
+        <span class="settings-row-label">App Version</span>
         <span class="settings-row-value" id="settingsAppVersion">Loading...</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-row-label">Last Updated</span>
+        <span class="settings-row-value" id="settingsLastUpdated">Loading...</span>
       </div>
       <div class="settings-row">
         <span class="settings-row-label">Developer</span>
@@ -5932,6 +5936,7 @@
 
     // Release date shown in Settings > About and the app footer.
     // Update this with every Play Store release.
+    const APP_VERSION = '20';
     const LAST_UPDATED = 'August 6, 2026';
 
     // State
@@ -11935,6 +11940,7 @@
       const settingsSignedIn = document.getElementById('settingsSignedIn');
       const settingsUserEmail = document.getElementById('settingsUserEmail');
       const settingsAppVersion = document.getElementById('settingsAppVersion');
+      const settingsLastUpdated = document.getElementById('settingsLastUpdated');
 
       if (currentUser) {
         syncStatusEl.textContent = 'Connected';
@@ -11957,7 +11963,10 @@
 
       // Update version
       if (settingsAppVersion) {
-        settingsAppVersion.textContent = LAST_UPDATED;
+        settingsAppVersion.textContent = `v${APP_VERSION}`;
+      }
+      if (settingsLastUpdated) {
+        settingsLastUpdated.textContent = LAST_UPDATED;
       }
     }
 
