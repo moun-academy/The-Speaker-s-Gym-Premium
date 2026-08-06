@@ -364,7 +364,7 @@ async function generatePerformanceReport({ transcript, metrics, hasAudioMetrics,
   };
 
   const completion = await client.chat.completions.create({
-    model: "gpt-5.4-nano",
+    model: "gpt-5.6-luna",
     reasoning_effort: "none",
     response_format: { type: "json_object" },
     messages: [
