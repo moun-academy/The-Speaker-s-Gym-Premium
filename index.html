@@ -6894,11 +6894,19 @@
       repetitionControl: 'Repetition control'
     };
 
+    function plainCoachingCopy(value) {
+      return String(value || '')
+        .replace(/build one clear connection and close precisely/gi, 'Connect your example to your main point, then finish with one clear final sentence')
+        .replace(/build one clear connection/gi, 'explain how your example supports your main point')
+        .replace(/close precisely/gi, 'finish with one clear final sentence');
+    }
+
     function performanceReviewHtml(review, type) {
       const dimensions = review?.dimensions || {};
       const entries = Object.entries(dimensions);
       const rows = entries.filter(([key]) => {
         if (type === 'verbal' && key === 'structure') return false;
+        if (type === 'vocal' && key === 'emphasis') return false;
         return true;
       }).map(([key, value]) => {
         const score = typeof value?.score === 'number' ? value.score : null;
@@ -6916,7 +6924,7 @@
       const title = type === 'vocal' ? 'Delivery Review' : 'Message Review';
       const icon = type === 'vocal' ? '🎙️' : '💬';
       const deliveryNote = type === 'vocal'
-        ? '<div class="performance-delivery-note">Variety creates emphasis and helps keep listeners engaged. When pace, pitch, and volume stay constant, delivery can feel predictable and less engaging.</div>'
+        ? '<div class="performance-delivery-note">Variety keeps listeners engaged. A constant pace, volume, or pitch becomes predictable.</div>'
         : '';
       return `
         <div class="performance-review ${type}">
@@ -6957,8 +6965,8 @@
 
     function performanceReportHtml(report, subtitle = 'Latest analyzed speech') {
       if (!report) return '';
-      const focusTitle = report.nextFocus?.title || 'Next speech focus';
-      const focusAction = report.nextFocus?.action || '';
+      const focusTitle = plainCoachingCopy(report.nextFocus?.title || 'Next speech focus');
+      const focusAction = plainCoachingCopy(report.nextFocus?.action || '');
       const previous = report.previousPerformance;
       const breakdown = report.scoreBreakdown;
       const calculationHtml = report.version >= 6 ? `
@@ -6967,15 +6975,15 @@
           <div class="performance-calculation-row"><span>Message and Structure</span><strong>50%</strong></div>
           <div class="performance-calculation-detail">PREP 30 percentage points + Clear and relevant message 12 + Logical flow 8</div>
           <div class="performance-calculation-row"><span>Delivery</span><strong>30%</strong></div>
-          <div class="performance-calculation-detail">Pace variety 7 + Volume variety 7 + Pitch variety 7 + Pauses 5 + Tone 4</div>
+          <div class="performance-calculation-detail">Pace variety 8 + Volume variety 8 + Pitch variety 8 + Pauses 6</div>
           <div class="performance-calculation-row"><span>Language Control</span><strong>20%</strong></div>
           <div class="performance-calculation-detail">Clear and direct 8 + Word choice 4 + Filler control 4 + Repetition control 4</div>
         </div>` : '';
       const breakdownHtml = breakdown ? `
         <div class="performance-breakdown">
-          <div class="performance-breakdown-item"><span>MESSAGE AND STRUCTURE · 50%</span><strong>${breakdown.messageAndStructure?.score ?? '--'}</strong></div>
-          <div class="performance-breakdown-item"><span>DELIVERY · 30%</span><strong>${breakdown.delivery?.score ?? '--'}</strong></div>
-          <div class="performance-breakdown-item"><span>LANGUAGE CONTROL · 20%</span><strong>${breakdown.languageControl?.score ?? '--'}</strong></div>
+          <div class="performance-breakdown-item"><span>MESSAGE AND STRUCTURE</span><strong>${breakdown.messageAndStructure?.score ?? '--'}</strong></div>
+          <div class="performance-breakdown-item"><span>DELIVERY</span><strong>${breakdown.delivery?.score ?? '--'}</strong></div>
+          <div class="performance-breakdown-item"><span>LANGUAGE CONTROL</span><strong>${breakdown.languageControl?.score ?? '--'}</strong></div>
         </div>` : '';
       const scoreCapHtml = report.scoreCap?.applied
         ? `<div class="performance-score-cap"><strong>Why this score is limited:</strong> ${escapeHtml(report.scoreCap.reason || '')}</div>`
@@ -6998,7 +7006,7 @@
           ${(previous.challenges || []).map(challenge => `
             <div class="challenge-result">
               <div class="challenge-result-line">
-                <strong>${escapeHtml(challenge.category || 'Previous challenge')}</strong>
+                <strong>${escapeHtml(plainCoachingCopy(challenge.category || 'Previous challenge'))}</strong>
                 <span class="challenge-status ${escapeHtml(challenge.status || 'not_measurable')}">${escapeHtml(statusLabels[challenge.status] || 'Not measurable')}</span>
               </div>
               <div class="challenge-result-evidence">${escapeHtml(challenge.evidence || '')}</div>
@@ -7019,7 +7027,6 @@
             </div>
             <div class="performance-overall">${report.overallScore ?? '--'}<small>${escapeHtml(report.scoreBand || '')}<br>Overall</small></div>
           </div>
-          <div class="performance-score-basis">${escapeHtml(report.scoreBasis || 'Structure is scored using Point, Reason, Example, Point.')}</div>
           ${calculationHtml}
           ${breakdownHtml}
           ${scoreCapHtml}
@@ -10265,7 +10272,7 @@
     let pendingPerformanceReportId = null;
 
     function performanceTrendText(reports) {
-      const comparableReports = reports.filter(item => item.report?.version === 6);
+      const comparableReports = reports.filter(item => item.report?.version === 7);
       if (comparableReports.length < 2) return 'New scoring baseline';
       const first = comparableReports[0].report;
       const recent = comparableReports.slice(-3);

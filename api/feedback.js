@@ -182,6 +182,8 @@ function analyzeMetrics(words, duration, transcript, acousticMetrics = null) {
   else if (pauses.length < safeWords.length * 0.1 && wordsPerMinute > 150) pacingVariation = "rushed";
 
   return {
+    wordCount: safeWords.length,
+    durationSeconds: Math.round(safeDuration * 10) / 10,
     wordsPerMinute,
     averagePauseDuration: pauses.length
       ? Math.round((pauses.reduce((sum, value) => sum + value, 0) / pauses.length) * 100) / 100
@@ -282,10 +284,10 @@ const performanceReportSchema = {
           type: "object",
           additionalProperties: false,
           properties: Object.fromEntries(
-            ["pace", "volumeVariation", "pitchRange", "pauses", "emphasis"]
+            ["pace", "volumeVariation", "pitchRange", "pauses"]
               .map(name => [name, dimensionSchema(nullableScoreSchema)])
           ),
-          required: ["pace", "volumeVariation", "pitchRange", "pauses", "emphasis"],
+          required: ["pace", "volumeVariation", "pitchRange", "pauses"],
         },
       },
       required: ["score", "confidence", "dimensions"],
@@ -384,7 +386,7 @@ export function validatePerformanceReport(raw, { hasAudioMetrics = false } = {})
   ];
   const prepNames = ["point", "reason", "example", "finalPoint"];
   const vocalNames = hasAudioMetrics
-    ? ["pace", "volumeVariation", "pitchRange", "pauses", "emphasis"]
+    ? ["pace", "volumeVariation", "pitchRange", "pauses"]
     : [];
 
   for (const name of verbalNames) {
@@ -427,8 +429,18 @@ function normalizePrep(value) {
 }
 
 function friendlyCategory(value) {
-  const category = String(value || "").slice(0, 80);
+  const category = clarifyCoachingCopy(value).slice(0, 160);
   return /\bconcision\b/i.test(category) ? "Clear and direct" : category;
+}
+
+function clarifyCoachingCopy(value) {
+  return String(value || "")
+    .replace(
+      /build one clear connection and close precisely/gi,
+      "Connect your example to your main point, then finish with one clear final sentence"
+    )
+    .replace(/build one clear connection/gi, "explain how your example supports your main point")
+    .replace(/close precisely/gi, "finish with one clear final sentence");
 }
 
 function cleanReportItems(items) {
@@ -451,8 +463,8 @@ function normalizeHistory(raw) {
       verbalScore: clampScore(item?.report?.verbal?.score),
       improvements: cleanReportItems(item?.report?.improvements),
       nextFocus: {
-        title: String(item?.report?.nextFocus?.title || "").slice(0, 160),
-        action: String(item?.report?.nextFocus?.action || "").slice(0, 500),
+        title: clarifyCoachingCopy(item?.report?.nextFocus?.title).slice(0, 200),
+        action: clarifyCoachingCopy(item?.report?.nextFocus?.action).slice(0, 500),
       },
     },
   })).filter(item => item.id || item.report.improvements.length || item.report.nextFocus.title);
@@ -490,8 +502,8 @@ function normalizePreviousPerformance(raw, previous, currentOverallScore, curren
     const match = rawChallenges.find(item => challengeKey(item?.category) === key) || {};
     const allowedStatuses = ["fixed", "improved", "still_present", "not_measurable"];
     return {
-      category: challenge.category || "Previous focus",
-      previousChallenge: challenge.point || challenge.evidence || "Previous coaching challenge",
+      category: clarifyCoachingCopy(challenge.category || "Previous focus").slice(0, 200),
+      previousChallenge: clarifyCoachingCopy(challenge.point || challenge.evidence || "Previous coaching challenge").slice(0, 500),
       status: allowedStatuses.includes(match.status) ? match.status : "not_measurable",
       evidence: String(match.evidence || "The current speech does not provide enough direct evidence for a reliable comparison.").slice(0, 500),
     };
@@ -538,13 +550,90 @@ function buildCommonChallenges(history, currentImprovements) {
     .slice(0, 3);
 }
 
-export function normalizeReport(raw, history = []) {
-  const scoringVersion = 6;
+function scoreFromAnchors(value, anchors) {
+  if (!Number.isFinite(value)) return null;
+  if (value <= anchors[0][0]) return anchors[0][1];
+  for (let index = 1; index < anchors.length; index++) {
+    const [rightValue, rightScore] = anchors[index];
+    const [leftValue, leftScore] = anchors[index - 1];
+    if (value <= rightValue) {
+      const progress = (value - leftValue) / (rightValue - leftValue);
+      return Math.round(leftScore + ((rightScore - leftScore) * progress));
+    }
+  }
+  return anchors[anchors.length - 1][1];
+}
+
+function measuredDimension(score, evidence) {
+  return { score: clampScore(score), evidence };
+}
+
+function finiteMetric(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+export function calibrateDeliveryReview(vocal, metrics) {
+  if (!metrics?.acoustic) return vocal;
+
+  const dimensions = { ...vocal.dimensions };
+  const segmentCount = Number(metrics.paceSegmentCount) || 0;
+  const paceStdDev = finiteMetric(metrics.paceVariationStdDevWpm);
+  dimensions.pace = segmentCount >= 2 && paceStdDev !== null
+    ? measuredDimension(
+        scoreFromAnchors(paceStdDev, [[0, 10], [3, 20], [7, 40], [12, 58], [18, 72], [25, 80], [35, 68], [50, 45], [80, 25]]),
+        `Pace variation measured ${paceStdDev} WPM across ${segmentCount} speech segments. Controlled variation scores higher than a constant or erratic pace.`
+      )
+    : measuredDimension(null, "The speech was too short to compare pace across multiple segments.");
+
+  const volumeStdDev = finiteMetric(metrics.acoustic.volumeVariationDb);
+  dimensions.volumeVariation = volumeStdDev !== null
+    ? measuredDimension(
+        scoreFromAnchors(volumeStdDev, [[0, 10], [0.8, 20], [1.5, 35], [2.5, 50], [4, 65], [6, 78], [8, 82], [11, 65], [15, 40], [25, 25]]),
+        `Volume variation measured ${volumeStdDev.toFixed(2)} dB. Controlled changes between louder and softer speech score higher than constant or erratic volume.`
+      )
+    : measuredDimension(null, "Volume variety could not be measured reliably.");
+
+  const pitchStdDev = finiteMetric(metrics.acoustic.pitchVariationSemitones);
+  dimensions.pitchRange = pitchStdDev !== null
+    ? measuredDimension(
+        scoreFromAnchors(pitchStdDev, [[0, 10], [0.5, 20], [1, 35], [2, 52], [3.5, 68], [5.5, 80], [7.5, 82], [10, 65], [14, 40]]),
+        `Pitch variation measured ${pitchStdDev.toFixed(2)} semitones. Controlled movement between higher and lower pitch scores higher than a flat or erratic voice.`
+      )
+    : measuredDimension(null, "Pitch variety could not be measured reliably.");
+
+  const wordCount = Number(metrics.wordCount) || 0;
+  const pauseCount = Number(metrics.pauseCount) || 0;
+  const averagePause = Number(metrics.averagePauseDuration) || 0;
+  if (wordCount > 0) {
+    const pauseRate = pauseCount / wordCount;
+    const frequencyScore = scoreFromAnchors(pauseRate, [[0, 15], [0.02, 25], [0.05, 50], [0.08, 70], [0.12, 80], [0.18, 72], [0.25, 50], [0.35, 25], [0.5, 10]]);
+    const durationScore = pauseCount > 0
+      ? scoreFromAnchors(averagePause, [[0.2, 25], [0.35, 55], [0.5, 75], [0.9, 82], [1.3, 75], [2, 55], [3, 30], [5, 15]])
+      : 15;
+    const pauseScore = Math.round((frequencyScore * 0.6) + (durationScore * 0.4));
+    dimensions.pauses = measuredDimension(
+      pauseScore,
+      `${pauseCount} pauses were measured across ${wordCount} words, averaging ${averagePause.toFixed(2)} seconds. Useful pauses separate ideas without making the speech choppy.`
+    );
+  } else {
+    dimensions.pauses = measuredDimension(null, "Pauses could not be measured reliably.");
+  }
+
+  const measuredCount = Object.values(dimensions).filter(item => typeof item.score === "number").length;
+  return {
+    ...vocal,
+    dimensions,
+    confidence: measuredCount === 4 ? "high" : measuredCount >= 2 ? "medium" : "low",
+  };
+}
+
+export function normalizeReport(raw, history = [], metrics = null) {
+  const scoringVersion = 7;
   const report = raw && typeof raw === "object" ? raw : {};
   const prep = normalizePrep(report.prep);
-  const vocal = normalizeReview(report.vocal, [
-    "pace", "volumeVariation", "pitchRange", "pauses", "emphasis",
-  ]);
+  const vocal = calibrateDeliveryReview(normalizeReview(report.vocal, [
+    "pace", "volumeVariation", "pitchRange", "pauses",
+  ]), metrics);
   const verbal = normalizeReview(report.verbal, [
     "clarity", "structure", "logicalFlow", "wordChoice",
     "concision", "fillerControl", "repetitionControl",
@@ -565,11 +654,10 @@ export function normalizeReport(raw, history = []) {
     { score: verbal.dimensions.logicalFlow.score, weight: 8 },
   ]);
   const deliveryScore = weightedScore([
-    { score: vocal.dimensions.pace.score, weight: 7 },
-    { score: vocal.dimensions.volumeVariation.score, weight: 7 },
-    { score: vocal.dimensions.pitchRange.score, weight: 7 },
-    { score: vocal.dimensions.pauses.score, weight: 5 },
-    { score: vocal.dimensions.emphasis.score, weight: 4 },
+    { score: vocal.dimensions.pace.score, weight: 8 },
+    { score: vocal.dimensions.volumeVariation.score, weight: 8 },
+    { score: vocal.dimensions.pitchRange.score, weight: 8 },
+    { score: vocal.dimensions.pauses.score, weight: 6 },
   ]);
   const languageControlScore = weightedScore([
     { score: verbal.dimensions.concision.score, weight: 8 },
@@ -666,8 +754,8 @@ export function normalizeReport(raw, history = []) {
     strengths: cleanReportItems(report.strengths),
     improvements,
     nextFocus: {
-      title: String(report.nextFocus?.title || "One clear improvement").slice(0, 160),
-      action: String(report.nextFocus?.action || "Apply one focused change in your next speech.").slice(0, 700),
+      title: clarifyCoachingCopy(report.nextFocus?.title || "One clear improvement").slice(0, 200),
+      action: clarifyCoachingCopy(report.nextFocus?.action || "Apply one focused change in your next speech.").slice(0, 700),
     },
     previousPerformance,
     commonChallenges: buildCommonChallenges(history, improvements),
@@ -705,7 +793,6 @@ async function generatePerformanceReport({ transcript, promptContext, metrics, h
         volumeVariation: { score: 0, evidence: "string" },
         pitchRange: { score: 0, evidence: "string" },
         pauses: { score: 0, evidence: "string" },
-        emphasis: { score: 0, evidence: "string" },
       },
     },
     verbal: {
@@ -764,9 +851,8 @@ async function generatePerformanceReport({ transcript, promptContext, metrics, h
           "For Delivery Review, the pace field means Pace variety: whether the speaker intentionally speeds up and slows down. Use the segment WPM variation measurements, not only average WPM.",
           "The volumeVariation field means Volume variety: whether the speaker becomes meaningfully louder and softer.",
           "The pitchRange field means Pitch variety: whether the voice moves meaningfully higher and lower.",
-          "Pauses measure whether silence is used intentionally to separate ideas and create emphasis.",
-          "The emphasis field means Tone: overall vocal expressiveness and whether vocal emphasis supports the meaning of the words. Do not infer emotion, personality, or confidence.",
-          "Variety creates emphasis and helps sustain listener engagement. Constant pace, pitch, and volume should score lower than purposeful variation.",
+          "Pauses measure whether silence is used intentionally to separate ideas.",
+          "Variety helps sustain listener engagement. Constant pace, pitch, and volume should score lower than controlled variation. Excessive or erratic variation should also score lower.",
           "Score PREP explicitly as Point, Reason, Example, and Final Point. A missing step scores 0. Do not invent an implied step that is not supported by the transcript.",
           "Every PREP step must have a numeric score. Use 0 when the transcript does not contain that step, never null.",
           "A vague, irrelevant, or merely implied PREP step is not meaningful support and must score below 50.",
@@ -774,7 +860,8 @@ async function generatePerformanceReport({ transcript, promptContext, metrics, h
           "The PREP score is the average of the four PREP step scores. The verbal structure dimension must use that same PREP score so PREP contributes once to the verbal review and overall score.",
           "For each challenge in the immediately previous report, assess whether it is fixed, improved, still present, or not measurable in this speech.",
           `Use this exact object shape: ${JSON.stringify(requiredShape)}`,
-          "Give three strengths and three improvements. Make the next focus measurable.",
+          "Give three strengths and three improvements. Make the next focus measurable and immediately understandable to a new speaker.",
+          "Avoid vague coaching phrases such as build a connection, close precisely, land the point, or tighten the message. State exactly what the speaker should do in plain language.",
           `Acoustic measurements available: ${hasAudioMetrics ? "yes" : "no"}.`,
         ].join("\n"),
       },
@@ -812,7 +899,7 @@ async function generatePerformanceReport({ transcript, promptContext, metrics, h
     if (parsed) {
       lastIssues = validatePerformanceReport(parsed, { hasAudioMetrics });
       if (!lastIssues.length) {
-        return sanitizeGeneratedCopy(normalizeReport(parsed, history));
+        return sanitizeGeneratedCopy(normalizeReport(parsed, history, metrics));
       }
     }
 

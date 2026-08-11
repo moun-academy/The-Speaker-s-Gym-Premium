@@ -15,7 +15,7 @@ function completeReport() {
       score: 82,
       confidence: "high",
       dimensions: Object.fromEntries(
-        ["pace", "volumeVariation", "pitchRange", "pauses", "emphasis"]
+        ["pace", "volumeVariation", "pitchRange", "pauses"]
           .map(name => [name, dimension(82)])
       ),
     },
@@ -59,7 +59,7 @@ test("uses the agreed 50/30/20 weighting instead of averaging vocal and verbal r
   assert.equal(report.scoreBreakdown.messageAndStructure.weight, 50);
   assert.equal(report.scoreBreakdown.delivery.weight, 30);
   assert.equal(report.scoreBreakdown.languageControl.weight, 20);
-  assert.equal(report.version, 6);
+  assert.equal(report.version, 7);
 });
 
 test("rejects the partial report that previously produced a vocal-only overall score", () => {
@@ -157,15 +157,75 @@ test("prevents delivery and language from lifting the score more than 10 points 
   assert.match(report.scoreCap.reason, /more than 10 points/i);
 });
 
-test("weights the five Delivery Review dimensions as 7, 7, 7, 5, and 4", () => {
+test("weights the four Delivery Review dimensions as 8, 8, 8, and 6", () => {
   const raw = completeReport();
   raw.vocal.dimensions.pace.score = 100;
   raw.vocal.dimensions.volumeVariation.score = 100;
   raw.vocal.dimensions.pitchRange.score = 100;
   raw.vocal.dimensions.pauses.score = 0;
-  raw.vocal.dimensions.emphasis.score = 0;
 
-  assert.equal(normalizeReport(raw).scoreBreakdown.delivery.score, 70);
+  assert.equal(normalizeReport(raw).scoreBreakdown.delivery.score, 80);
+});
+
+test("measured constant delivery scores low even when the AI suggests high scores", () => {
+  const raw = setAllScores(completeReport(), 95);
+  const metrics = {
+    wordCount: 80,
+    pauseCount: 0,
+    averagePauseDuration: 0,
+    paceSegmentCount: 5,
+    paceVariationStdDevWpm: 2,
+    acoustic: { volumeVariationDb: 0.5, pitchVariationSemitones: 0.3 },
+  };
+
+  const report = normalizeReport(raw, [], metrics);
+  assert.ok(report.scoreBreakdown.delivery.score < 25);
+  assert.match(report.vocal.dimensions.pace.evidence, /measured 2 WPM/i);
+});
+
+test("controlled delivery variety scores higher than erratic delivery", () => {
+  const raw = setAllScores(completeReport(), 95);
+  const controlled = normalizeReport(raw, [], {
+    wordCount: 80,
+    pauseCount: 8,
+    averagePauseDuration: 0.6,
+    paceSegmentCount: 5,
+    paceVariationStdDevWpm: 18,
+    acoustic: { volumeVariationDb: 6, pitchVariationSemitones: 5.5 },
+  });
+  const erratic = normalizeReport(raw, [], {
+    wordCount: 60,
+    pauseCount: 30,
+    averagePauseDuration: 3,
+    paceSegmentCount: 5,
+    paceVariationStdDevWpm: 50,
+    acoustic: { volumeVariationDb: 15, pitchVariationSemitones: 14 },
+  });
+
+  assert.ok(controlled.scoreBreakdown.delivery.score >= 70);
+  assert.ok(erratic.scoreBreakdown.delivery.score < 45);
+});
+
+test("rewrites vague historical coaching language in plain English", () => {
+  const raw = completeReport();
+  raw.nextFocus.title = "Build one clear connection and close precisely";
+  const history = [{
+    id: "previous",
+    date: "2026-08-01",
+    report: {
+      version: 6,
+      overallScore: 55,
+      improvements: [],
+      nextFocus: {
+        title: "Build one clear connection and close precisely",
+        action: "Close precisely.",
+      },
+    },
+  }];
+
+  const report = normalizeReport(raw, history);
+  assert.match(report.nextFocus.title, /Connect your example to your main point/i);
+  assert.match(report.previousPerformance.challenges[0].category, /finish with one clear final sentence/i);
 });
 
 test("measures pace variety across successive speech segments", () => {
