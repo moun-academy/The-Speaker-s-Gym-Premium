@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 process.env.OPENAI_API_KEY ||= "test-key-not-used";
 
-const { normalizeReport, validatePerformanceReport } = await import("../api/feedback.js");
+const { normalizeReport, scoreBand, validatePerformanceReport } = await import("../api/feedback.js");
 
 const dimension = score => ({ score, evidence: "Measured evidence." });
 
@@ -44,10 +44,22 @@ function completeReport() {
   };
 }
 
-test("accepts a complete measured report and calculates a balanced overall score", () => {
+function setAllScores(raw, score) {
+  for (const item of Object.values(raw.vocal.dimensions)) item.score = score;
+  for (const item of Object.values(raw.verbal.dimensions)) item.score = score;
+  for (const item of Object.values(raw.prep.steps)) item.score = score;
+  return raw;
+}
+
+test("uses the agreed 50/30/20 weighting instead of averaging vocal and verbal reviews", () => {
   const raw = completeReport();
   assert.deepEqual(validatePerformanceReport(raw, { hasAudioMetrics: true }), []);
-  assert.equal(normalizeReport(raw).overallScore, 76);
+  const report = normalizeReport(raw);
+  assert.equal(report.overallScore, 74);
+  assert.equal(report.scoreBreakdown.messageAndStructure.weight, 50);
+  assert.equal(report.scoreBreakdown.delivery.weight, 30);
+  assert.equal(report.scoreBreakdown.languageControl.weight, 20);
+  assert.equal(report.version, 5);
 });
 
 test("rejects the partial report that previously produced a vocal-only overall score", () => {
@@ -68,4 +80,51 @@ test("treats a missing PREP element scored as zero as measured", () => {
   const raw = completeReport();
   raw.prep.steps.example = dimension(0);
   assert.deepEqual(validatePerformanceReport(raw, { hasAudioMetrics: true }), []);
+});
+
+test("caps a fluent but completely unstructured speech below 50", () => {
+  const raw = setAllScores(completeReport(), 90);
+  for (const item of Object.values(raw.prep.steps)) item.score = 0;
+
+  const report = normalizeReport(raw);
+  assert.equal(report.overallScore, 49);
+  assert.equal(report.scoreCap.applied, true);
+  assert.match(report.scoreCap.reason, /capped at 49/i);
+});
+
+test("caps a speech with no clear Point even when the delivery is strong", () => {
+  const raw = setAllScores(completeReport(), 90);
+  raw.prep.steps.point.score = 25;
+
+  const report = normalizeReport(raw);
+  assert.equal(report.overallScore, 49);
+  assert.match(report.scoreCap.reason, /clear Point/i);
+});
+
+test("renames Concision in user-facing report categories", () => {
+  const raw = completeReport();
+  raw.improvements[0].category = "Concision";
+  assert.equal(normalizeReport(raw).improvements[0].category, "Clear and direct");
+});
+
+test("places an average complete speech in the developing range", () => {
+  const report = normalizeReport(setAllScores(completeReport(), 65));
+  assert.equal(report.overallScore, 65);
+  assert.equal(report.scoreBand, "Developing");
+});
+
+test("reserves exceptional scores for excellent complete speeches", () => {
+  const report = normalizeReport(setAllScores(completeReport(), 94));
+  assert.equal(report.overallScore, 94);
+  assert.equal(report.scoreBand, "Exceptional");
+  assert.equal(report.scoreCap.applied, false);
+});
+
+test("uses clear score-band labels", () => {
+  assert.equal(scoreBand(25), "Poor");
+  assert.equal(scoreBand(49), "Needs significant improvement");
+  assert.equal(scoreBand(62), "Developing");
+  assert.equal(scoreBand(77), "Competent");
+  assert.equal(scoreBand(85), "Strong");
+  assert.equal(scoreBand(93), "Exceptional");
 });

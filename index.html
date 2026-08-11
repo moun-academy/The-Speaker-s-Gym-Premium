@@ -484,6 +484,11 @@
     .performance-prep-evidence { color: #64748b; font-size: 9px; line-height: 1.4; margin-top: 5px; }
 
     .performance-score-basis { margin-top: 8px; color: #94a3b8; font-size: 12px; line-height: 1.45; }
+    .performance-breakdown { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 14px 0; }
+    .performance-breakdown-item { padding: 10px; border-radius: 10px; background: rgba(15, 23, 42, 0.64); border: 1px solid rgba(148, 163, 184, 0.12); }
+    .performance-breakdown-item span { display: block; color: #94a3b8; font-size: 9px; line-height: 1.3; }
+    .performance-breakdown-item strong { display: block; color: #f8fafc; font-size: 18px; margin-top: 4px; }
+    .performance-score-cap { margin: 12px 0; padding: 11px 12px; border-radius: 10px; color: #fecaca; background: rgba(127, 29, 29, 0.2); border: 1px solid rgba(248, 113, 113, 0.28); font-size: 11px; line-height: 1.5; }
     .performance-comparison { margin-top: 18px; padding: 16px; border: 1px solid rgba(96, 165, 250, 0.24); border-radius: 14px; background: rgba(30, 64, 175, 0.1); }
     .performance-comparison-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-weight: 800; color: #dbeafe; }
     .performance-change { color: #93c5fd; white-space: nowrap; }
@@ -556,6 +561,7 @@
     @media (max-width: 620px) {
       .performance-review-grid { grid-template-columns: 1fr; }
       .performance-prep-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .performance-breakdown { grid-template-columns: 1fr; }
       .performance-hero { padding: 16px; }
       .performance-history-main { align-items: flex-start; }
     }
@@ -6098,7 +6104,7 @@
     // Release date shown in Settings > About and the app footer.
     // Update this with every Play Store release.
     const APP_VERSION = '23';
-    const LAST_UPDATED = 'August 6, 2026';
+    const LAST_UPDATED = 'August 11, 2026';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -6874,18 +6880,32 @@
       volumeVariation: 'Volume variation',
       emphasis: 'Emphasis',
       rhythm: 'Rhythm',
-      clarity: 'Clarity',
+      vocalVariety: 'Vocal variety',
+      clarity: 'Clear and relevant message',
       structure: 'Point, Reason, Example, Point structure',
       logicalFlow: 'Logical flow',
       wordChoice: 'Word choice',
-      concision: 'Concision',
+      concision: 'Clear and direct',
       fillerControl: 'Filler control',
       repetitionControl: 'Repetition control'
     };
 
     function performanceReviewHtml(review, type) {
       const dimensions = review?.dimensions || {};
-      const rows = Object.entries(dimensions).map(([key, value]) => {
+      const entries = Object.entries(dimensions);
+      const varietyParts = [dimensions.pitchRange, dimensions.volumeVariation]
+        .filter(item => typeof item?.score === 'number');
+      if (type === 'vocal' && varietyParts.length) {
+        entries.push(['vocalVariety', {
+          score: Math.round(varietyParts.reduce((sum, item) => sum + item.score, 0) / varietyParts.length),
+          evidence: varietyParts.map(item => item.evidence).filter(Boolean).join(' ')
+        }]);
+      }
+      const rows = entries.filter(([key]) => {
+        if (type === 'verbal' && key === 'structure') return false;
+        if (type === 'vocal' && varietyParts.length && ['pitchRange', 'volumeVariation'].includes(key)) return false;
+        return true;
+      }).map(([key, value]) => {
         const score = typeof value?.score === 'number' ? value.score : null;
         const evidence = value?.evidence ? `<div class="performance-evidence">${escapeHtml(value.evidence)}</div>` : '';
         return `
@@ -6898,7 +6918,7 @@
             ${evidence}
           </div>`;
       }).join('');
-      const title = type === 'vocal' ? 'Vocal Review' : 'Verbal Review';
+      const title = type === 'vocal' ? 'Delivery Review' : 'Message Review';
       const icon = type === 'vocal' ? '🎙️' : '💬';
       return `
         <div class="performance-review ${type}">
@@ -6941,6 +6961,16 @@
       const focusTitle = report.nextFocus?.title || 'Next speech focus';
       const focusAction = report.nextFocus?.action || '';
       const previous = report.previousPerformance;
+      const breakdown = report.scoreBreakdown;
+      const breakdownHtml = breakdown ? `
+        <div class="performance-breakdown">
+          <div class="performance-breakdown-item"><span>MESSAGE AND STRUCTURE · 50%</span><strong>${breakdown.messageAndStructure?.score ?? '--'}</strong></div>
+          <div class="performance-breakdown-item"><span>DELIVERY · 30%</span><strong>${breakdown.delivery?.score ?? '--'}</strong></div>
+          <div class="performance-breakdown-item"><span>LANGUAGE CONTROL · 20%</span><strong>${breakdown.languageControl?.score ?? '--'}</strong></div>
+        </div>` : '';
+      const scoreCapHtml = report.scoreCap?.applied
+        ? `<div class="performance-score-cap"><strong>Why this score is limited:</strong> ${escapeHtml(report.scoreCap.reason || '')}</div>`
+        : '';
       const statusLabels = {
         fixed: 'Fixed',
         improved: 'Improved',
@@ -6955,6 +6985,7 @@
               ? `<span class="performance-change ${previous.overallChange > 0 ? 'up' : previous.overallChange < 0 ? 'down' : ''}">${previous.overallChange > 0 ? '+' : ''}${previous.overallChange} overall</span>`
               : ''}
           </div>
+          ${previous.comparisonNote ? `<div class="performance-score-basis">${escapeHtml(previous.comparisonNote)}</div>` : ''}
           ${(previous.challenges || []).map(challenge => `
             <div class="challenge-result">
               <div class="challenge-result-line">
@@ -6977,15 +7008,17 @@
               <div class="performance-hero-title">Full Performance Breakdown</div>
               <div class="performance-hero-subtitle">${escapeHtml(subtitle)}</div>
             </div>
-            <div class="performance-overall">${report.overallScore ?? '--'}<small>Overall</small></div>
+            <div class="performance-overall">${report.overallScore ?? '--'}<small>${escapeHtml(report.scoreBand || '')}<br>Overall</small></div>
           </div>
-          <div class="performance-score-basis">Overall score uses the measurable vocal and verbal dimensions. Structure is scored using PREP: Point, Reason, Example, Point.</div>
+          <div class="performance-score-basis">${escapeHtml(report.scoreBasis || 'Structure is scored using Point, Reason, Example, Point.')}</div>
+          ${breakdownHtml}
+          ${scoreCapHtml}
           <div class="performance-summary">${escapeHtml(report.summary || '')}</div>
-          <div class="performance-review-grid">
-            ${performanceReviewHtml(report.vocal, 'vocal')}
-            ${performanceReviewHtml(report.verbal, 'verbal')}
-          </div>
           ${performancePrepHtml(report.prep)}
+          <div class="performance-review-grid">
+            ${performanceReviewHtml(report.verbal, 'verbal')}
+            ${performanceReviewHtml(report.vocal, 'vocal')}
+          </div>
           <div class="performance-focus"><strong>${escapeHtml(focusTitle)}:</strong> ${escapeHtml(focusAction)}</div>
           ${comparisonHtml}
           ${commonChallengesHtml}
@@ -10222,9 +10255,10 @@
     let pendingPerformanceReportId = null;
 
     function performanceTrendText(reports) {
-      if (reports.length < 2) return 'Baseline report';
-      const first = reports[0].report;
-      const recent = reports.slice(-3);
+      const comparableReports = reports.filter(item => item.report?.version === 5);
+      if (comparableReports.length < 2) return 'New scoring baseline';
+      const first = comparableReports[0].report;
+      const recent = comparableReports.slice(-3);
       const average = (path) => {
         const values = recent.map(item => path(item.report)).filter(value => typeof value === 'number');
         return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
@@ -10236,11 +10270,11 @@
       const parts = [];
       if (typeof vocalNow === 'number' && typeof vocalStart === 'number') {
         const change = Math.round(vocalNow - vocalStart);
-        parts.push(`Vocal ${change >= 0 ? '+' : ''}${change}`);
+        parts.push(`Delivery ${change >= 0 ? '+' : ''}${change}`);
       }
       if (typeof verbalNow === 'number' && typeof verbalStart === 'number') {
         const change = Math.round(verbalNow - verbalStart);
-        parts.push(`Verbal ${change >= 0 ? '+' : ''}${change}`);
+        parts.push(`Message ${change >= 0 ? '+' : ''}${change}`);
       }
       return parts.length ? `${parts.join(' · ')} since baseline` : 'Performance history';
     }
@@ -10279,8 +10313,8 @@
                 <div class="performance-history-topic">${escapeHtml(topic)}</div>
               </div>
               <div class="performance-history-scores">
-                <span class="performance-score-chip">${speech.report.vocal?.score ?? '--'}<small>VOCAL</small></span>
-                <span class="performance-score-chip">${speech.report.verbal?.score ?? '--'}<small>VERBAL</small></span>
+                <span class="performance-score-chip">${speech.report.vocal?.score ?? '--'}<small>DELIVERY</small></span>
+                <span class="performance-score-chip">${speech.report.verbal?.score ?? '--'}<small>MESSAGE</small></span>
                 <span class="performance-score-chip">${speech.report.overallScore ?? '--'}<small>OVERALL</small></span>
               </div>
             </div>

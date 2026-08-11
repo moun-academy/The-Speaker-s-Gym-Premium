@@ -73,7 +73,9 @@ const clampScore = value => {
 const removeLongDashes = value => String(value || "").replace(/[\u2013\u2014]/g, ",");
 
 function sanitizeGeneratedCopy(value) {
-  if (typeof value === "string") return removeLongDashes(value);
+  if (typeof value === "string") {
+    return removeLongDashes(value).replace(/\bconcision\b/gi, "clear and direct");
+  }
   if (Array.isArray(value)) return value.map(sanitizeGeneratedCopy);
   if (value && typeof value === "object") {
     return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, sanitizeGeneratedCopy(item)]));
@@ -177,6 +179,26 @@ function scoreDimensions(dimensions) {
   return measuredScores.length
     ? Math.round(measuredScores.reduce((sum, score) => sum + score, 0) / measuredScores.length)
     : null;
+}
+
+function weightedScore(items) {
+  const measured = items.filter(item => typeof item.score === "number" && Number.isFinite(item.score));
+  const totalWeight = measured.reduce((sum, item) => sum + item.weight, 0);
+  return totalWeight
+    ? Math.round(measured.reduce((sum, item) => sum + (item.score * item.weight), 0) / totalWeight)
+    : null;
+}
+
+const averageMeasured = (...scores) => weightedScore(scores.map(score => ({ score, weight: 1 })));
+
+export function scoreBand(score) {
+  if (typeof score !== "number") return "Not measured";
+  if (score < 40) return "Poor";
+  if (score < 55) return "Needs significant improvement";
+  if (score < 70) return "Developing";
+  if (score < 80) return "Competent";
+  if (score < 90) return "Strong";
+  return "Exceptional";
 }
 
 const nullableScoreSchema = {
@@ -369,9 +391,14 @@ function normalizePrep(value) {
   };
 }
 
+function friendlyCategory(value) {
+  const category = String(value || "").slice(0, 80);
+  return /\bconcision\b/i.test(category) ? "Clear and direct" : category;
+}
+
 function cleanReportItems(items) {
   return (Array.isArray(items) ? items : []).slice(0, 4).map(item => ({
-    category: String(item?.category || "").slice(0, 80),
+    category: friendlyCategory(item?.category),
     point: String(item?.point || "").slice(0, 500),
     evidence: String(item?.evidence || "").slice(0, 500),
   }));
@@ -383,6 +410,7 @@ function normalizeHistory(raw) {
     id: String(item?.id || "").slice(0, 160),
     date: String(item?.date || "").slice(0, 80),
     report: {
+      version: Number(item?.report?.version) || 0,
       overallScore: clampScore(item?.report?.overallScore),
       vocalScore: clampScore(item?.report?.vocal?.score),
       verbalScore: clampScore(item?.report?.verbal?.score),
@@ -405,7 +433,7 @@ function challengeKey(value) {
   if (/clarity|articulation/.test(key)) return "clarity";
   if (/repeat|repetition/.test(key)) return "repetition control";
   if (/pitch|volume|emphasis|rhythm|vocal variety/.test(key)) return "vocal variety";
-  if (/concise|concision|wordiness/.test(key)) return "concision";
+  if (/clear and direct|concise|concision|wordiness/.test(key)) return "clear and direct";
   return key;
 }
 
@@ -419,7 +447,7 @@ function previousChallenges(previous) {
   return challenges.slice(0, 4);
 }
 
-function normalizePreviousPerformance(raw, previous, currentOverallScore) {
+function normalizePreviousPerformance(raw, previous, currentOverallScore, currentVersion) {
   if (!previous) return { available: false, previousReportId: "", previousDate: "", previousOverallScore: null, overallChange: null, challenges: [] };
   const rawChallenges = Array.isArray(raw?.challenges) ? raw.challenges : [];
   const challenges = previousChallenges(previous).map(challenge => {
@@ -434,12 +462,17 @@ function normalizePreviousPerformance(raw, previous, currentOverallScore) {
     };
   });
   const previousOverallScore = previous.report.overallScore;
+  const comparableScores = previous.report.version === currentVersion;
   return {
     available: true,
     previousReportId: previous.id,
     previousDate: previous.date,
     previousOverallScore,
-    overallChange: typeof previousOverallScore === "number" && typeof currentOverallScore === "number"
+    comparableScores,
+    comparisonNote: comparableScores
+      ? ""
+      : "Overall scores are not compared because the scoring method changed. Challenge progress is still evaluated.",
+    overallChange: comparableScores && typeof previousOverallScore === "number" && typeof currentOverallScore === "number"
       ? currentOverallScore - previousOverallScore
       : null,
     challenges,
@@ -471,6 +504,7 @@ function buildCommonChallenges(history, currentImprovements) {
 }
 
 export function normalizeReport(raw, history = []) {
+  const scoringVersion = 5;
   const report = raw && typeof raw === "object" ? raw : {};
   const prep = normalizePrep(report.prep);
   const vocal = normalizeReview(report.vocal, [
@@ -488,19 +522,90 @@ export function normalizeReport(raw, history = []) {
       score: prep.score,
       evidence: `PREP breakdown: ${stepSummary}.`,
     };
-    verbal.score = scoreDimensions(verbal.dimensions);
   }
-  const reviewScores = [vocal.score, verbal.score].filter(score => typeof score === "number");
-  const overallScore = reviewScores.length
-    ? Math.round(reviewScores.reduce((sum, score) => sum + score, 0) / reviewScores.length)
+
+  const vocalVarietyScore = averageMeasured(
+    vocal.dimensions.pitchRange.score,
+    vocal.dimensions.volumeVariation.score
+  );
+
+  const messageAndStructureScore = weightedScore([
+    { score: prep.score, weight: 30 },
+    { score: verbal.dimensions.clarity.score, weight: 12 },
+    { score: verbal.dimensions.logicalFlow.score, weight: 8 },
+  ]);
+  const deliveryScore = weightedScore([
+    { score: averageMeasured(vocal.dimensions.pace.score, vocal.dimensions.pauses.score), weight: 10 },
+    { score: vocalVarietyScore, weight: 12 },
+    { score: averageMeasured(vocal.dimensions.emphasis.score, vocal.dimensions.rhythm.score), weight: 8 },
+  ]);
+  const languageControlScore = weightedScore([
+    { score: verbal.dimensions.concision.score, weight: 8 },
+    { score: verbal.dimensions.wordChoice.score, weight: 4 },
+    { score: verbal.dimensions.fillerControl.score, weight: 4 },
+    { score: verbal.dimensions.repetitionControl.score, weight: 4 },
+  ]);
+
+  vocal.score = deliveryScore;
+  verbal.score = weightedScore([
+    { score: messageAndStructureScore, weight: 50 },
+    { score: languageControlScore, weight: 20 },
+  ]);
+
+  const uncappedOverallScore = weightedScore([
+    { score: messageAndStructureScore, weight: 50 },
+    { score: deliveryScore, weight: 30 },
+    { score: languageControlScore, weight: 20 },
+  ]);
+  const prepScores = Object.values(prep.steps)
+    .map(step => step.score)
+    .filter(score => typeof score === "number");
+  const identifiedPrepSteps = prepScores.filter(score => score >= 40).length;
+  const pointScore = prep.steps.point.score;
+  let scoreMaximum = 100;
+  let scoreCapReason = "";
+
+  if ((pointScore ?? 0) < 40 || identifiedPrepSteps < 2) {
+    scoreMaximum = 49;
+    scoreCapReason = "The score is capped at 49 because the speech did not establish a clear Point and at least one supporting PREP step.";
+  } else if ((prep.score ?? 0) < 50) {
+    scoreMaximum = 64;
+    scoreCapReason = "The score is capped at 64 because the PREP structure needs significant improvement.";
+  } else if ((prep.score ?? 0) < 70 || identifiedPrepSteps < 4) {
+    scoreMaximum = 79;
+    scoreCapReason = "The score is capped at 79 because a strong score requires all four PREP steps and a PREP score of at least 70.";
+  } else if (
+    (uncappedOverallScore ?? 0) > 89 &&
+    ((messageAndStructureScore ?? 0) < 85 ||
+      (typeof deliveryScore === "number" && deliveryScore < 80) ||
+      (languageControlScore ?? 0) < 80)
+  ) {
+    scoreMaximum = 89;
+    scoreCapReason = "The score is capped at 89 because an exceptional score requires excellent message, delivery, and language control.";
+  }
+
+  const overallScore = typeof uncappedOverallScore === "number"
+    ? Math.min(uncappedOverallScore, scoreMaximum)
     : null;
   const improvements = cleanReportItems(report.improvements);
-  const previousPerformance = normalizePreviousPerformance(report.previousPerformance, history[0], overallScore);
+  const previousPerformance = normalizePreviousPerformance(report.previousPerformance, history[0], overallScore, scoringVersion);
   return {
-    version: 4,
+    version: scoringVersion,
     summary: String(report.summary || "Speech analysis complete.").slice(0, 1000),
     overallScore,
-    scoreBasis: "Average of the measurable vocal and verbal review scores. Structure is calculated using PREP: Point, Reason, Example, and Final Point.",
+    scoreBand: scoreBand(overallScore),
+    scoreBasis: "Overall score: Message and Structure 50%, Delivery 30%, and Language Control 20%. PREP alone contributes 30% of the overall score.",
+    scoreBreakdown: {
+      messageAndStructure: { score: messageAndStructureScore, weight: 50 },
+      delivery: { score: deliveryScore, weight: 30 },
+      languageControl: { score: languageControlScore, weight: 20 },
+      uncappedOverallScore,
+    },
+    scoreCap: {
+      applied: typeof overallScore === "number" && overallScore < uncappedOverallScore,
+      maximum: scoreMaximum < 100 ? scoreMaximum : null,
+      reason: scoreCapReason,
+    },
     vocal,
     verbal,
     prep,
@@ -595,7 +700,14 @@ async function generatePerformanceReport({ transcript, promptContext, metrics, h
           "Quote short exact phrases from the transcript as evidence for verbal judgments.",
           "Do not infer personality, emotion, identity, health, or confidence from the voice.",
           "Calibrate every dimension independently. Do not reuse a generic score or default to 78.",
-          "Use the full 0-100 scale: below 50 needs substantial work, 50-69 developing, 70-84 solid, and 85+ exceptional evidence.",
+          "Use the full 0-100 scale with strict anchors: 0-39 poor or unstructured, 40-54 needs significant improvement, 55-69 developing, 70-79 competent, 80-89 strong, and 90-100 exceptional.",
+          "Scores of 90 or higher must be rare and require specific evidence of excellent content and delivery.",
+          "Do not begin at a high score and deduct points. Judge each dimension directly against the anchors.",
+          "Clarity measures whether the answer gives a clear message that is relevant to the question or topic.",
+          "The concision field means Clear and direct: whether the speaker gets to the point without unnecessary words, detours, or repetition.",
+          "Never use the word concision in user-facing summary, evidence, strengths, improvements, or next focus. Say Clear and direct instead.",
+          "Do not let fluent delivery, few fillers, or little repetition inflate weak content. Those dimensions only measure their named behavior.",
+          "A fluent but unstructured or off-topic speech must receive low content scores.",
           "Score PREP explicitly as Point, Reason, Example, and Final Point. A missing step scores 0. Do not invent an implied step that is not supported by the transcript.",
           "Every PREP step must have a numeric score. Use 0 when the transcript does not contain that step, never null.",
           "Point measures whether the answer states one clear position. Reason measures whether it gives a relevant why. Example measures whether it gives a specific personal or practical example. Final Point measures whether it returns to the main idea or gives a clear takeaway or recommendation.",
