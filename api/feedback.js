@@ -123,6 +123,40 @@ function countRepeatedPhrases(transcript) {
     .map(([phrase, count]) => ({ phrase, count }));
 }
 
+export function analyzePaceVariety(words) {
+  const safeWords = Array.isArray(words) ? words : [];
+  const chunkSize = 12;
+  const segmentWpm = [];
+
+  for (let index = 0; index < safeWords.length; index += chunkSize) {
+    const chunk = safeWords.slice(index, index + chunkSize);
+    if (chunk.length < 6) continue;
+    const start = Number(chunk[0]?.start);
+    const end = Number(chunk[chunk.length - 1]?.end);
+    const duration = end - start;
+    if (!Number.isFinite(duration) || duration <= 0) continue;
+    segmentWpm.push(Math.round((chunk.length / duration) * 60));
+  }
+
+  if (segmentWpm.length < 2) {
+    return {
+      paceSegmentCount: segmentWpm.length,
+      paceSegmentsWpm: segmentWpm,
+      paceVariationWpm: null,
+      paceVariationStdDevWpm: null,
+    };
+  }
+
+  const mean = segmentWpm.reduce((sum, value) => sum + value, 0) / segmentWpm.length;
+  const variance = segmentWpm.reduce((sum, value) => sum + ((value - mean) ** 2), 0) / segmentWpm.length;
+  return {
+    paceSegmentCount: segmentWpm.length,
+    paceSegmentsWpm: segmentWpm.slice(0, 20),
+    paceVariationWpm: Math.max(...segmentWpm) - Math.min(...segmentWpm),
+    paceVariationStdDevWpm: Math.round(Math.sqrt(variance) * 10) / 10,
+  };
+}
+
 function analyzeMetrics(words, duration, transcript, acousticMetrics = null) {
   const safeWords = Array.isArray(words) ? words : [];
   const safeDuration = Number(duration) || 0;
@@ -161,6 +195,7 @@ function analyzeMetrics(words, duration, transcript, acousticMetrics = null) {
       : 0,
     repeatedPhrases: countRepeatedPhrases(transcript),
     pacingVariation,
+    ...analyzePaceVariety(safeWords),
     acoustic: acousticMetrics,
   };
 }
@@ -247,10 +282,10 @@ const performanceReportSchema = {
           type: "object",
           additionalProperties: false,
           properties: Object.fromEntries(
-            ["pace", "pauses", "pitchRange", "volumeVariation", "emphasis", "rhythm"]
+            ["pace", "volumeVariation", "pitchRange", "pauses", "emphasis"]
               .map(name => [name, dimensionSchema(nullableScoreSchema)])
           ),
-          required: ["pace", "pauses", "pitchRange", "volumeVariation", "emphasis", "rhythm"],
+          required: ["pace", "volumeVariation", "pitchRange", "pauses", "emphasis"],
         },
       },
       required: ["score", "confidence", "dimensions"],
@@ -349,7 +384,7 @@ export function validatePerformanceReport(raw, { hasAudioMetrics = false } = {})
   ];
   const prepNames = ["point", "reason", "example", "finalPoint"];
   const vocalNames = hasAudioMetrics
-    ? ["pace", "pauses", "pitchRange", "volumeVariation", "emphasis", "rhythm"]
+    ? ["pace", "volumeVariation", "pitchRange", "pauses", "emphasis"]
     : [];
 
   for (const name of verbalNames) {
@@ -504,11 +539,11 @@ function buildCommonChallenges(history, currentImprovements) {
 }
 
 export function normalizeReport(raw, history = []) {
-  const scoringVersion = 5;
+  const scoringVersion = 6;
   const report = raw && typeof raw === "object" ? raw : {};
   const prep = normalizePrep(report.prep);
   const vocal = normalizeReview(report.vocal, [
-    "pace", "pauses", "pitchRange", "volumeVariation", "emphasis", "rhythm",
+    "pace", "volumeVariation", "pitchRange", "pauses", "emphasis",
   ]);
   const verbal = normalizeReview(report.verbal, [
     "clarity", "structure", "logicalFlow", "wordChoice",
@@ -524,20 +559,17 @@ export function normalizeReport(raw, history = []) {
     };
   }
 
-  const vocalVarietyScore = averageMeasured(
-    vocal.dimensions.pitchRange.score,
-    vocal.dimensions.volumeVariation.score
-  );
-
   const messageAndStructureScore = weightedScore([
     { score: prep.score, weight: 30 },
     { score: verbal.dimensions.clarity.score, weight: 12 },
     { score: verbal.dimensions.logicalFlow.score, weight: 8 },
   ]);
   const deliveryScore = weightedScore([
-    { score: averageMeasured(vocal.dimensions.pace.score, vocal.dimensions.pauses.score), weight: 10 },
-    { score: vocalVarietyScore, weight: 12 },
-    { score: averageMeasured(vocal.dimensions.emphasis.score, vocal.dimensions.rhythm.score), weight: 8 },
+    { score: vocal.dimensions.pace.score, weight: 7 },
+    { score: vocal.dimensions.volumeVariation.score, weight: 7 },
+    { score: vocal.dimensions.pitchRange.score, weight: 7 },
+    { score: vocal.dimensions.pauses.score, weight: 5 },
+    { score: vocal.dimensions.emphasis.score, weight: 4 },
   ]);
   const languageControlScore = weightedScore([
     { score: verbal.dimensions.concision.score, weight: 8 },
@@ -560,28 +592,50 @@ export function normalizeReport(raw, history = []) {
   const prepScores = Object.values(prep.steps)
     .map(step => step.score)
     .filter(score => typeof score === "number");
-  const identifiedPrepSteps = prepScores.filter(score => score >= 40).length;
+  const identifiedPrepSteps = prepScores.filter(score => score >= 50).length;
   const pointScore = prep.steps.point.score;
+  const reasonScore = prep.steps.reason.score;
+  const exampleScore = prep.steps.example.score;
+  const clarityScore = verbal.dimensions.clarity.score;
+  const logicalFlowScore = verbal.dimensions.logicalFlow.score;
   let scoreMaximum = 100;
   let scoreCapReason = "";
 
-  if ((pointScore ?? 0) < 40 || identifiedPrepSteps < 2) {
-    scoreMaximum = 49;
-    scoreCapReason = "The score is capped at 49 because the speech did not establish a clear Point and at least one supporting PREP step.";
-  } else if ((prep.score ?? 0) < 50) {
-    scoreMaximum = 64;
-    scoreCapReason = "The score is capped at 64 because the PREP structure needs significant improvement.";
-  } else if ((prep.score ?? 0) < 70 || identifiedPrepSteps < 4) {
-    scoreMaximum = 79;
-    scoreCapReason = "The score is capped at 79 because a strong score requires all four PREP steps and a PREP score of at least 70.";
-  } else if (
+  const applyScoreMaximum = (maximum, reason) => {
+    if (maximum < scoreMaximum) {
+      scoreMaximum = maximum;
+      scoreCapReason = reason;
+    }
+  };
+
+  if ((pointScore ?? 0) < 50 || (clarityScore ?? 0) < 40 || (logicalFlowScore ?? 0) < 35) {
+    applyScoreMaximum(39, "The score is limited to 39 because the speech did not provide a clear, coherent, and relevant answer.");
+  }
+  if ((pointScore ?? 0) >= 50 && (reasonScore ?? 0) < 50 && (exampleScore ?? 0) < 50) {
+    applyScoreMaximum(49, "The score is limited to 49 because the main Point did not have a meaningful Reason or Example.");
+  }
+  if ((prep.score ?? 0) < 60 || identifiedPrepSteps < 3 || (messageAndStructureScore ?? 0) < 50) {
+    applyScoreMaximum(59, "The score is limited to 59 because Message and Structure is weak or incomplete.");
+  }
+  if (identifiedPrepSteps < 4 || (messageAndStructureScore ?? 0) < 60) {
+    applyScoreMaximum(69, "The score is limited to 69 because scores of 70 or higher require all four meaningful PREP steps and a solid message.");
+  }
+  if ((prep.score ?? 0) < 70 || (deliveryScore ?? 0) < 65) {
+    applyScoreMaximum(79, "The score is limited to 79 because scores of 80 or higher require strong PREP structure and competent delivery.");
+  }
+  if (
     (uncappedOverallScore ?? 0) > 89 &&
     ((messageAndStructureScore ?? 0) < 85 ||
       (typeof deliveryScore === "number" && deliveryScore < 80) ||
       (languageControlScore ?? 0) < 80)
   ) {
-    scoreMaximum = 89;
-    scoreCapReason = "The score is capped at 89 because an exceptional score requires excellent message, delivery, and language control.";
+    applyScoreMaximum(89, "The score is limited to 89 because an exceptional score requires excellent message, delivery, and language control.");
+  }
+  if (typeof messageAndStructureScore === "number") {
+    applyScoreMaximum(
+      Math.min(100, messageAndStructureScore + 10),
+      "Delivery and language cannot raise the overall score more than 10 points above Message and Structure."
+    );
   }
 
   const overallScore = typeof uncappedOverallScore === "number"
@@ -594,7 +648,7 @@ export function normalizeReport(raw, history = []) {
     summary: String(report.summary || "Speech analysis complete.").slice(0, 1000),
     overallScore,
     scoreBand: scoreBand(overallScore),
-    scoreBasis: "Overall score: Message and Structure 50%, Delivery 30%, and Language Control 20%. PREP alone contributes 30% of the overall score.",
+    scoreBasis: "Overall = Message and Structure 50% + Delivery 30% + Language Control 20%. PREP contributes 30 percentage points inside the Message and Structure category.",
     scoreBreakdown: {
       messageAndStructure: { score: messageAndStructureScore, weight: 50 },
       delivery: { score: deliveryScore, weight: 30 },
@@ -648,11 +702,10 @@ async function generatePerformanceReport({ transcript, promptContext, metrics, h
       confidence: "high|medium|low",
       dimensions: {
         pace: { score: 0, evidence: "string" },
-        pauses: { score: 0, evidence: "string" },
-        pitchRange: { score: 0, evidence: "string" },
         volumeVariation: { score: 0, evidence: "string" },
+        pitchRange: { score: 0, evidence: "string" },
+        pauses: { score: 0, evidence: "string" },
         emphasis: { score: 0, evidence: "string" },
-        rhythm: { score: 0, evidence: "string" },
       },
     },
     verbal: {
@@ -708,8 +761,15 @@ async function generatePerformanceReport({ transcript, promptContext, metrics, h
           "Never use the word concision in user-facing summary, evidence, strengths, improvements, or next focus. Say Clear and direct instead.",
           "Do not let fluent delivery, few fillers, or little repetition inflate weak content. Those dimensions only measure their named behavior.",
           "A fluent but unstructured or off-topic speech must receive low content scores.",
+          "For Delivery Review, the pace field means Pace variety: whether the speaker intentionally speeds up and slows down. Use the segment WPM variation measurements, not only average WPM.",
+          "The volumeVariation field means Volume variety: whether the speaker becomes meaningfully louder and softer.",
+          "The pitchRange field means Pitch variety: whether the voice moves meaningfully higher and lower.",
+          "Pauses measure whether silence is used intentionally to separate ideas and create emphasis.",
+          "The emphasis field means Tone: overall vocal expressiveness and whether vocal emphasis supports the meaning of the words. Do not infer emotion, personality, or confidence.",
+          "Variety creates emphasis and helps sustain listener engagement. Constant pace, pitch, and volume should score lower than purposeful variation.",
           "Score PREP explicitly as Point, Reason, Example, and Final Point. A missing step scores 0. Do not invent an implied step that is not supported by the transcript.",
           "Every PREP step must have a numeric score. Use 0 when the transcript does not contain that step, never null.",
+          "A vague, irrelevant, or merely implied PREP step is not meaningful support and must score below 50.",
           "Point measures whether the answer states one clear position. Reason measures whether it gives a relevant why. Example measures whether it gives a specific personal or practical example. Final Point measures whether it returns to the main idea or gives a clear takeaway or recommendation.",
           "The PREP score is the average of the four PREP step scores. The verbal structure dimension must use that same PREP score so PREP contributes once to the verbal review and overall score.",
           "For each challenge in the immediately previous report, assess whether it is fixed, improved, still present, or not measurable in this speech.",
