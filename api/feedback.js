@@ -436,11 +436,28 @@ function friendlyCategory(value) {
 function clarifyCoachingCopy(value) {
   return String(value || "")
     .replace(
+      /replace the joke with a structured aspiration/gi,
+      "After the joke, state one real goal, explain why it matters, give one example, and repeat the goal at the end"
+    )
+    .replace(
       /build one clear connection and close precisely/gi,
       "Connect your example to your main point, then finish with one clear final sentence"
     )
     .replace(/build one clear connection/gi, "explain how your example supports your main point")
-    .replace(/close precisely/gi, "finish with one clear final sentence");
+    .replace(/close precisely/gi, "finish with one clear final sentence")
+    .replace(/land (?:the|your) point/gi, "finish by stating your main point in one clear sentence")
+    .replace(/tighten (?:the|your) message/gi, "remove repeated or unrelated words");
+}
+
+function clarifyComparisonEvidence(value, category) {
+  const evidence = String(value || "").trim();
+  if (/not enough evidence|does not provide enough direct evidence|insufficient evidence/i.test(evidence)) {
+    if (/joke|structured aspiration/i.test(String(category || ""))) {
+      return "This speech did not include a joke followed by a real goal, so this instruction could not be checked.";
+    }
+    return "This speech did not include enough of the same behavior to check this previous instruction.";
+  }
+  return clarifyCoachingCopy(evidence);
 }
 
 function cleanReportItems(items) {
@@ -505,7 +522,10 @@ function normalizePreviousPerformance(raw, previous, currentOverallScore, curren
       category: clarifyCoachingCopy(challenge.category || "Previous focus").slice(0, 200),
       previousChallenge: clarifyCoachingCopy(challenge.point || challenge.evidence || "Previous coaching challenge").slice(0, 500),
       status: allowedStatuses.includes(match.status) ? match.status : "not_measurable",
-      evidence: String(match.evidence || "The current speech does not provide enough direct evidence for a reliable comparison.").slice(0, 500),
+      evidence: clarifyComparisonEvidence(
+        match.evidence || "The current speech does not provide enough direct evidence for a reliable comparison.",
+        challenge.category
+      ).slice(0, 500),
     };
   });
   const previousOverallScore = previous.report.overallScore;
@@ -572,38 +592,85 @@ function finiteMetric(value) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function describeOctaveSpan(semitones) {
+  const octaves = semitones / 12;
+  if (octaves < 0.2) return "a small fraction of an octave";
+  if (octaves < 0.4) return "about one quarter of an octave";
+  if (octaves < 0.65) return "about half an octave";
+  if (octaves < 0.9) return "about three quarters of an octave";
+  if (octaves < 1.2) return "about one octave";
+  return `about ${octaves.toFixed(1)} octaves`;
+}
+
 export function calibrateDeliveryReview(vocal, metrics) {
   if (!metrics?.acoustic) return vocal;
 
   const dimensions = { ...vocal.dimensions };
   const segmentCount = Number(metrics.paceSegmentCount) || 0;
   const paceStdDev = finiteMetric(metrics.paceVariationStdDevWpm);
+  const paceSegments = (Array.isArray(metrics.paceSegmentsWpm) ? metrics.paceSegmentsWpm : [])
+    .filter(value => typeof value === "number" && Number.isFinite(value));
+  const averagePace = finiteMetric(metrics.wordsPerMinute)
+    ?? (paceSegments.length ? Math.round(paceSegments.reduce((sum, value) => sum + value, 0) / paceSegments.length) : null);
+  const slowestPace = paceSegments.length ? Math.min(...paceSegments) : null;
+  const fastestPace = paceSegments.length ? Math.max(...paceSegments) : null;
+  let largestSlowdown = null;
+  let largestAcceleration = null;
+  for (let index = 1; index < paceSegments.length; index++) {
+    const change = paceSegments[index] - paceSegments[index - 1];
+    if (change < 0 && (!largestSlowdown || change < largestSlowdown.change)) {
+      largestSlowdown = { from: paceSegments[index - 1], to: paceSegments[index], section: index + 1, change };
+    }
+    if (change > 0 && (!largestAcceleration || change > largestAcceleration.change)) {
+      largestAcceleration = { from: paceSegments[index - 1], to: paceSegments[index], section: index + 1, change };
+    }
+  }
+  const paceChangeEvidence = [
+    largestSlowdown
+      ? `The biggest slowdown was from ${largestSlowdown.from} to ${largestSlowdown.to} WPM entering section ${largestSlowdown.section}.`
+      : "",
+    largestAcceleration
+      ? `The biggest acceleration was from ${largestAcceleration.from} to ${largestAcceleration.to} WPM entering section ${largestAcceleration.section}.`
+      : "",
+  ].filter(Boolean).join(" ");
+  const paceEvidence = averagePace !== null && slowestPace !== null && fastestPace !== null
+    ? `Average pace: ${averagePace} WPM. Across ${paceSegments.length} short sections, pace ranged from ${slowestPace} to ${fastestPace} WPM. ${paceChangeEvidence}`.trim()
+    : paceStdDev !== null
+      ? `Pace varied by ${paceStdDev} WPM across ${segmentCount} short sections.`
+      : "The speech was too short to compare pace across multiple sections.";
   dimensions.pace = segmentCount >= 2 && paceStdDev !== null
     ? measuredDimension(
         scoreFromAnchors(paceStdDev, [[0, 10], [3, 20], [7, 40], [12, 58], [18, 72], [25, 80], [35, 68], [50, 45], [80, 25]]),
-        `Pace variation measured ${paceStdDev} WPM across ${segmentCount} speech segments. Controlled variation scores higher than a constant or erratic pace.`
+        paceEvidence
       )
-    : measuredDimension(null, "The speech was too short to compare pace across multiple segments.");
+    : measuredDimension(null, paceEvidence);
 
   const volumeStdDev = finiteMetric(metrics.acoustic.volumeVariationDb);
+  const volumeRange = finiteMetric(metrics.acoustic.volumeRangeDb);
   dimensions.volumeVariation = volumeStdDev !== null
     ? measuredDimension(
         scoreFromAnchors(volumeStdDev, [[0, 10], [0.8, 20], [1.5, 35], [2.5, 50], [4, 65], [6, 78], [8, 82], [11, 65], [15, 40], [25, 25]]),
-        `Volume variation measured ${volumeStdDev.toFixed(2)} dB. Controlled changes between louder and softer speech score higher than constant or erratic volume.`
+        volumeRange !== null
+          ? `Volume moved across a ${volumeRange.toFixed(1)} dB range between the softer and louder parts of the speech.`
+          : `Volume varied by ${volumeStdDev.toFixed(1)} dB across the speech.`
       )
     : measuredDimension(null, "Volume variety could not be measured reliably.");
 
   const pitchStdDev = finiteMetric(metrics.acoustic.pitchVariationSemitones);
+  const pitchRange = finiteMetric(metrics.acoustic.pitchRangeSemitones);
   dimensions.pitchRange = pitchStdDev !== null
     ? measuredDimension(
         scoreFromAnchors(pitchStdDev, [[0, 10], [0.5, 20], [1, 35], [2, 52], [3.5, 68], [5.5, 80], [7.5, 82], [10, 65], [14, 40]]),
-        `Pitch variation measured ${pitchStdDev.toFixed(2)} semitones. Controlled movement between higher and lower pitch scores higher than a flat or erratic voice.`
+        pitchRange !== null
+          ? `Pitch moved across ${pitchRange.toFixed(1)} semitones, ${describeOctaveSpan(pitchRange)}, between the lower and higher parts of the speech.`
+          : `Pitch varied by ${pitchStdDev.toFixed(1)} semitones across the speech.`
       )
     : measuredDimension(null, "Pitch variety could not be measured reliably.");
 
   const wordCount = Number(metrics.wordCount) || 0;
   const pauseCount = Number(metrics.pauseCount) || 0;
   const averagePause = Number(metrics.averagePauseDuration) || 0;
+  const longestPause = Number(metrics.longestPause) || 0;
   if (wordCount > 0) {
     const pauseRate = pauseCount / wordCount;
     const frequencyScore = scoreFromAnchors(pauseRate, [[0, 15], [0.02, 25], [0.05, 50], [0.08, 70], [0.12, 80], [0.18, 72], [0.25, 50], [0.35, 25], [0.5, 10]]);
@@ -613,7 +680,9 @@ export function calibrateDeliveryReview(vocal, metrics) {
     const pauseScore = Math.round((frequencyScore * 0.6) + (durationScore * 0.4));
     dimensions.pauses = measuredDimension(
       pauseScore,
-      `${pauseCount} pauses were measured across ${wordCount} words, averaging ${averagePause.toFixed(2)} seconds. Useful pauses separate ideas without making the speech choppy.`
+      pauseCount > 0
+        ? `${pauseCount} pauses across ${wordCount} words, about one every ${Math.max(1, Math.round(wordCount / pauseCount))} words. Average pause: ${averagePause.toFixed(2)} seconds. Longest pause: ${longestPause.toFixed(2)} seconds.`
+        : `No pauses longer than 0.2 seconds were measured across ${wordCount} words.`
     );
   } else {
     dimensions.pauses = measuredDimension(null, "Pauses could not be measured reliably.");
@@ -859,9 +928,10 @@ async function generatePerformanceReport({ transcript, promptContext, metrics, h
           "Point measures whether the answer states one clear position. Reason measures whether it gives a relevant why. Example measures whether it gives a specific personal or practical example. Final Point measures whether it returns to the main idea or gives a clear takeaway or recommendation.",
           "The PREP score is the average of the four PREP step scores. The verbal structure dimension must use that same PREP score so PREP contributes once to the verbal review and overall score.",
           "For each challenge in the immediately previous report, assess whether it is fixed, improved, still present, or not measurable in this speech.",
+          "For a not measurable comparison, give the specific reason, such as a different topic, a missing behavior, a speech that was too short, or an unavailable audio measurement. Never use a generic phrase such as not enough evidence.",
           `Use this exact object shape: ${JSON.stringify(requiredShape)}`,
           "Give three strengths and three improvements. Make the next focus measurable and immediately understandable to a new speaker.",
-          "Avoid vague coaching phrases such as build a connection, close precisely, land the point, or tighten the message. State exactly what the speaker should do in plain language.",
+          "Avoid vague coaching phrases such as structured aspiration, build a connection, close precisely, land the point, or tighten the message. State exactly what the speaker should say or do in plain language.",
           `Acoustic measurements available: ${hasAudioMetrics ? "yes" : "no"}.`,
         ].join("\n"),
       },

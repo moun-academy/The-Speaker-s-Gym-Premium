@@ -493,7 +493,6 @@
     .performance-calculation-title { color: #f8fafc; font-size: 12px; font-weight: 850; margin-bottom: 10px; }
     .performance-calculation-row { display: flex; justify-content: space-between; gap: 12px; color: #e2e8f0; font-size: 11px; font-weight: 750; margin-top: 8px; }
     .performance-calculation-detail { color: #94a3b8; font-size: 10px; line-height: 1.5; margin-top: 3px; }
-    .performance-delivery-note { margin: 0 0 12px; padding: 9px 10px; border-radius: 9px; background: rgba(245, 158, 11, 0.08); color: #cbd5e1; font-size: 10px; line-height: 1.5; }
     .performance-comparison { margin-top: 18px; padding: 16px; border: 1px solid rgba(96, 165, 250, 0.24); border-radius: 14px; background: rgba(30, 64, 175, 0.1); }
     .performance-comparison-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-weight: 800; color: #dbeafe; }
     .performance-change { color: #93c5fd; white-space: nowrap; }
@@ -503,6 +502,8 @@
     .challenge-result:first-of-type { border-top: 0; }
     .challenge-result-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .challenge-result-line strong { color: #f8fafc; }
+    .challenge-result-instruction { margin-top: 6px; color: #e2e8f0; font-size: 12px; line-height: 1.5; }
+    .challenge-result-instruction span { color: #94a3b8; font-weight: 700; }
     .challenge-result-evidence { margin-top: 5px; color: #cbd5e1; font-size: 13px; line-height: 1.5; }
     .challenge-status { padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
     .challenge-status.fixed { color: #86efac; background: rgba(34, 197, 94, 0.14); }
@@ -6896,12 +6897,90 @@
 
     function plainCoachingCopy(value) {
       return String(value || '')
+        .replace(/replace the joke with a structured aspiration/gi, 'After the joke, state one real goal, explain why it matters, give one example, and repeat the goal at the end')
         .replace(/build one clear connection and close precisely/gi, 'Connect your example to your main point, then finish with one clear final sentence')
         .replace(/build one clear connection/gi, 'explain how your example supports your main point')
-        .replace(/close precisely/gi, 'finish with one clear final sentence');
+        .replace(/close precisely/gi, 'finish with one clear final sentence')
+        .replace(/land (?:the|your) point/gi, 'finish by stating your main point in one clear sentence')
+        .replace(/tighten (?:the|your) message/gi, 'remove repeated or unrelated words');
     }
 
-    function performanceReviewHtml(review, type) {
+    function sameCoachingCopy(left, right) {
+      const normalize = value => plainCoachingCopy(value).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      return normalize(left) && normalize(left) === normalize(right);
+    }
+
+    function plainComparisonEvidence(value, category) {
+      const evidence = String(value || '').trim();
+      if (/not enough evidence|does not provide enough direct evidence|insufficient evidence/i.test(evidence)) {
+        if (/joke|structured aspiration/i.test(String(category || ''))) {
+          return 'This speech did not include a joke followed by a real goal, so this instruction could not be checked.';
+        }
+        return 'This speech did not include enough of the same behavior to check this previous instruction.';
+      }
+      return plainCoachingCopy(evidence);
+    }
+
+    function factualDeliveryEvidence(key, metrics, fallback) {
+      const m = metrics || {};
+      const acoustic = m.acoustic || {};
+      const finite = value => typeof value === 'number' && Number.isFinite(value) ? value : null;
+      if (key === 'pace') {
+        const sections = (Array.isArray(m.paceSegmentsWpm) ? m.paceSegmentsWpm : []).filter(value => finite(value) !== null);
+        const average = finite(m.wordsPerMinute);
+        if (average !== null && sections.length >= 2) {
+          const slowest = Math.min(...sections);
+          const fastest = Math.max(...sections);
+          let slowdown = null;
+          let acceleration = null;
+          for (let index = 1; index < sections.length; index++) {
+            const change = sections[index] - sections[index - 1];
+            if (change < 0 && (!slowdown || change < slowdown.change)) slowdown = { from: sections[index - 1], to: sections[index], section: index + 1, change };
+            if (change > 0 && (!acceleration || change > acceleration.change)) acceleration = { from: sections[index - 1], to: sections[index], section: index + 1, change };
+          }
+          const changes = [
+            slowdown ? `The biggest slowdown was from ${slowdown.from} to ${slowdown.to} WPM entering section ${slowdown.section}.` : '',
+            acceleration ? `The biggest acceleration was from ${acceleration.from} to ${acceleration.to} WPM entering section ${acceleration.section}.` : ''
+          ].filter(Boolean).join(' ');
+          return `Average pace: ${average} WPM. Across ${sections.length} short sections, pace ranged from ${slowest} to ${fastest} WPM. ${changes}`.trim();
+        }
+      }
+      if (key === 'volumeVariation') {
+        const range = finite(acoustic.volumeRangeDb);
+        if (range !== null) return `Volume moved across a ${range.toFixed(1)} dB range between the softer and louder parts of the speech.`;
+      }
+      if (key === 'pitchRange') {
+        const range = finite(acoustic.pitchRangeSemitones);
+        if (range !== null) {
+          const octaves = range / 12;
+          const span = octaves < 0.2 ? 'a small fraction of an octave'
+            : octaves < 0.4 ? 'about one quarter of an octave'
+            : octaves < 0.65 ? 'about half an octave'
+            : octaves < 0.9 ? 'about three quarters of an octave'
+            : octaves < 1.2 ? 'about one octave'
+            : `about ${octaves.toFixed(1)} octaves`;
+          return `Pitch moved across ${range.toFixed(1)} semitones, ${span}, between the lower and higher parts of the speech.`;
+        }
+      }
+      if (key === 'pauses') {
+        const wordCount = finite(m.wordCount);
+        const pauseCount = finite(m.pauseCount);
+        const average = finite(m.averagePauseDuration);
+        const longest = finite(m.longestPause);
+        if (wordCount !== null && pauseCount !== null) {
+          if (pauseCount === 0) return `No pauses longer than 0.2 seconds were measured across ${wordCount} words.`;
+          return `${pauseCount} pauses across ${wordCount} words, about one every ${Math.max(1, Math.round(wordCount / pauseCount))} words. Average pause: ${(average || 0).toFixed(2)} seconds. Longest pause: ${(longest || 0).toFixed(2)} seconds.`;
+        }
+      }
+      return String(fallback || '')
+        .replace(/\s*Controlled variation scores higher than a constant or erratic pace\.?/gi, '')
+        .replace(/\s*Controlled changes between louder and softer speech score higher than constant or erratic volume\.?/gi, '')
+        .replace(/\s*Controlled movement between higher and lower pitch scores higher than a flat or erratic voice\.?/gi, '')
+        .replace(/\s*Useful pauses separate ideas without making the speech choppy\.?/gi, '')
+        .trim();
+    }
+
+    function performanceReviewHtml(review, type, metrics = null) {
       const dimensions = review?.dimensions || {};
       const entries = Object.entries(dimensions);
       const rows = entries.filter(([key]) => {
@@ -6910,7 +6989,10 @@
         return true;
       }).map(([key, value]) => {
         const score = typeof value?.score === 'number' ? value.score : null;
-        const evidence = value?.evidence ? `<div class="performance-evidence">${escapeHtml(value.evidence)}</div>` : '';
+        const evidenceText = type === 'vocal'
+          ? factualDeliveryEvidence(key, metrics, value?.evidence)
+          : String(value?.evidence || '');
+        const evidence = evidenceText ? `<div class="performance-evidence">${escapeHtml(evidenceText)}</div>` : '';
         return `
           <div class="performance-dimension">
             <div class="performance-dimension-line">
@@ -6923,9 +7005,6 @@
       }).join('');
       const title = type === 'vocal' ? 'Delivery Review' : 'Message Review';
       const icon = type === 'vocal' ? '🎙️' : '💬';
-      const deliveryNote = type === 'vocal'
-        ? '<div class="performance-delivery-note">Variety keeps listeners engaged. A constant pace, volume, or pitch becomes predictable.</div>'
-        : '';
       return `
         <div class="performance-review ${type}">
           <div class="performance-review-head">
@@ -6935,7 +7014,6 @@
               <span class="performance-confidence">${escapeHtml(review?.confidence || 'low')} confidence</span>
             </div>
           </div>
-          ${deliveryNote}
           ${rows}
         </div>`;
     }
@@ -6963,7 +7041,7 @@
         </div>`;
     }
 
-    function performanceReportHtml(report, subtitle = 'Latest analyzed speech') {
+    function performanceReportHtml(report, subtitle = 'Latest analyzed speech', metrics = null) {
       if (!report) return '';
       const focusTitle = plainCoachingCopy(report.nextFocus?.title || 'Next speech focus');
       const focusAction = plainCoachingCopy(report.nextFocus?.action || '');
@@ -7003,14 +7081,21 @@
               : ''}
           </div>
           ${previous.comparisonNote ? `<div class="performance-score-basis">${escapeHtml(previous.comparisonNote)}</div>` : ''}
-          ${(previous.challenges || []).map(challenge => `
-            <div class="challenge-result">
+          ${(previous.challenges || []).map(challenge => {
+            const category = plainCoachingCopy(challenge.category || 'Previous challenge');
+            const instruction = plainCoachingCopy(challenge.previousChallenge || '');
+            const instructionHtml = instruction && !sameCoachingCopy(category, instruction)
+              ? `<div class="challenge-result-instruction"><span>Previous instruction:</span> ${escapeHtml(instruction)}</div>`
+              : '';
+            return `<div class="challenge-result">
               <div class="challenge-result-line">
-                <strong>${escapeHtml(plainCoachingCopy(challenge.category || 'Previous challenge'))}</strong>
+                <strong>${escapeHtml(category)}</strong>
                 <span class="challenge-status ${escapeHtml(challenge.status || 'not_measurable')}">${escapeHtml(statusLabels[challenge.status] || 'Not measurable')}</span>
               </div>
-              <div class="challenge-result-evidence">${escapeHtml(challenge.evidence || '')}</div>
-            </div>`).join('')}
+              ${instructionHtml}
+              <div class="challenge-result-evidence">${escapeHtml(plainComparisonEvidence(challenge.evidence || '', challenge.category))}</div>
+            </div>`;
+          }).join('')}
           ${previous.previousReportId ? `<button class="previous-report-link" data-previous-report-id="${escapeHtml(previous.previousReportId)}">View previous report</button>` : ''}
         </div>` : '<div class="performance-score-basis">This is your baseline report. Your next analyzed speech will show progress against it.</div>';
       const commonChallengesHtml = Array.isArray(report.commonChallenges) && report.commonChallenges.length ? `
@@ -7033,8 +7118,8 @@
           <div class="performance-summary">${escapeHtml(report.summary || '')}</div>
           ${performancePrepHtml(report.prep)}
           <div class="performance-review-grid">
-            ${performanceReviewHtml(report.verbal, 'verbal')}
-            ${performanceReviewHtml(report.vocal, 'vocal')}
+            ${performanceReviewHtml(report.verbal, 'verbal', metrics)}
+            ${performanceReviewHtml(report.vocal, 'vocal', metrics)}
           </div>
           <div class="performance-focus"><strong>${escapeHtml(focusTitle)}:</strong> ${escapeHtml(focusAction)}</div>
           ${comparisonHtml}
@@ -7109,7 +7194,7 @@
 
       const hasParsed = parsed.summary || parsed.strengths.length || parsed.improvements.length || parsed.nextFocus;
 
-      let html = report ? performanceReportHtml(report) : '';
+      let html = report ? performanceReportHtml(report, 'Latest analyzed speech', m) : '';
 
       if (cards.length) {
         html += `<div class="score-cards">${cards.join('')}</div>`;
@@ -10315,7 +10400,7 @@
         : 'Analyzed speech';
       const trend = performanceTrendText(reports);
       latestEl.className = '';
-      latestEl.innerHTML = performanceReportHtml(selected.report, `${date} · ${trend}`);
+      latestEl.innerHTML = performanceReportHtml(selected.report, `${date} · ${trend}`, selected.metrics || null);
 
       historyEl.innerHTML = [...reports].reverse().slice(0, 10).map((speech, index) => {
         const speechDate = speech._date

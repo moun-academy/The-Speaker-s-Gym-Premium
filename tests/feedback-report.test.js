@@ -173,14 +173,43 @@ test("measured constant delivery scores low even when the AI suggests high score
     wordCount: 80,
     pauseCount: 0,
     averagePauseDuration: 0,
+    longestPause: 0,
+    wordsPerMinute: 150,
     paceSegmentCount: 5,
+    paceSegmentsWpm: [148, 150, 151, 149, 152],
     paceVariationStdDevWpm: 2,
-    acoustic: { volumeVariationDb: 0.5, pitchVariationSemitones: 0.3 },
+    acoustic: { volumeVariationDb: 0.5, volumeRangeDb: 1.2, pitchVariationSemitones: 0.3, pitchRangeSemitones: 0.8 },
   };
 
   const report = normalizeReport(raw, [], metrics);
   assert.ok(report.scoreBreakdown.delivery.score < 25);
-  assert.match(report.vocal.dimensions.pace.evidence, /measured 2 WPM/i);
+  assert.match(report.vocal.dimensions.pace.evidence, /Average pace: 150 WPM/i);
+  assert.doesNotMatch(report.vocal.dimensions.pace.evidence, /scores higher/i);
+});
+
+test("describes the measured delivery instead of explaining the scoring rule", () => {
+  const report = normalizeReport(completeReport(), [], {
+    wordCount: 84,
+    pauseCount: 5,
+    averagePauseDuration: 0.43,
+    longestPause: 0.9,
+    wordsPerMinute: 150,
+    paceSegmentCount: 7,
+    paceSegmentsWpm: [148, 154, 90, 172, 185, 158, 143],
+    paceVariationStdDevWpm: 28,
+    acoustic: {
+      volumeVariationDb: 10.3,
+      volumeRangeDb: 29.1,
+      pitchVariationSemitones: 3.07,
+      pitchRangeSemitones: 11.5,
+    },
+  });
+
+  assert.equal(report.vocal.dimensions.pace.evidence, "Average pace: 150 WPM. Across 7 short sections, pace ranged from 90 to 185 WPM. The biggest slowdown was from 154 to 90 WPM entering section 3. The biggest acceleration was from 90 to 172 WPM entering section 4.");
+  assert.match(report.vocal.dimensions.volumeVariation.evidence, /29\.1 dB range/i);
+  assert.match(report.vocal.dimensions.pitchRange.evidence, /11\.5 semitones, about one octave/i);
+  assert.match(report.vocal.dimensions.pauses.evidence, /one every 17 words.*Longest pause: 0\.90 seconds/i);
+  assert.doesNotMatch(JSON.stringify(report.vocal.dimensions), /scores higher|keeps listeners engaged/i);
 });
 
 test("controlled delivery variety scores higher than erratic delivery", () => {
@@ -226,6 +255,34 @@ test("rewrites vague historical coaching language in plain English", () => {
   const report = normalizeReport(raw, history);
   assert.match(report.nextFocus.title, /Connect your example to your main point/i);
   assert.match(report.previousPerformance.challenges[0].category, /finish with one clear final sentence/i);
+});
+
+test("rewrites structured aspiration and generic comparison language", () => {
+  const raw = completeReport();
+  raw.previousPerformance.challenges = [{
+    category: "Replace the joke with a structured aspiration",
+    status: "not_measurable",
+    evidence: "The current speech does not provide enough direct evidence for a reliable comparison.",
+  }];
+  const history = [{
+    id: "previous",
+    date: "2026-08-01",
+    report: {
+      version: 7,
+      overallScore: 55,
+      improvements: [{
+        category: "Replace the joke with a structured aspiration",
+        point: "Replace the joke with a structured aspiration",
+        evidence: "",
+      }],
+      nextFocus: { title: "", action: "" },
+    },
+  }];
+
+  const challenge = normalizeReport(raw, history).previousPerformance.challenges[0];
+  assert.match(challenge.category, /state one real goal/i);
+  assert.match(challenge.evidence, /did not include a joke followed by a real goal/i);
+  assert.doesNotMatch(challenge.category, /structured aspiration/i);
 });
 
 test("measures pace variety across successive speech segments", () => {
