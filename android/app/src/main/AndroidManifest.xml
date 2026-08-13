@@ -46,4 +46,7 @@
     <!-- Camera — required for in-app video speech recording (getUserMedia video) -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <!-- Public Downloads access for Android 9 and older. Android 10+ uses MediaStore. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 </manifest>

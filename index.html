@@ -493,6 +493,23 @@
     .performance-calculation-title { color: #f8fafc; font-size: 12px; font-weight: 850; margin-bottom: 10px; }
     .performance-calculation-row { display: flex; justify-content: space-between; gap: 12px; color: #e2e8f0; font-size: 11px; font-weight: 750; margin-top: 8px; }
     .performance-calculation-detail { color: #94a3b8; font-size: 10px; line-height: 1.5; margin-top: 3px; }
+    .performance-calculation-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 2px 0 12px;
+      padding: 0;
+      color: #facc15;
+      background: none;
+      border: 0;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+    .performance-calculation-toggle::after { content: '▾'; }
+    .performance-calculation-toggle[aria-expanded="true"]::after { content: '▴'; }
+    .performance-calculation[hidden] { display: none; }
     .performance-comparison { margin-top: 18px; padding: 16px; border: 1px solid rgba(96, 165, 250, 0.24); border-radius: 14px; background: rgba(30, 64, 175, 0.1); }
     .performance-comparison-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-weight: 800; color: #dbeafe; }
     .performance-change { color: #93c5fd; white-space: nowrap; }
@@ -565,10 +582,15 @@
       line-height: 1.6;
     }
     @media (max-width: 620px) {
+      body { padding: 6px; }
+      #analyticsPage { width: 100%; max-width: none; padding-left: 8px; padding-right: 8px; }
+      #analyticsPage .performance-tracker { margin-left: -4px; margin-right: -4px; }
       .performance-review-grid { grid-template-columns: 1fr; }
       .performance-prep-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .performance-breakdown { grid-template-columns: 1fr; }
-      .performance-hero { padding: 16px; }
+      .performance-hero { padding: 12px 10px; border-radius: 14px; }
+      .performance-review { padding: 13px 11px; }
+      .performance-comparison { padding: 13px 11px; }
       .performance-history-main { align-items: flex-start; }
     }
     .chart-container {
@@ -6109,7 +6131,7 @@
 
     // Release date shown in Settings > About and the app footer.
     // Update this with every Play Store release.
-    const APP_VERSION = '25';
+    const APP_VERSION = '26';
     const LAST_UPDATED = 'August 13, 2026';
 
     // State
@@ -7050,14 +7072,15 @@
       const previous = report.previousPerformance;
       const breakdown = report.scoreBreakdown;
       const calculationHtml = report.version >= 6 ? `
-        <div class="performance-calculation">
-          <div class="performance-calculation-title">How your overall score is calculated</div>
+        <button type="button" class="performance-calculation-toggle" aria-expanded="false">How is this score calculated?</button>
+        <div class="performance-calculation" hidden>
+          <div class="performance-calculation-title">Score details</div>
           <div class="performance-calculation-row"><span>Message and Structure</span><strong>50%</strong></div>
-          <div class="performance-calculation-detail">PREP 30 percentage points + Clear and relevant message 12 + Logical flow 8</div>
+          <div class="performance-calculation-detail">PREP: 30 points. Clear, relevant message: 12 points. Logical flow: 8 points.</div>
           <div class="performance-calculation-row"><span>Delivery</span><strong>30%</strong></div>
-          <div class="performance-calculation-detail">Pace variety 8 + Volume variety 8 + Pitch variety 8 + Pauses 6</div>
+          <div class="performance-calculation-detail">Pace variety: 8 points. Volume variety: 8 points. Pitch variety: 8 points. Pauses: 6 points.</div>
           <div class="performance-calculation-row"><span>Language Control</span><strong>20%</strong></div>
-          <div class="performance-calculation-detail">Clear and direct 8 + Word choice 4 + Filler control 4 + Repetition control 4</div>
+          <div class="performance-calculation-detail">Clear and direct: 8 points. Word choice: 4 points. Filler control: 4 points. Repetition control: 4 points.</div>
         </div>` : '';
       const breakdownHtml = breakdown ? `
         <div class="performance-breakdown">
@@ -7127,6 +7150,20 @@
           ${comparisonHtml}
           ${commonChallengesHtml}
         </div>`;
+    }
+
+    function activatePerformanceDetails(root = document) {
+      root.querySelectorAll('.performance-calculation-toggle').forEach(button => {
+        if (button.dataset.ready === 'true') return;
+        button.dataset.ready = 'true';
+        button.addEventListener('click', () => {
+          const details = button.nextElementSibling;
+          if (!details?.classList.contains('performance-calculation')) return;
+          const willOpen = details.hasAttribute('hidden');
+          details.toggleAttribute('hidden', !willOpen);
+          button.setAttribute('aria-expanded', String(willOpen));
+        });
+      });
     }
 
     // Render the AI feedback as a visual scorecard into #aiFeedback.
@@ -7237,6 +7274,7 @@
 
       aiFeedback.classList.add('rich');
       aiFeedback.innerHTML = html;
+      activatePerformanceDetails(aiFeedback);
     }
 
     // Render the transcript read-only with filler words highlighted.
@@ -8028,9 +8066,8 @@
         return;
       }
 
-      const filesystem = window.Capacitor?.Plugins?.Filesystem;
-      const share = window.Capacitor?.Plugins?.Share;
-      if (!filesystem || !share) {
+      const recordingSaver = window.Capacitor?.Plugins?.RecordingSaver;
+      if (!recordingSaver) {
         showAchievement('Saving is unavailable in this Android build.');
         return;
       }
@@ -8040,31 +8077,20 @@
       link.textContent = 'Preparing recording...';
       try {
         const data = await blobToBase64(blob);
-        const safeName = `${Date.now()}-${filename}`;
-        const saved = await filesystem.writeFile({
-          path: `recordings/${safeName}`,
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const dot = filename.lastIndexOf('.');
+        const safeName = dot > 0
+          ? `${filename.slice(0, dot)}-${timestamp}${filename.slice(dot)}`
+          : `${filename}-${timestamp}`;
+        const saved = await recordingSaver.saveToDownloads({
+          filename: safeName,
+          mimeType: blob.type || 'application/octet-stream',
           data,
-          directory: 'CACHE',
-          recursive: true
         });
-        const fileUrl = saved?.uri || (await filesystem.getUri({
-          path: `recordings/${safeName}`,
-          directory: 'CACHE'
-        })).uri;
-        if (!fileUrl) throw new Error('Android did not return the saved file location.');
-
-        await share.share({
-          title: 'Speaker\'s Gym recording',
-          text: 'Save or share your Speaker\'s Gym recording.',
-          files: [fileUrl],
-          dialogTitle: 'Save or share recording'
-        });
+        showAchievement(`Recording saved to ${saved?.folder || 'Downloads'}.`);
       } catch (error) {
-        const message = String(error?.message || error || 'Unknown error');
-        if (!/cancel|dismiss/i.test(message)) {
-          console.error('[Recording] Native save failed:', error);
-          showAchievement('Could not save the recording. Please try again.');
-        }
+        console.error('[Recording] Native save failed:', error);
+        showAchievement('Could not save the recording. Please try again.');
       } finally {
         link.removeAttribute('aria-disabled');
         link.textContent = originalText;
@@ -8079,8 +8105,8 @@
 
       audioLink.removeAttribute('download');
       videoLink.removeAttribute('download');
-      audioLink.textContent = 'Save or Share Recording';
-      videoLink.textContent = 'Save or Share Recording';
+      audioLink.textContent = 'Save Recording';
+      videoLink.textContent = 'Save Recording';
       audioLink.addEventListener('click', event => {
         event.preventDefault();
         if (audioLink.getAttribute('aria-disabled') === 'true') return;
@@ -10494,6 +10520,7 @@
       const trend = performanceTrendText(reports);
       latestEl.className = '';
       latestEl.innerHTML = performanceReportHtml(selected.report, `${date} · ${trend}`, selected.metrics || null);
+      activatePerformanceDetails(latestEl);
 
       historyEl.innerHTML = [...reports].reverse().slice(0, 10).map((speech, index) => {
         const speechDate = speech._date
