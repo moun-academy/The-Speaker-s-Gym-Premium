@@ -6109,8 +6109,8 @@
 
     // Release date shown in Settings > About and the app footer.
     // Update this with every Play Store release.
-    const APP_VERSION = '23';
-    const LAST_UPDATED = 'August 11, 2026';
+    const APP_VERSION = '25';
+    const LAST_UPDATED = 'August 13, 2026';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -6131,6 +6131,7 @@
     let recognitionActive = false;
     let liveTranscript = '';
     let currentAudioBlob = null;
+    let currentVideoBlob = null;
     let currentAudioRecordingUrl = null;
     let currentVideoRecordingUrl = null;
     let lastSpeechMetrics = null; // Store metrics from last AI analysis for Firebase sync
@@ -6696,6 +6697,7 @@
       isRunning = false;
       elapsedSeconds = 0;
       currentAudioBlob = null;
+      currentVideoBlob = null;
       updateTimerDisplay();
       wordBox.classList.remove('active');
       timerCircle.classList.remove('warning', 'danger');
@@ -7931,7 +7933,7 @@
       mediaRecorder.onstop = () => {
         const mimeType = mediaRecorder.mimeType || 'video/webm';
         const videoBlob = new Blob(recordedChunks, { type: mimeType });
-        currentAudioBlob = videoBlob;
+        currentVideoBlob = videoBlob;
         if (currentVideoRecordingUrl) URL.revokeObjectURL(currentVideoRecordingUrl);
         currentVideoRecordingUrl = URL.createObjectURL(videoBlob);
         const preview = document.getElementById('videoRecordingPreview');
@@ -8001,6 +8003,96 @@
       // Stop = end of speech: reset timer state automatically (deferred so the
       // recorder's onstop handler still reports the real speech duration)
       setTimeout(() => { elapsedSeconds = 0; updateTimerDisplay(); }, 0);
+    }
+
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = String(reader.result || '');
+          const separator = result.indexOf(',');
+          if (separator < 0) {
+            reject(new Error('Could not prepare the recording file.'));
+            return;
+          }
+          resolve(result.slice(separator + 1));
+        };
+        reader.onerror = () => reject(reader.error || new Error('Could not read the recording file.'));
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function saveNativeRecording(blob, filename, link) {
+      if (!blob) {
+        showAchievement('No recording is available to save.');
+        return;
+      }
+
+      const filesystem = window.Capacitor?.Plugins?.Filesystem;
+      const share = window.Capacitor?.Plugins?.Share;
+      if (!filesystem || !share) {
+        showAchievement('Saving is unavailable in this Android build.');
+        return;
+      }
+
+      const originalText = link.textContent;
+      link.setAttribute('aria-disabled', 'true');
+      link.textContent = 'Preparing recording...';
+      try {
+        const data = await blobToBase64(blob);
+        const safeName = `${Date.now()}-${filename}`;
+        const saved = await filesystem.writeFile({
+          path: `recordings/${safeName}`,
+          data,
+          directory: 'CACHE',
+          recursive: true
+        });
+        const fileUrl = saved?.uri || (await filesystem.getUri({
+          path: `recordings/${safeName}`,
+          directory: 'CACHE'
+        })).uri;
+        if (!fileUrl) throw new Error('Android did not return the saved file location.');
+
+        await share.share({
+          title: 'Speaker\'s Gym recording',
+          text: 'Save or share your Speaker\'s Gym recording.',
+          files: [fileUrl],
+          dialogTitle: 'Save or share recording'
+        });
+      } catch (error) {
+        const message = String(error?.message || error || 'Unknown error');
+        if (!/cancel|dismiss/i.test(message)) {
+          console.error('[Recording] Native save failed:', error);
+          showAchievement('Could not save the recording. Please try again.');
+        }
+      } finally {
+        link.removeAttribute('aria-disabled');
+        link.textContent = originalText;
+      }
+    }
+
+    function configureRecordingDownloads() {
+      const audioLink = document.getElementById('audioDownloadLink');
+      const videoLink = document.getElementById('videoDownloadLink');
+      const nativeApp = !!(window.Capacitor?.isNativePlatform?.());
+      if (!nativeApp) return;
+
+      audioLink.removeAttribute('download');
+      videoLink.removeAttribute('download');
+      audioLink.textContent = 'Save or Share Recording';
+      videoLink.textContent = 'Save or Share Recording';
+      audioLink.addEventListener('click', event => {
+        event.preventDefault();
+        if (audioLink.getAttribute('aria-disabled') === 'true') return;
+        const extension = currentAudioBlob?.type?.includes('mp4') ? 'm4a' : 'webm';
+        saveNativeRecording(currentAudioBlob, `speech-audio.${extension}`, audioLink);
+      });
+      videoLink.addEventListener('click', event => {
+        event.preventDefault();
+        if (videoLink.getAttribute('aria-disabled') === 'true') return;
+        const extension = currentVideoBlob?.type?.includes('mp4') ? 'mp4' : 'webm';
+        saveNativeRecording(currentVideoBlob, `speech-video.${extension}`, videoLink);
+      });
     }
 
     // ========== RAPID FIRE FUNCTIONS ==========
@@ -8207,6 +8299,7 @@
     document.getElementById('newWordBtn').addEventListener('click', newWord);
     document.getElementById('audioBtn').addEventListener('click', () => setMode('audio'));
     document.getElementById('cameraBtn').addEventListener('click', () => setMode('video'));
+    configureRecordingDownloads();
     document.getElementById('skipRating').addEventListener('click', () => submitRating(null));
 
     document.getElementById('startAudioBtn').addEventListener('click', startAudioRecording);
