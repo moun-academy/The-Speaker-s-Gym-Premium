@@ -59,7 +59,7 @@ test("uses the agreed 50/30/20 weighting instead of averaging vocal and verbal r
   assert.equal(report.scoreBreakdown.messageAndStructure.weight, 50);
   assert.equal(report.scoreBreakdown.delivery.weight, 30);
   assert.equal(report.scoreBreakdown.languageControl.weight, 20);
-  assert.equal(report.version, 7);
+  assert.equal(report.version, 8);
 });
 
 test("rejects the partial report that previously produced a vocal-only overall score", () => {
@@ -196,6 +196,15 @@ test("describes the measured delivery instead of explaining the scoring rule", (
     wordsPerMinute: 150,
     paceSegmentCount: 7,
     paceSegmentsWpm: [148, 154, 90, 172, 185, 158, 143],
+    paceSamples: [
+      { wpm: 148, startSeconds: 0 },
+      { wpm: 154, startSeconds: 6 },
+      { wpm: 90, startSeconds: 12 },
+      { wpm: 172, startSeconds: 24 },
+      { wpm: 185, startSeconds: 30 },
+      { wpm: 158, startSeconds: 36 },
+      { wpm: 143, startSeconds: 42 },
+    ],
     paceVariationStdDevWpm: 28,
     acoustic: {
       volumeVariationDb: 10.3,
@@ -205,16 +214,17 @@ test("describes the measured delivery instead of explaining the scoring rule", (
     },
   });
 
-  assert.equal(report.vocal.dimensions.pace.evidence, "Average pace: 150 WPM. Across 7 short sections, pace ranged from 90 to 185 WPM. The biggest slowdown was from 154 to 90 WPM entering section 3. The biggest acceleration was from 90 to 172 WPM entering section 4.");
+  assert.equal(report.vocal.dimensions.pace.evidence, "Average pace: 150 WPM. Your slowest 12-word sample was 90 WPM, and your fastest was 185 WPM. Around 0:12, you slowed from 154 to 90 WPM. Around 0:24, you accelerated from 90 to 172 WPM.");
+  assert.doesNotMatch(report.vocal.dimensions.pace.evidence, /section/i);
   assert.match(report.vocal.dimensions.volumeVariation.evidence, /29\.1 dB range/i);
   assert.match(report.vocal.dimensions.pitchRange.evidence, /11\.5 semitones, about one octave/i);
   assert.match(report.vocal.dimensions.pauses.evidence, /one every 17 words.*Longest pause: 0\.90 seconds/i);
   assert.doesNotMatch(JSON.stringify(report.vocal.dimensions), /scores higher|keeps listeners engaged/i);
 });
 
-test("controlled delivery variety scores higher than erratic delivery", () => {
+test("strong deliberate pace variety scores higher than moderate variety", () => {
   const raw = setAllScores(completeReport(), 95);
-  const controlled = normalizeReport(raw, [], {
+  const moderate = normalizeReport(raw, [], {
     wordCount: 80,
     pauseCount: 8,
     averagePauseDuration: 0.6,
@@ -222,17 +232,18 @@ test("controlled delivery variety scores higher than erratic delivery", () => {
     paceVariationStdDevWpm: 18,
     acoustic: { volumeVariationDb: 6, pitchVariationSemitones: 5.5 },
   });
-  const erratic = normalizeReport(raw, [], {
-    wordCount: 60,
-    pauseCount: 30,
-    averagePauseDuration: 3,
+  const strong = normalizeReport(raw, [], {
+    wordCount: 80,
+    pauseCount: 8,
+    averagePauseDuration: 0.6,
     paceSegmentCount: 5,
     paceVariationStdDevWpm: 50,
-    acoustic: { volumeVariationDb: 15, pitchVariationSemitones: 14 },
+    acoustic: { volumeVariationDb: 6, pitchVariationSemitones: 5.5 },
   });
 
-  assert.ok(controlled.scoreBreakdown.delivery.score >= 70);
-  assert.ok(erratic.scoreBreakdown.delivery.score < 45);
+  assert.equal(moderate.vocal.dimensions.pace.score, 72);
+  assert.equal(strong.vocal.dimensions.pace.score, 96);
+  assert.ok(strong.scoreBreakdown.delivery.score > moderate.scoreBreakdown.delivery.score);
 });
 
 test("rewrites vague historical coaching language in plain English", () => {
@@ -291,6 +302,8 @@ test("measures pace variety across successive speech segments", () => {
   const result = analyzePaceVariety([...fast, ...slow]);
 
   assert.equal(result.paceSegmentCount, 2);
+  assert.equal(result.paceSamples[0].startSeconds, 0);
+  assert.equal(result.paceSamples[1].startSeconds, 6);
   assert.ok(result.paceVariationWpm > 50);
   assert.ok(result.paceVariationStdDevWpm > 20);
 });

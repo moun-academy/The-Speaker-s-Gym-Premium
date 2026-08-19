@@ -126,7 +126,7 @@ function countRepeatedPhrases(transcript) {
 export function analyzePaceVariety(words) {
   const safeWords = Array.isArray(words) ? words : [];
   const chunkSize = 12;
-  const segmentWpm = [];
+  const paceSamples = [];
 
   for (let index = 0; index < safeWords.length; index += chunkSize) {
     const chunk = safeWords.slice(index, index + chunkSize);
@@ -135,13 +135,25 @@ export function analyzePaceVariety(words) {
     const end = Number(chunk[chunk.length - 1]?.end);
     const duration = end - start;
     if (!Number.isFinite(duration) || duration <= 0) continue;
-    segmentWpm.push(Math.round((chunk.length / duration) * 60));
+    const wpm = Math.round((chunk.length / duration) * 60);
+    // Ignore implausible samples caused by unreliable word timestamps while
+    // preserving genuinely slow and fast delivery.
+    if (wpm < 35 || wpm > 260) continue;
+    paceSamples.push({
+      wpm,
+      startSeconds: Math.round(start * 10) / 10,
+      endSeconds: Math.round(end * 10) / 10,
+      wordCount: chunk.length,
+    });
   }
+
+  const segmentWpm = paceSamples.map(sample => sample.wpm);
 
   if (segmentWpm.length < 2) {
     return {
       paceSegmentCount: segmentWpm.length,
       paceSegmentsWpm: segmentWpm,
+      paceSamples,
       paceVariationWpm: null,
       paceVariationStdDevWpm: null,
     };
@@ -152,6 +164,7 @@ export function analyzePaceVariety(words) {
   return {
     paceSegmentCount: segmentWpm.length,
     paceSegmentsWpm: segmentWpm.slice(0, 20),
+    paceSamples: paceSamples.slice(0, 20),
     paceVariationWpm: Math.max(...segmentWpm) - Math.min(...segmentWpm),
     paceVariationStdDevWpm: Math.round(Math.sqrt(variance) * 10) / 10,
   };
@@ -602,6 +615,12 @@ function describeOctaveSpan(semitones) {
   return `about ${octaves.toFixed(1)} octaves`;
 }
 
+function formatSpeechTime(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "";
+  const rounded = Math.round(seconds);
+  return `${Math.floor(rounded / 60)}:${String(rounded % 60).padStart(2, "0")}`;
+}
+
 export function calibrateDeliveryReview(vocal, metrics) {
   if (!metrics?.acoustic) return vocal;
 
@@ -610,6 +629,8 @@ export function calibrateDeliveryReview(vocal, metrics) {
   const paceStdDev = finiteMetric(metrics.paceVariationStdDevWpm);
   const paceSegments = (Array.isArray(metrics.paceSegmentsWpm) ? metrics.paceSegmentsWpm : [])
     .filter(value => typeof value === "number" && Number.isFinite(value));
+  const paceSamples = (Array.isArray(metrics.paceSamples) ? metrics.paceSamples : [])
+    .filter(sample => typeof sample?.wpm === "number" && Number.isFinite(sample.wpm));
   const averagePace = finiteMetric(metrics.wordsPerMinute)
     ?? (paceSegments.length ? Math.round(paceSegments.reduce((sum, value) => sum + value, 0) / paceSegments.length) : null);
   const slowestPace = paceSegments.length ? Math.min(...paceSegments) : null;
@@ -619,28 +640,28 @@ export function calibrateDeliveryReview(vocal, metrics) {
   for (let index = 1; index < paceSegments.length; index++) {
     const change = paceSegments[index] - paceSegments[index - 1];
     if (change < 0 && (!largestSlowdown || change < largestSlowdown.change)) {
-      largestSlowdown = { from: paceSegments[index - 1], to: paceSegments[index], section: index + 1, change };
+      largestSlowdown = { from: paceSegments[index - 1], to: paceSegments[index], sampleIndex: index, change };
     }
     if (change > 0 && (!largestAcceleration || change > largestAcceleration.change)) {
-      largestAcceleration = { from: paceSegments[index - 1], to: paceSegments[index], section: index + 1, change };
+      largestAcceleration = { from: paceSegments[index - 1], to: paceSegments[index], sampleIndex: index, change };
     }
   }
   const paceChangeEvidence = [
     largestSlowdown
-      ? `The biggest slowdown was from ${largestSlowdown.from} to ${largestSlowdown.to} WPM entering section ${largestSlowdown.section}.`
+      ? `${paceSamples[largestSlowdown.sampleIndex]?.startSeconds !== undefined ? `Around ${formatSpeechTime(paceSamples[largestSlowdown.sampleIndex].startSeconds)}, you` : "You"} slowed from ${largestSlowdown.from} to ${largestSlowdown.to} WPM.`
       : "",
     largestAcceleration
-      ? `The biggest acceleration was from ${largestAcceleration.from} to ${largestAcceleration.to} WPM entering section ${largestAcceleration.section}.`
+      ? `${paceSamples[largestAcceleration.sampleIndex]?.startSeconds !== undefined ? `Around ${formatSpeechTime(paceSamples[largestAcceleration.sampleIndex].startSeconds)}, you` : "You"} accelerated from ${largestAcceleration.from} to ${largestAcceleration.to} WPM.`
       : "",
   ].filter(Boolean).join(" ");
   const paceEvidence = averagePace !== null && slowestPace !== null && fastestPace !== null
-    ? `Average pace: ${averagePace} WPM. Across ${paceSegments.length} short sections, pace ranged from ${slowestPace} to ${fastestPace} WPM. ${paceChangeEvidence}`.trim()
+    ? `Average pace: ${averagePace} WPM. Your slowest 12-word sample was ${slowestPace} WPM, and your fastest was ${fastestPace} WPM. ${paceChangeEvidence}`.trim()
     : paceStdDev !== null
-      ? `Pace varied by ${paceStdDev} WPM across ${segmentCount} short sections.`
-      : "The speech was too short to compare pace across multiple sections.";
+      ? `Your pace varied by ${paceStdDev} WPM across ${segmentCount} consecutive 12-word samples.`
+      : "The speech was too short to compare multiple 12-word pace samples.";
   dimensions.pace = segmentCount >= 2 && paceStdDev !== null
     ? measuredDimension(
-        scoreFromAnchors(paceStdDev, [[0, 10], [3, 20], [7, 40], [12, 58], [18, 72], [25, 80], [35, 68], [50, 45], [80, 25]]),
+        scoreFromAnchors(paceStdDev, [[0, 10], [3, 20], [7, 40], [12, 58], [18, 72], [25, 82], [35, 90], [50, 96], [80, 100]]),
         paceEvidence
       )
     : measuredDimension(null, paceEvidence);
@@ -697,7 +718,7 @@ export function calibrateDeliveryReview(vocal, metrics) {
 }
 
 export function normalizeReport(raw, history = [], metrics = null) {
-  const scoringVersion = 7;
+  const scoringVersion = 8;
   const report = raw && typeof raw === "object" ? raw : {};
   const prep = normalizePrep(report.prep);
   const vocal = calibrateDeliveryReview(normalizeReview(report.vocal, [
@@ -921,7 +942,7 @@ async function generatePerformanceReport({ transcript, promptContext, metrics, h
           "The volumeVariation field means Volume variety: whether the speaker becomes meaningfully louder and softer.",
           "The pitchRange field means Pitch variety: whether the voice moves meaningfully higher and lower.",
           "Pauses measure whether silence is used intentionally to separate ideas.",
-          "Variety helps sustain listener engagement. Constant pace, pitch, and volume should score lower than controlled variation. Excessive or erratic variation should also score lower.",
+          "Variety helps sustain listener engagement. Constant pace, pitch, and volume should score lower than meaningful variation. For pace, a broad intentional contrast between slow and fast delivery should score higher and must not be penalized merely because the measured range is wide.",
           "Score PREP explicitly as Point, Reason, Example, and Final Point. A missing step scores 0. Do not invent an implied step that is not supported by the transcript.",
           "Every PREP step must have a numeric score. Use 0 when the transcript does not contain that step, never null.",
           "A vague, irrelevant, or merely implied PREP step is not meaningful support and must score below 50.",

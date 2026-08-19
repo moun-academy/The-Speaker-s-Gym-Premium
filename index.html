@@ -572,6 +572,13 @@
       letter-spacing: .04em;
       margin-top: 2px;
     }
+    .speaking-score-method {
+      margin-top: 12px;
+      color: #94a3b8;
+      font-size: 11px;
+      line-height: 1.5;
+      text-align: center;
+    }
     .performance-empty {
       color: #94a3b8;
       text-align: center;
@@ -5058,22 +5065,15 @@
         </div>
         <div class="score-breakdown">
           <div class="score-factor">
+            <span class="score-factor-value" id="sfRecentPerformance">--</span>
+            <span class="score-factor-label">Latest 5 AI reports</span>
+          </div>
+          <div class="score-factor">
             <span class="score-factor-value" id="sfConsistency">--</span>
-            <span class="score-factor-label">Consistency</span>
-          </div>
-          <div class="score-factor">
-            <span class="score-factor-value" id="sfPacing">--</span>
-            <span class="score-factor-label">Pacing</span>
-          </div>
-          <div class="score-factor">
-            <span class="score-factor-value" id="sfClarity">--</span>
-            <span class="score-factor-label">Clarity</span>
-          </div>
-          <div class="score-factor">
-            <span class="score-factor-value" id="sfConfidence">--</span>
-            <span class="score-factor-label">Confidence</span>
+            <span class="score-factor-label">30-day consistency</span>
           </div>
         </div>
+        <div class="speaking-score-method">Updates after every AI-analyzed speech. Latest five reports: 80%. Practice consistency: 20%.</div>
       </div>
 
       <!-- Weekly AI Insight -->
@@ -6132,7 +6132,7 @@
     // Release date shown in Settings > About and the app footer.
     // Update this with every Play Store release.
     const APP_VERSION = '26';
-    const LAST_UPDATED = 'August 13, 2026';
+    const LAST_UPDATED = 'August 19, 2026';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -6950,23 +6950,30 @@
       const acoustic = m.acoustic || {};
       const finite = value => typeof value === 'number' && Number.isFinite(value) ? value : null;
       if (key === 'pace') {
-        const sections = (Array.isArray(m.paceSegmentsWpm) ? m.paceSegmentsWpm : []).filter(value => finite(value) !== null);
+        const samples = (Array.isArray(m.paceSegmentsWpm) ? m.paceSegmentsWpm : []).filter(value => finite(value) !== null);
+        const timedSamples = (Array.isArray(m.paceSamples) ? m.paceSamples : []).filter(sample => finite(sample?.wpm) !== null);
         const average = finite(m.wordsPerMinute);
-        if (average !== null && sections.length >= 2) {
-          const slowest = Math.min(...sections);
-          const fastest = Math.max(...sections);
+        if (average !== null && samples.length >= 2) {
+          const slowest = Math.min(...samples);
+          const fastest = Math.max(...samples);
           let slowdown = null;
           let acceleration = null;
-          for (let index = 1; index < sections.length; index++) {
-            const change = sections[index] - sections[index - 1];
-            if (change < 0 && (!slowdown || change < slowdown.change)) slowdown = { from: sections[index - 1], to: sections[index], section: index + 1, change };
-            if (change > 0 && (!acceleration || change > acceleration.change)) acceleration = { from: sections[index - 1], to: sections[index], section: index + 1, change };
+          for (let index = 1; index < samples.length; index++) {
+            const change = samples[index] - samples[index - 1];
+            if (change < 0 && (!slowdown || change < slowdown.change)) slowdown = { from: samples[index - 1], to: samples[index], sampleIndex: index, change };
+            if (change > 0 && (!acceleration || change > acceleration.change)) acceleration = { from: samples[index - 1], to: samples[index], sampleIndex: index, change };
           }
+          const timeLabel = sampleIndex => {
+            const seconds = finite(timedSamples[sampleIndex]?.startSeconds);
+            if (seconds === null) return '';
+            const rounded = Math.round(seconds);
+            return `Around ${Math.floor(rounded / 60)}:${String(rounded % 60).padStart(2, '0')}, `;
+          };
           const changes = [
-            slowdown ? `The biggest slowdown was from ${slowdown.from} to ${slowdown.to} WPM entering section ${slowdown.section}.` : '',
-            acceleration ? `The biggest acceleration was from ${acceleration.from} to ${acceleration.to} WPM entering section ${acceleration.section}.` : ''
+            slowdown ? `${timeLabel(slowdown.sampleIndex)}you slowed from ${slowdown.from} to ${slowdown.to} WPM.` : '',
+            acceleration ? `${timeLabel(acceleration.sampleIndex)}you accelerated from ${acceleration.from} to ${acceleration.to} WPM.` : ''
           ].filter(Boolean).join(' ');
-          return `Average pace: ${average} WPM. Across ${sections.length} short sections, pace ranged from ${slowest} to ${fastest} WPM. ${changes}`.trim();
+          return `Average pace: ${average} WPM. Your slowest 12-word sample was ${slowest} WPM, and your fastest was ${fastest} WPM. ${changes}`.trim();
         }
       }
       if (key === 'volumeVariation') {
@@ -11087,79 +11094,59 @@
       }
     }
 
+    function speakingScoreSnapshot(speeches, now = new Date()) {
+      const analyzed = [...speeches]
+        .filter(speech => speech?.report?.version >= 8 && Number.isFinite(Number(speech.report.overallScore)))
+        .sort((left, right) => (left._date?.getTime?.() || 0) - (right._date?.getTime?.() || 0))
+        .slice(-5);
+      if (!analyzed.length) return null;
+
+      const recentPerformance = Math.round(analyzed.reduce((sum, speech) => (
+        sum + Number(speech.report.overallScore)
+      ), 0) / analyzed.length);
+
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const uniquePracticeDays = new Set(
+        speeches
+          .filter(speech => speech._date && speech._date >= thirtyDaysAgo)
+          .map(speech => speech._date.toDateString())
+      ).size;
+      // Twelve practice days in 30 days is treated as full consistency.
+      const consistency = Math.min(100, Math.round((uniquePracticeDays / 12) * 100));
+
+      return {
+        overall: Math.round((recentPerformance * 0.8) + (consistency * 0.2)),
+        recentPerformance,
+        consistency,
+        analyzedCount: analyzed.length,
+      };
+    }
+
     function calculateSpeakingScore() {
-      const speeches = analyticsSpeeches;
-      if (speeches.length === 0) {
+      const score = speakingScoreSnapshot(analyticsSpeeches);
+      if (!score) {
         document.getElementById('speakingScoreValue').textContent = '--';
+        document.getElementById('sfRecentPerformance').textContent = '--';
         document.getElementById('sfConsistency').textContent = '--';
-        document.getElementById('sfPacing').textContent = '--';
-        document.getElementById('sfClarity').textContent = '--';
-        document.getElementById('sfConfidence').textContent = '--';
         return;
       }
 
-      // Consistency: based on practice frequency (last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const recentSpeeches = speeches.filter(s => s._date && s._date >= thirtyDaysAgo);
-      const uniqueDays = new Set(recentSpeeches.map(s => s._date?.toDateString())).size;
-      const consistencyScore = Math.min(100, Math.round((uniqueDays / 30) * 100 * 1.5));
-
-      // Pacing: how close to ideal 120-150 WPM range
-      const metricsSpeeches = recentSpeeches.filter(s => s.metrics && s.metrics.wordsPerMinute);
-      let pacingScore = 50;
-      if (metricsSpeeches.length > 0) {
-        const avgWpm = metricsSpeeches.reduce((sum, s) => sum + s.metrics.wordsPerMinute, 0) / metricsSpeeches.length;
-        if (avgWpm >= 120 && avgWpm <= 150) pacingScore = 100;
-        else if (avgWpm >= 100 && avgWpm <= 170) pacingScore = 75;
-        else if (avgWpm >= 80 && avgWpm <= 200) pacingScore = 50;
-        else pacingScore = 25;
-      }
-
-      // Clarity: inverse of filler word frequency
-      let clarityScore = 70;
-      if (metricsSpeeches.length > 0) {
-        const avgFillers = metricsSpeeches.reduce((sum, s) => sum + (s.metrics.fillerWordCount || 0), 0) / metricsSpeeches.length;
-        if (avgFillers === 0) clarityScore = 100;
-        else if (avgFillers <= 1) clarityScore = 90;
-        else if (avgFillers <= 3) clarityScore = 75;
-        else if (avgFillers <= 5) clarityScore = 55;
-        else clarityScore = 35;
-      }
-
-      // Confidence: average self-rating
-      const ratedSpeeches = recentSpeeches.filter(s => s.rating);
-      let confidenceScore = 50;
-      if (ratedSpeeches.length > 0) {
-        const avgRating = ratedSpeeches.reduce((sum, s) => sum + s.rating, 0) / ratedSpeeches.length;
-        confidenceScore = Math.round((avgRating / 5) * 100);
-      }
-
-      // Weighted composite
-      const overall = Math.round(
-        consistencyScore * 0.25 +
-        pacingScore * 0.25 +
-        clarityScore * 0.25 +
-        confidenceScore * 0.25
-      );
-
       // Update UI
-      document.getElementById('speakingScoreValue').textContent = overall;
-      document.getElementById('sfConsistency').textContent = consistencyScore;
-      document.getElementById('sfPacing').textContent = pacingScore;
-      document.getElementById('sfClarity').textContent = clarityScore;
-      document.getElementById('sfConfidence').textContent = confidenceScore;
+      document.getElementById('speakingScoreValue').textContent = score.overall;
+      document.getElementById('sfRecentPerformance').textContent = score.recentPerformance;
+      document.getElementById('sfConsistency').textContent = score.consistency;
 
       // Animate ring
       const circumference = 2 * Math.PI * 70; // r=70
-      const offset = circumference - (overall / 100) * circumference;
+      const offset = circumference - (score.overall / 100) * circumference;
       const ring = document.getElementById('scoreRingProgress');
       ring.style.strokeDashoffset = offset;
 
       // Color based on score
-      if (overall >= 80) ring.setAttribute('stroke', '#22c55e');
-      else if (overall >= 60) ring.setAttribute('stroke', '#facc15');
-      else if (overall >= 40) ring.setAttribute('stroke', '#f59e0b');
+      if (score.overall >= 80) ring.setAttribute('stroke', '#22c55e');
+      else if (score.overall >= 60) ring.setAttribute('stroke', '#facc15');
+      else if (score.overall >= 40) ring.setAttribute('stroke', '#f59e0b');
       else ring.setAttribute('stroke', '#ef4444');
     }
 
