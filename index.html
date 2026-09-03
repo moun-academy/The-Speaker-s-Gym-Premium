@@ -6132,7 +6132,7 @@
     // Release date shown in Settings > About and the app footer.
     // Update this with every Play Store release.
     const APP_VERSION = '26';
-    const LAST_UPDATED = 'August 19, 2026';
+    const LAST_UPDATED = 'September 3, 2026';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -7815,6 +7815,22 @@
       if (indV) indV.classList.toggle('active', active);
     }
 
+    async function offerNativePermissionRecovery(permissionLabel) {
+      if (!isCapacitorNative()) return;
+      const recordingSaver = window.Capacitor?.Plugins?.RecordingSaver;
+      if (!recordingSaver?.openAppSettings) return;
+      const openSettings = window.confirm(
+        `${permissionLabel} access is turned off. Open Speaker's Gym settings now to allow it?`
+      );
+      if (!openSettings) return;
+      try {
+        await recordingSaver.openAppSettings();
+      } catch (error) {
+        console.error('[Permissions] Could not open app settings:', error);
+        showAchievement('Open phone Settings, then Apps, Speaker\'s Gym, and Permissions.');
+      }
+    }
+
     async function initCamera() {
       try {
         const audioConstraint = selectedAudioDeviceId
@@ -7837,7 +7853,8 @@
             return;
           } catch (e2) { /* fall through */ }
         }
-        showAchievement("⚠️ Camera access denied. You can switch to Audio mode.");
+        showAchievement("Camera or microphone access is denied.");
+        offerNativePermissionRecovery('Camera or microphone');
       }
     }
 
@@ -7861,7 +7878,8 @@
             return;
           } catch (e2) { /* fall through */ }
         }
-        showAchievement("⚠️ Mic access denied");
+        showAchievement("Microphone access is denied.");
+        offerNativePermissionRecovery('Microphone');
       }
     }
 
@@ -11830,6 +11848,7 @@
           spotRecognitionShouldRun = false;
           const el = document.getElementById('spotLiveTranscript');
           if (el) el.textContent = '⚠️ Microphone permission is required for live transcription. Enable it and restart the challenge.';
+          offerNativePermissionRecovery('Microphone');
         } else if (event.error === 'audio-capture') {
           spotRecognitionShouldRun = false;
           const el = document.getElementById('spotLiveTranscript');

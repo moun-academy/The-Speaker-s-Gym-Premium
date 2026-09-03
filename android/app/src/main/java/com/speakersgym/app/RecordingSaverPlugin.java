@@ -3,9 +3,11 @@ package com.speakersgym.app;
 import android.Manifest;
 import android.content.ContentResolver;
 import android.content.ContentValues;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.provider.Settings;
 import android.provider.MediaStore;
 import android.util.Base64;
 import com.getcapacitor.JSObject;
@@ -25,6 +27,19 @@ import java.io.OutputStream;
     permissions = @Permission(strings = { Manifest.permission.WRITE_EXTERNAL_STORAGE }, alias = "legacyStorage")
 )
 public class RecordingSaverPlugin extends Plugin {
+
+    @PluginMethod
+    public void openAppSettings(PluginCall call) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (Exception error) {
+            call.reject("Could not open Speaker's Gym settings.", error);
+        }
+    }
 
     @PluginMethod
     public void saveToDownloads(PluginCall call) {
