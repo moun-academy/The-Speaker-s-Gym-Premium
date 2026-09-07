@@ -74,6 +74,17 @@
       font-size: 22px;
       transition: all 0.25s ease;
       z-index: 100;
+      color: #e5e7eb;
+      font-family: inherit;
+      padding: 0;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: 3px solid #fde047 !important;
+      outline-offset: 3px;
     }
 
     .hamburger-btn:hover {
@@ -180,6 +191,9 @@
       cursor: pointer;
       transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       text-decoration: none;
+      width: 100%;
+      text-align: left;
+      font-family: inherit;
     }
 
     .menu-item:hover {
@@ -1608,6 +1622,9 @@
       justify-content: center;
       font-size: 18px;
       transition: all 0.25s ease;
+      color: #e5e7eb;
+      font-family: inherit;
+      padding: 0;
     }
 
     .profile-btn:hover {
@@ -4112,67 +4129,67 @@
   <div class="menu-overlay" id="menuOverlay"></div>
 
   <!-- Hamburger Menu Sidebar -->
-  <div class="menu-sidebar" id="menuSidebar">
+  <aside class="menu-sidebar" id="menuSidebar" aria-label="Main menu" aria-hidden="true" inert>
     <div class="menu-header">
       <span class="menu-title">Menu</span>
-      <button class="menu-close" id="menuClose">×</button>
+      <button class="menu-close" id="menuClose" type="button" aria-label="Close menu">×</button>
     </div>
     <nav class="menu-nav">
-      <div class="menu-item" id="menuWarmUp" data-page="warmup">
+      <button class="menu-item" id="menuWarmUp" type="button" data-page="warmup">
         <span class="menu-item-icon">🎤</span>
         <span>Warm Up</span>
-      </div>
-      <div class="menu-item active" id="menuHome" data-page="main">
+      </button>
+      <button class="menu-item active" id="menuHome" type="button" data-page="main" aria-current="page">
         <span class="menu-item-icon">🏠</span>
         <span>Home</span>
-      </div>
-      <div class="menu-item" id="menuRapidFire" data-page="rapidfire">
+      </button>
+      <button class="menu-item" id="menuRapidFire" type="button" data-page="rapidfire">
         <span class="menu-item-icon">⚡</span>
         <span>Think Fast</span>
-      </div>
-      <div class="menu-item" id="menuSpot" data-page="spot">
+      </button>
+      <button class="menu-item" id="menuSpot" type="button" data-page="spot">
         <span class="menu-item-icon">🎯</span>
         <span>Speak on the Spot</span>
-      </div>
-      <div class="menu-item" id="menuVocab" data-page="vocab">
+      </button>
+      <button class="menu-item" id="menuVocab" type="button" data-page="vocab">
         <span class="menu-item-icon">📚</span>
         <span>Word Upgrade</span>
-      </div>
-      <div class="menu-item" id="menuLevels" data-page="levels">
+      </button>
+      <button class="menu-item" id="menuLevels" type="button" data-page="levels">
         <span class="menu-item-icon">⭐</span>
         <span>Levels</span>
-      </div>
-      <div class="menu-item" id="menuProgram" data-page="program">
+      </button>
+      <button class="menu-item" id="menuProgram" type="button" data-page="program">
         <span class="menu-item-icon">🗓️</span>
         <span>6-Week Program</span>
-      </div>
-      <div class="menu-item" id="menuAnalytics" data-page="analytics">
+      </button>
+      <button class="menu-item" id="menuAnalytics" type="button" data-page="analytics">
         <span class="menu-item-icon">📊</span>
         <span>Performance Tracker</span>
-      </div>
+      </button>
       <div class="menu-divider"></div>
-      <div class="menu-item" id="menuSettings" data-page="settings">
+      <button class="menu-item" id="menuSettings" type="button" data-page="settings">
         <span class="menu-item-icon">⚙️</span>
         <span>Settings</span>
-      </div>
+      </button>
     </nav>
-  </div>
+  </aside>
 
   <div class="container page active" id="mainPage">
     <div class="header">
       <!-- Hamburger Menu Button -->
-      <div class="hamburger-btn" id="hamburgerBtn">☰</div>
+      <button class="hamburger-btn" id="hamburgerBtn" type="button" aria-label="Open menu" aria-controls="menuSidebar" aria-expanded="false">☰</button>
 
       <h1>🏋️ The Speaker's Gym</h1>
       <div class="brand">by <span class="brand-name">MOUN Academy</span></div>
 
       <!-- Profile Button -->
-      <div class="profile-btn" id="profileBtn">
+      <button class="profile-btn" id="profileBtn" type="button" aria-label="Open profile menu" aria-controls="profileDropdown" aria-expanded="false">
         <span id="profileIcon">👤</span>
-      </div>
+      </button>
 
       <!-- Profile Dropdown -->
-      <div class="profile-dropdown" id="profileDropdown">
+      <div class="profile-dropdown" id="profileDropdown" aria-hidden="true">
         <!-- When signed out -->
         <div id="profileSignedOut">
           <div class="profile-actions">
@@ -6131,8 +6148,8 @@
 
     // Release date shown in Settings > About and the app footer.
     // Update this with every Play Store release.
-    const APP_VERSION = '26';
-    const LAST_UPDATED = 'September 3, 2026';
+    const APP_VERSION = '28';
+    const LAST_UPDATED = 'September 7, 2026';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -9637,15 +9654,21 @@
       const profileDropdown = document.getElementById('profileDropdown');
       const profileIcon = document.getElementById('profileIcon');
 
+      function setProfileMenuOpen(isOpen) {
+        profileDropdown.classList.toggle('show', isOpen);
+        profileBtn.setAttribute('aria-expanded', String(isOpen));
+        profileDropdown.setAttribute('aria-hidden', String(!isOpen));
+      }
+
       // Toggle dropdown on click
       profileBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        profileDropdown.classList.toggle('show');
+        setProfileMenuOpen(!profileDropdown.classList.contains('show'));
       });
 
       // Close dropdown when clicking outside
       document.addEventListener('click', () => {
-        profileDropdown.classList.remove('show');
+        setProfileMenuOpen(false);
       });
 
       // Prevent dropdown from closing when clicking inside it
@@ -9756,7 +9779,7 @@
         profileGoogleSignInBtn.addEventListener('click', async () => {
           try {
             await signInWithGoogleSmart();
-            profileDropdown.classList.remove('show');
+            setProfileMenuOpen(false);
             showAchievement('✅ Signed in successfully!');
           } catch (error) {
             console.error('[Auth] Sign in error:', error);
@@ -9771,7 +9794,7 @@
         profileSignOutBtn.addEventListener('click', async () => {
           try {
             await signOutSmart();
-            profileDropdown.classList.remove('show');
+            setProfileMenuOpen(false);
             showAchievement('👋 Signed out');
           } catch (error) {
             console.error('[Auth] Sign out error:', error);
@@ -9902,9 +9925,15 @@
       }
 
       // Update menu active state
-      document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+      document.querySelectorAll('.menu-item').forEach(item => {
+        item.classList.remove('active');
+        item.removeAttribute('aria-current');
+      });
       const menuItem = document.querySelector(`.menu-item[data-page="${pageName}"]`);
-      if (menuItem) menuItem.classList.add('active');
+      if (menuItem) {
+        menuItem.classList.add('active');
+        menuItem.setAttribute('aria-current', 'page');
+      }
 
       currentPage = pageName;
       closeMenu();
@@ -9912,13 +9941,24 @@
 
     // Hamburger Menu Functions
     function openMenu() {
-      document.getElementById('menuSidebar').classList.add('show');
+      const sidebar = document.getElementById('menuSidebar');
+      sidebar.classList.add('show');
+      sidebar.removeAttribute('inert');
+      sidebar.setAttribute('aria-hidden', 'false');
       document.getElementById('menuOverlay').classList.add('show');
+      document.getElementById('hamburgerBtn').setAttribute('aria-expanded', 'true');
+      document.getElementById('menuClose').focus();
     }
 
-    function closeMenu() {
-      document.getElementById('menuSidebar').classList.remove('show');
+    function closeMenu(returnFocus = false) {
+      const sidebar = document.getElementById('menuSidebar');
+      sidebar.classList.remove('show');
+      sidebar.setAttribute('inert', '');
+      sidebar.setAttribute('aria-hidden', 'true');
       document.getElementById('menuOverlay').classList.remove('show');
+      const menuButton = document.getElementById('hamburgerBtn');
+      menuButton.setAttribute('aria-expanded', 'false');
+      if (returnFocus) menuButton.focus();
     }
 
     // ===== OPTIONAL FIRST-USE TUTORIAL =====
@@ -10013,8 +10053,13 @@
 
     // Setup hamburger menu event listeners
     document.getElementById('hamburgerBtn').addEventListener('click', openMenu);
-    document.getElementById('menuClose').addEventListener('click', closeMenu);
-    document.getElementById('menuOverlay').addEventListener('click', closeMenu);
+    document.getElementById('menuClose').addEventListener('click', () => closeMenu(true));
+    document.getElementById('menuOverlay').addEventListener('click', () => closeMenu(true));
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && document.getElementById('menuSidebar').classList.contains('show')) {
+        closeMenu(true);
+      }
+    });
 
     // Menu item navigation
     document.querySelectorAll('.menu-item').forEach(item => {
