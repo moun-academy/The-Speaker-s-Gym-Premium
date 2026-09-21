@@ -5597,31 +5597,31 @@
   <!-- END SETTINGS PAGE -->
 
   <!-- Optional First-Use Tutorial -->
-  <div class="tutorial-overlay" id="tutorialOverlay" aria-hidden="true">
-    <div class="tutorial-card" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
+  <div class="tutorial-overlay" id="tutorialOverlay" aria-hidden="true" inert>
+    <div class="tutorial-card" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle" aria-describedby="tutorialCopy">
       <div class="tutorial-progress" id="tutorialProgress">Step 1 of 5</div>
       <h2 class="tutorial-title" id="tutorialTitle">Welcome to Speaker's Gym</h2>
       <p class="tutorial-copy" id="tutorialCopy">Take a 60-second tour or skip and start practising.</p>
       <div class="tutorial-actions">
-        <button class="tutorial-skip" id="tutorialSkipBtn">Skip tutorial</button>
-        <button class="tutorial-next" id="tutorialNextBtn">Next</button>
+        <button class="tutorial-skip" id="tutorialSkipBtn" type="button">Skip tutorial</button>
+        <button class="tutorial-next" id="tutorialNextBtn" type="button">Next</button>
       </div>
     </div>
   </div>
 
   <!-- Rating Modal -->
-  <div class="rating-modal" id="ratingModal">
+  <div class="rating-modal" id="ratingModal" role="dialog" aria-modal="true" aria-labelledby="ratingTitle" aria-describedby="ratingSubtitle" aria-hidden="true" inert>
     <div class="rating-content">
-      <div class="rating-title">How did that feel?</div>
-      <div class="rating-subtitle">Rate your confidence (1-5)</div>
-      <div class="rating-stars">
-        <button class="star" data-rating="1">1</button>
-        <button class="star" data-rating="2">2</button>
-        <button class="star" data-rating="3">3</button>
-        <button class="star" data-rating="4">4</button>
-        <button class="star" data-rating="5">5</button>
+      <div class="rating-title" id="ratingTitle">How did that feel?</div>
+      <div class="rating-subtitle" id="ratingSubtitle">Rate your confidence (1-5)</div>
+      <div class="rating-stars" role="group" aria-label="Confidence rating from 1 to 5">
+        <button class="star" type="button" data-rating="1" aria-label="1 out of 5">1</button>
+        <button class="star" type="button" data-rating="2" aria-label="2 out of 5">2</button>
+        <button class="star" type="button" data-rating="3" aria-label="3 out of 5">3</button>
+        <button class="star" type="button" data-rating="4" aria-label="4 out of 5">4</button>
+        <button class="star" type="button" data-rating="5" aria-label="5 out of 5">5</button>
       </div>
-      <button id="skipRating" class="secondary" style="width: 100%;">Skip</button>
+      <button id="skipRating" class="secondary" type="button" style="width: 100%;">Skip</button>
     </div>
   </div>
 
@@ -6148,8 +6148,8 @@
 
     // Release date shown in Settings > About and the app footer.
     // Update this with every Play Store release.
-    const APP_VERSION = '28';
-    const LAST_UPDATED = 'September 7, 2026';
+    const APP_VERSION = '29';
+    const LAST_UPDATED = 'September 21, 2026';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -7725,12 +7725,53 @@
       else if (elapsedSeconds >= 60) timerCircle.classList.add('warning');
     }
 
-    function showRatingModal() { ratingModal.classList.add('show'); }
+    let ratingReturnFocus = null;
+
+    function canRestoreFocus(element) {
+      return element instanceof HTMLElement
+        && document.contains(element)
+        && !element.hasAttribute('disabled')
+        && element.offsetParent !== null;
+    }
+
+    function restoreDialogFocus(element, fallbackId) {
+      const target = canRestoreFocus(element) ? element : document.getElementById(fallbackId);
+      if (target) requestAnimationFrame(() => target.focus());
+    }
+
+    function trapDialogFocus(event, dialog) {
+      if (event.key !== 'Tab') return;
+      const focusable = Array.from(dialog.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )).filter(element => element.offsetParent !== null);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    function showRatingModal() {
+      ratingReturnFocus = document.activeElement;
+      ratingModal.classList.add('show');
+      ratingModal.setAttribute('aria-hidden', 'false');
+      ratingModal.removeAttribute('inert');
+      requestAnimationFrame(() => ratingModal.querySelector('.star')?.focus());
+    }
 
     function submitRating(rating) {
       ratingModal.classList.remove('show');
+      ratingModal.setAttribute('aria-hidden', 'true');
+      ratingModal.setAttribute('inert', '');
       if (rating) stats.ratings.push(rating);
       completeSpeech();
+      restoreDialogFocus(ratingReturnFocus, 'newWordBtn');
+      ratingReturnFocus = null;
     }
 
     function completeSpeech() {
@@ -9970,6 +10011,7 @@
     const tutorialNextBtn = document.getElementById('tutorialNextBtn');
     let tutorialStepIndex = 0;
     let tutorialHighlighted = null;
+    let tutorialReturnFocus = null;
 
     const tutorialSteps = [
       {
@@ -10020,19 +10062,27 @@
     }
 
     function startTutorial() {
+      tutorialReturnFocus = document.activeElement;
       navigateToPage('main');
       closeMenu();
       tutorialStepIndex = 0;
       tutorialOverlay.classList.add('show');
       tutorialOverlay.setAttribute('aria-hidden', 'false');
-      setTimeout(renderTutorialStep, 80);
+      tutorialOverlay.removeAttribute('inert');
+      setTimeout(() => {
+        renderTutorialStep();
+        tutorialNextBtn.focus();
+      }, 80);
     }
 
     function finishTutorial() {
       clearTutorialHighlight();
       tutorialOverlay.classList.remove('show');
       tutorialOverlay.setAttribute('aria-hidden', 'true');
+      tutorialOverlay.setAttribute('inert', '');
       localStorage.setItem(TUTORIAL_STORAGE_KEY, '1');
+      restoreDialogFocus(tutorialReturnFocus, 'newWordBtn');
+      tutorialReturnFocus = null;
     }
 
     function maybeShowTutorial() {
@@ -10050,6 +10100,26 @@
       renderTutorialStep();
     });
     document.getElementById('tutorialSkipBtn').addEventListener('click', finishTutorial);
+
+    document.addEventListener('keydown', event => {
+      if (tutorialOverlay.classList.contains('show')) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          finishTutorial();
+        } else {
+          trapDialogFocus(event, tutorialOverlay);
+        }
+        return;
+      }
+      if (ratingModal.classList.contains('show')) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          submitRating(null);
+        } else {
+          trapDialogFocus(event, ratingModal);
+        }
+      }
+    });
 
     // Setup hamburger menu event listeners
     document.getElementById('hamburgerBtn').addEventListener('click', openMenu);
