@@ -2855,6 +2855,11 @@
     .ai-feedback-box { background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 14px; padding: 16px; color: #e2e8f0; font-size: 14px; white-space: pre-wrap; line-height: 1.6; }
     /* When showing the rich scorecard, disable pre-wrap so block layout is clean */
     .ai-feedback-box.rich { white-space: normal; }
+    .retry-practice { margin-top: 14px; padding: 16px; border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 14px; background: rgba(250, 204, 21, 0.07); }
+    .retry-practice[hidden] { display: none; }
+    .retry-practice strong { display: block; color: #fde047; margin-bottom: 6px; }
+    .retry-practice p { margin: 0 0 12px; color: #e2e8f0; line-height: 1.5; font-size: 14px; }
+    .ai-panel .retry-practice button { width: 100%; background: #facc15; border-color: #facc15; color: #0f172a; }
 
     /* ===== Read-only highlighted transcript ===== */
     .transcript-display {
@@ -4367,6 +4372,11 @@
       <div id="transcriptDisplay" class="transcript-display transcript-empty">Your transcript will appear here after your speech, with filler words highlighted.</div>
       <div class="ai-status" id="aiStatus">Waiting for your next recording.</div>
       <div class="ai-feedback-box" id="aiFeedback">Your detailed feedback will appear here after your speech.</div>
+      <div class="retry-practice" id="retryPractice" hidden>
+        <strong>Put this feedback into practice</strong>
+        <p id="retryFocus">Try the same question again, improving one thing.</p>
+        <button type="button" id="retryPracticeBtn">Try this question again</button>
+      </div>
 
       <!-- Speech Feedback Chat -->
       <div class="speech-chat" id="speechChat">
@@ -6195,11 +6205,12 @@
     let timerInterval = null;
     let elapsedSeconds = 0;
     let isRunning = false;
+    let recordingStartPending = false;
     let mediaRecorder = null;
     let audioRecorder = null; // audio-only recorder used in video mode for API upload
-    let recordedChunks = [];
     let stream = null;
     let isRequestingFeedback = false;
+    const pendingFeedbackSessions = new Set();
     let recognition = null;
     let recognitionActive = false;
     let liveTranscript = '';
@@ -6210,14 +6221,72 @@
     let lastSpeechMetrics = null; // Store metrics from last AI analysis for Firebase sync
     let lastSpeechReport = null;
     let currentSpeechSessionId = null;
+    let latestSpeechSessionId = null;
+    let latestPracticeSession = null;
+    let activeSpeechSession = null;
+    let pendingSpeechCompletion = null;
+    const completedSpeechSessionIds = new Set();
+    const awardedSpeechSessionIds = new Set();
+    const syncedSpeechSessionIds = new Set();
+    const pendingSpeechAnalyses = new Map();
+    const speechSessionOwners = new Map();
     let acousticAnalysis = null;
     let pendingAcousticMetrics = null;
 
     function beginAnalyzedSpeechSession() {
       currentSpeechSessionId = `speech_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      latestSpeechSessionId = currentSpeechSessionId;
+      speechSessionOwners.set(currentSpeechSessionId, typeof currentUser !== 'undefined' ? currentUser?.uid : null);
       lastSpeechMetrics = null;
       lastSpeechReport = null;
+      clearTranscriptDisplay();
+      aiFeedback.classList.remove('rich');
+      aiFeedback.textContent = 'Your detailed feedback will appear here after your speech.';
+      document.getElementById('retryPractice').hidden = true;
       return currentSpeechSessionId;
+    }
+
+    function applyAiScoresForCompletedSession(sessionId, metrics) {
+      if (!completedSpeechSessionIds.has(sessionId) || awardedSpeechSessionIds.has(sessionId)) return;
+      awardedSpeechSessionIds.add(sessionId);
+      applyAiScores(metrics);
+    }
+
+    function showRetryPractice(sessionId, report, feedbackText) {
+      if (!completedSpeechSessionIds.has(sessionId) || latestPracticeSession?.id !== sessionId) return;
+      const focus = report?.nextFocus?.action || parseFeedbackSections(feedbackText).nextFocus;
+      document.getElementById('retryFocus').textContent = focus
+        ? `Try the same question again. Focus on this: ${focus}`
+        : 'Try the same question again, improving one thing from your feedback.';
+      document.getElementById('retryPractice').hidden = false;
+    }
+
+    function retryPracticePrompt() {
+      const session = latestPracticeSession;
+      if (!session) return;
+      isConversationMode = Boolean(session.conversationQuestion);
+      localStorage.setItem('promptMode', isConversationMode ? 'conversation' : 'words');
+      if (isConversationMode) {
+        currentConversationCategory = session.category;
+        localStorage.setItem('conversationCategory', session.category);
+      }
+      updatePromptModeUI();
+      resetPrompt();
+      currentWord = { word: session.word, definition: session.definition };
+      if (isConversationMode) {
+        currentConversationQuestion = { category: session.category, question: session.conversationQuestion };
+        conversationQuestionText.textContent = session.conversationQuestion;
+        categoryPillsContainer.querySelectorAll('.category-pill').forEach(pill => {
+          pill.classList.toggle('active', pill.dataset.category === session.category);
+        });
+      } else {
+        wordEl.textContent = session.word;
+        definitionEl.textContent = session.definition;
+      }
+      updateStructure();
+      document.getElementById('retryPractice').hidden = true;
+      wordBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      requestAnimationFrame(() => document.getElementById(currentMode === 'video' ? 'startVideoBtn' : 'startAudioBtn').focus());
     }
 
     function percentile(values, ratio) {
@@ -6625,7 +6694,7 @@
         if (aiEnabled) {
           showAchievement('✨ AI feedback enabled');
         } else {
-          showAchievement('💾 AI feedback disabled - transcription only');
+          showAchievement('💾 AI feedback disabled - recording only');
         }
       });
     }
@@ -6636,8 +6705,8 @@
         helper.textContent = 'Get personalized feedback on your pace, pauses, and delivery.';
         setAiStatus('AI feedback enabled. Ready for your next recording.');
       } else {
-        helper.textContent = 'Transcript only mode. Toggle on for coaching feedback.';
-        setAiStatus('AI feedback disabled. Will show transcript only.');
+        helper.textContent = 'Recording only. Toggle on for transcription and coaching feedback.';
+        setAiStatus('AI feedback disabled. Your recording can still be downloaded.');
       }
     }
 
@@ -6651,16 +6720,22 @@
     function checkNewDay() {
       const today = new Date().toDateString();
       if (stats.lastDate !== today) {
-        if (stats.lastDate) {
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          if (stats.lastDate === yesterday.toDateString() && stats.todaySpeeches > 0) stats.streak++;
-          else if (stats.todaySpeeches === 0) stats.streak = 0;
-        }
         stats.todaySpeeches = 0;
         stats.lastDate = today;
+        stats.streak = calculatePracticeStreak(stats.weekHistory);
         saveStats();
       }
+    }
+
+    function calculatePracticeStreak(weekHistory, referenceDate = new Date()) {
+      const day = new Date(referenceDate);
+      if (!weekHistory[day.toDateString()]) day.setDate(day.getDate() - 1);
+      let streak = 0;
+      while (weekHistory[day.toDateString()]) {
+        streak++;
+        day.setDate(day.getDate() - 1);
+      }
+      return streak;
     }
 
     function saveStats() { localStorage.setItem('sgStats', JSON.stringify(stats)); }
@@ -6671,6 +6746,14 @@
       document.getElementById('totalSpeeches').textContent = stats.totalSpeeches;
       const avg = stats.ratings.length ? (stats.ratings.reduce((a,b) => a+b, 0) / stats.ratings.length).toFixed(1) : '-';
       document.getElementById('avgRating').textContent = avg;
+    }
+
+    function showProgressPending(message) {
+      for (const id of ['speechCount', 'streak', 'totalSpeeches', 'avgRating']) {
+        document.getElementById(id).textContent = '—';
+      }
+      nudgeBanner.textContent = message;
+      nudgeBanner.classList.add('show');
     }
 
     function updateWeekCalendar() {
@@ -6693,9 +6776,12 @@
     }
 
     function updateNudge() {
-      if (stats.todaySpeeches === 0) { nudgeBanner.textContent = "🎯 Complete your first speech today!"; nudgeBanner.classList.add('show'); }
-      else if (stats.todaySpeeches === 2) { nudgeBanner.textContent = "🔥 One more to hit 3 today!"; nudgeBanner.classList.add('show'); }
-      else nudgeBanner.classList.remove('show');
+      const completed = Math.max(0, Number(stats.todaySpeeches) || 0);
+      const remaining = Math.max(0, 3 - completed);
+      nudgeBanner.textContent = remaining
+        ? `🎯 ${completed} of 3 speeches today. ${remaining} to go. A speech counts after 30 seconds of recording and completion.`
+        : '🔥 Daily goal complete! Keep practising if you like.';
+      nudgeBanner.classList.add('show');
     }
 
     function showAchievement(text) {
@@ -6741,6 +6827,15 @@
         if (!currentWord) showAchievement(isConversationMode ? "Get a prompt first!" : "Generate a prompt first!");
         return;
       }
+      activeSpeechSession = {
+        id: beginAnalyzedSpeechSession(), mode: 'timer', startedAt: performance.now(),
+        duration: 0, stopped: false, cancelled: false,
+        word: currentWord.word, definition: currentWord.definition,
+        promptContext: currentPromptContext(),
+        category: isConversationMode ? currentConversationCategory : null,
+        conversationQuestion: isConversationMode ? currentConversationQuestion?.question : null
+      };
+      latestPracticeSession = activeSpeechSession;
       isRunning = true;
       wordBox.classList.add('active');
       document.getElementById('startTimerBtn').style.display = 'none';
@@ -6753,12 +6848,23 @@
     }
 
     function stopTimer(auto = false) {
+      const session = activeSpeechSession;
+      if (!isRunning || !session || session.stopped || session.mode !== 'timer') return;
+      session.stopped = true;
+      session.duration = Math.max(elapsedSeconds, Math.floor((performance.now() - session.startedAt) / 1000));
+      session.completedAt = new Date().toISOString();
+      activeSpeechSession = null;
       clearInterval(timerInterval);
       isRunning = false;
       wordBox.classList.remove('active');
       document.getElementById('startTimerBtn').style.display = 'block';
       document.getElementById('stopTimerBtn').style.display = 'none';
-      if (elapsedSeconds >= 30) showRatingModal();
+      if (session.duration >= 30) {
+        pendingSpeechCompletion = session;
+        showRatingModal();
+      } else {
+        showAchievement('Practise for at least 30 seconds to count a speech.');
+      }
       // Stop = end of speech: reset timer state automatically for the next round
       elapsedSeconds = 0;
       updateTimerDisplay();
@@ -6766,6 +6872,8 @@
 
     function reset() {
       clearInterval(timerInterval);
+      if (activeSpeechSession) activeSpeechSession.cancelled = true;
+      activeSpeechSession = null;
       if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
       isRunning = false;
       elapsedSeconds = 0;
@@ -7384,16 +7492,14 @@
         const snapshot = await db.collection('users').doc(currentUser.uid)
           .collection('speeches')
           .orderBy('createdAt', 'desc')
-          .limit(6)
+          .limit(20)
           .get();
         const reports = [];
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          if (doc.id === excludedSpeechId || !data.report || data.report.version < 2) return;
-          const dateValue = data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt;
+        completedSpeechRecords(snapshot).reverse().forEach(data => {
+          if (data._id === excludedSpeechId || !data.report || data.report.version < 2) return;
           reports.push({
-            id: doc.id,
-            date: dateValue ? new Date(dateValue).toISOString() : '',
+            id: data._id,
+            date: data._date ? data._date.toISOString() : '',
             report: data.report
           });
         });
@@ -7404,7 +7510,7 @@
       }
     }
 
-    async function requestFeedbackWithAudio(audioBlob, duration, acousticMetrics = null, speechSessionId = null) {
+    async function requestFeedbackWithAudio(audioBlob, duration, acousticMetrics = null, speechSessionId = null, promptContext = '') {
       console.log('[DEBUG] requestFeedbackWithAudio called');
       console.log('[DEBUG] Audio blob:', audioBlob ? `${audioBlob.size} bytes, type: ${audioBlob.type}` : 'null');
       console.log('[DEBUG] Duration:', duration);
@@ -7416,29 +7522,23 @@
         return;
       }
 
-      // If AI is disabled, just show transcript without analysis
+      // AI transcription and analysis are both unavailable while the toggle is off.
       if (!aiEnabled) {
         console.log('[INFO] AI feedback disabled, skipping analysis');
-        setAiStatus('Recording saved. AI feedback is disabled (transcript only).');
+        setAiStatus('Recording saved. AI transcription and feedback are disabled.');
         aiFeedback.classList.remove('rich');
         aiFeedback.textContent = 'AI feedback is disabled. Toggle it ON above to get detailed speech analysis.\n\nYour recording has been saved and you can download it below.';
 
-        // Still show rating modal to complete the speech and update stats
-        if (duration >= 30) {
-          showRatingModal();
-        }
         return;
       }
 
-      if (isRequestingFeedback) {
-        console.log('[WARN] Already requesting feedback, skipping');
-        return;
+      if (pendingFeedbackSessions.has(speechSessionId)) return;
+      pendingFeedbackSessions.add(speechSessionId);
+      if (latestSpeechSessionId === speechSessionId) {
+        aiFeedback.classList.remove('rich');
+        aiFeedback.textContent = '✨ Your AI coaching feedback is on its way. Sit tight while we listen back to your speech and put together your personalised report...';
+        setAiStatus('Transcribing and analysing your speech with AI...');
       }
-
-      isRequestingFeedback = true;
-      aiFeedback.classList.remove('rich');
-      aiFeedback.textContent = '✨ Your AI coaching feedback is on its way. Sit tight while we listen back to your speech and put together your personalised report...';
-      setAiStatus('Transcribing and analysing your speech with AI...');
       console.log('[INFO] Starting AI analysis...');
 
       try {
@@ -7446,7 +7546,7 @@
         const formData = new FormData();
         formData.append('audio', audioBlob, 'speech.webm');
         formData.append('duration', duration.toString());
-        formData.append('promptContext', currentPromptContext());
+        formData.append('promptContext', promptContext);
         if (acousticMetrics) {
           formData.append('acousticMetrics', JSON.stringify(acousticMetrics));
         }
@@ -7474,22 +7574,23 @@
         const transcript = feedbackData.transcript || '';
         const metrics = feedbackData.metrics || {};
         const report = feedbackData.report || null;
+        const analysis = { transcript, feedback: feedbackText, metrics, report };
         if (!speechSessionId || currentSpeechSessionId === speechSessionId) {
           lastSpeechMetrics = metrics;
           lastSpeechReport = report;
         }
-        syncSpeechAnalysisToFirebase(speechSessionId, {
-          transcript,
-          feedback: feedbackText,
-          metrics,
-          report
-        });
+        if (speechSessionId && (pendingSpeechCompletion?.id === speechSessionId || completedSpeechSessionIds.has(speechSessionId))) {
+          pendingSpeechAnalyses.set(speechSessionId, analysis);
+        }
+        syncSpeechAnalysisToFirebase(speechSessionId, analysis);
 
         // Award level XP from the AI's vocal-variety & structure scores.
-        applyAiScores(metrics);
+        applyAiScoresForCompletedSession(speechSessionId, metrics);
 
         console.log('[INFO] Transcript length:', transcript.length);
         console.log('[INFO] Metrics:', metrics);
+
+        if (latestSpeechSessionId !== speechSessionId) return;
 
         // Update UI with transcript (read-only, filler words highlighted)
         currentTranscript = transcript;
@@ -7502,6 +7603,7 @@
 
         // Display feedback as a visual scorecard
         renderFeedbackScorecard({ feedbackText, metrics, report });
+        showRetryPractice(speechSessionId, report, feedbackText);
         setAiStatus('AI analysis complete! Scroll down to read your feedback.');
         console.log('[SUCCESS] AI analysis complete');
 
@@ -7511,12 +7613,14 @@
       } catch (err) {
         console.error('[ERROR] Failed to get feedback:', err);
         console.error('[ERROR] Error details:', err.message, err.stack);
-        setAiStatus(`Unable to analyze audio: ${err.message}`, true);
-        aiFeedback.classList.remove('rich');
-        aiFeedback.textContent = 'AI feedback could not be generated for this session. Try again on your next speech.';
+        if (latestSpeechSessionId === speechSessionId) {
+          setAiStatus(`Unable to analyze audio: ${err.message}`, true);
+          aiFeedback.classList.remove('rich');
+          aiFeedback.textContent = 'AI feedback could not be generated for this session. Try again on your next speech.';
+        }
 
       } finally {
-        isRequestingFeedback = false;
+        pendingFeedbackSessions.delete(speechSessionId);
       }
     }
 
@@ -7791,6 +7895,7 @@
     }
 
     function showRatingModal() {
+      if (!pendingSpeechCompletion || ratingModal.classList.contains('show')) return;
       ratingReturnFocus = document.activeElement;
       ratingModal.classList.add('show');
       ratingModal.setAttribute('aria-hidden', 'false');
@@ -7799,20 +7904,33 @@
     }
 
     function submitRating(rating) {
+      if (!ratingModal.classList.contains('show') || !pendingSpeechCompletion) return;
+      const session = pendingSpeechCompletion;
+      pendingSpeechCompletion = null;
       ratingModal.classList.remove('show');
       ratingModal.setAttribute('aria-hidden', 'true');
       ratingModal.setAttribute('inert', '');
-      if (rating) stats.ratings.push(rating);
-      completeSpeech();
+      completeSpeech(session, rating);
       restoreDialogFocus(ratingReturnFocus, 'newWordBtn');
       ratingReturnFocus = null;
     }
 
-    function completeSpeech() {
+    function completeSpeech(session, rating) {
+      if (!session?.id || !session.stopped || session.cancelled || !Number.isFinite(session.duration) || session.duration < 30
+        || !['audio', 'video', 'timer'].includes(session.mode) || completedSpeechSessionIds.has(session.id)) return false;
+      completedSpeechSessionIds.add(session.id);
+      checkNewDay();
       stats.todaySpeeches++;
       stats.totalSpeeches++;
       stats.weekHistory[new Date().toDateString()] = true;
+      stats.streak = calculatePracticeStreak(stats.weekHistory);
+      if (Number.isInteger(rating) && rating >= 1 && rating <= 5) stats.ratings.push(rating);
       saveStats();
+      const pendingAnalysis = pendingSpeechAnalyses.get(session.id);
+      if (pendingAnalysis) {
+        applyAiScoresForCompletedSession(session.id, pendingAnalysis.metrics);
+        showRetryPractice(session.id, pendingAnalysis.report, pendingAnalysis.feedback);
+      }
       updateStats();
       updateWeekCalendar();
       updateNudge();
@@ -7825,6 +7943,7 @@
         const day = PROGRAM_DAYS[program.currentDay - 1];
         if (day && day.mode === 'main') markProgramDayComplete();
       }
+      return true;
     }
 
     // Main recording modes: Audio and Video. Audio is the default.
@@ -7986,18 +8105,22 @@
 
     async function startAudioRecording() {
       if (!currentWord) { showAchievement(isConversationMode ? "Get a prompt first!" : "Generate a prompt first!"); return; }
-      const speechSessionId = beginAnalyzedSpeechSession();
+      if (isRunning || activeSpeechSession || recordingStartPending) return;
+      recordingStartPending = true;
 
-      // Ask for microphone access only after the user explicitly starts recording.
-      if (!callAudioMode && !stream) await initAudio();
-
-      // In call audio mode, capture from tab via getDisplayMedia
-      let recordingStream = stream;
-      if (callAudioMode) {
-        const callStream = await captureCallAudio();
-        if (!callStream) return; // user cancelled or error
-        recordingStream = callStream;
-        updateCallAudioIndicators(true);
+      let recordingStream;
+      try {
+        // Ask for microphone access only after the user explicitly starts recording.
+        if (!callAudioMode && !stream) await initAudio();
+        recordingStream = stream;
+        if (callAudioMode) {
+          const callStream = await captureCallAudio();
+          if (!callStream) return;
+          recordingStream = callStream;
+          updateCallAudioIndicators(true);
+        }
+      } finally {
+        recordingStartPending = false;
       }
 
       if (!recordingStream) {
@@ -8005,16 +8128,29 @@
         return;
       }
 
-      recordedChunks = [];
+      const session = {
+        id: beginAnalyzedSpeechSession(), mode: 'audio', startedAt: performance.now(),
+        duration: 0, stopped: false, cancelled: false,
+        word: currentWord.word, definition: currentWord.definition,
+        promptContext: currentPromptContext(),
+        category: isConversationMode ? currentConversationCategory : null,
+        conversationQuestion: isConversationMode ? currentConversationQuestion?.question : null
+      };
+      activeSpeechSession = session;
+      latestPracticeSession = session;
+
+      const audioChunks = [];
       // 32kbps Opus keeps files ~240KB/min — well under Vercel's 4.5MB body limit
       const audioOptions = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 32000 }
         : { audioBitsPerSecond: 32000 };
       mediaRecorder = new MediaRecorder(recordingStream, audioOptions);
-      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+      const recorder = mediaRecorder;
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
       mediaRecorder.onstop = () => {
-        const mimeType = mediaRecorder.mimeType || 'audio/webm';
-        const blob = new Blob(recordedChunks, { type: mimeType });
+        if (session.cancelled) return;
+        const mimeType = recorder.mimeType || 'audio/webm';
+        const blob = new Blob(audioChunks, { type: mimeType });
         currentAudioBlob = blob;
         if (currentAudioRecordingUrl) URL.revokeObjectURL(currentAudioRecordingUrl);
         currentAudioRecordingUrl = URL.createObjectURL(blob);
@@ -8027,9 +8163,7 @@
         document.getElementById('audioDownload').classList.add('show');
 
         // Send audio to API for Whisper transcription + analysis
-        const acousticMetrics = pendingAcousticMetrics;
-        pendingAcousticMetrics = null;
-        requestFeedbackWithAudio(blob, elapsedSeconds, acousticMetrics, speechSessionId);
+        requestFeedbackWithAudio(blob, session.duration, session.acousticMetrics || null, session.id, session.promptContext);
       };
       pendingAcousticMetrics = null;
       startAcousticAnalysis(recordingStream);
@@ -8048,7 +8182,13 @@
     }
 
     function stopAudioRecording() {
-      pendingAcousticMetrics = stopAcousticAnalysis();
+      const session = activeSpeechSession;
+      if (!isRunning || !session || session.stopped || session.mode !== 'audio') return;
+      session.stopped = true;
+      session.duration = Math.max(elapsedSeconds, Math.floor((performance.now() - session.startedAt) / 1000));
+      session.completedAt = new Date().toISOString();
+      activeSpeechSession = null;
+      session.acousticMetrics = stopAcousticAnalysis();
       if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
       clearInterval(timerInterval);
       isRunning = false;
@@ -8060,7 +8200,12 @@
       if (callAudioStream) { callAudioStream.getTracks().forEach(t => t.stop()); callAudioStream = null; }
       updateCallAudioIndicators(false);
       // Show rating modal immediately — AI feedback continues in the background
-      if (elapsedSeconds >= 30) showRatingModal();
+      if (session.duration >= 30) {
+        pendingSpeechCompletion = session;
+        showRatingModal();
+      } else {
+        showAchievement('Record at least 30 seconds to count a speech.');
+      }
       // Stop = end of speech: reset timer state automatically (deferred so the
       // recorder's onstop handler still reports the real speech duration)
       setTimeout(() => { elapsedSeconds = 0; updateTimerDisplay(); }, 0);
@@ -8068,26 +8213,31 @@
 
     async function startVideoRecording() {
       if (!currentWord) { showAchievement(isConversationMode ? "Get a prompt first!" : "Generate a prompt first!"); return; }
-      if (!stream) await initCamera();
-      if (!stream) { showAchievement("⚠️ Camera and microphone access are required for Video mode"); return; }
-      const speechSessionId = beginAnalyzedSpeechSession();
-
-      // In call audio mode, capture call audio for the audio-only track
+      if (isRunning || activeSpeechSession || recordingStartPending) return;
+      recordingStartPending = true;
       let callStream = null;
-      if (callAudioMode) {
-        callStream = await captureCallAudio();
-        if (!callStream) return;
-        updateCallAudioIndicators(true);
+      try {
+        if (!stream) await initCamera();
+        if (!stream) { showAchievement("⚠️ Camera and microphone access are required for Video mode"); return; }
+        if (callAudioMode) {
+          callStream = await captureCallAudio();
+          if (!callStream) return;
+          updateCallAudioIndicators(true);
+        }
+      } finally {
+        recordingStartPending = false;
       }
 
-      recordedChunks = [];
+      const videoChunks = [];
 
       // Video recorder — full quality for download link
       mediaRecorder = new MediaRecorder(stream);
-      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+      const videoRecorder = mediaRecorder;
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) videoChunks.push(e.data); };
       mediaRecorder.onstop = () => {
-        const mimeType = mediaRecorder.mimeType || 'video/webm';
-        const videoBlob = new Blob(recordedChunks, { type: mimeType });
+        if (session.cancelled) return;
+        const mimeType = videoRecorder.mimeType || 'video/webm';
+        const videoBlob = new Blob(videoChunks, { type: mimeType });
         currentVideoBlob = videoBlob;
         if (currentVideoRecordingUrl) URL.revokeObjectURL(currentVideoRecordingUrl);
         currentVideoRecordingUrl = URL.createObjectURL(videoBlob);
@@ -8109,6 +8259,16 @@
         if (callStream) { callStream.getTracks().forEach(t => t.stop()); callAudioStream = null; }
         return;
       }
+      const session = {
+        id: beginAnalyzedSpeechSession(), mode: 'video', startedAt: performance.now(),
+        duration: 0, stopped: false, cancelled: false,
+        word: currentWord.word, definition: currentWord.definition,
+        promptContext: currentPromptContext(),
+        category: isConversationMode ? currentConversationCategory : null,
+        conversationQuestion: isConversationMode ? currentConversationQuestion?.question : null
+      };
+      activeSpeechSession = session;
+      latestPracticeSession = session;
       const audioOnlyStream = new MediaStream([audioTrack]);
       const audioOptions = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 32000 }
@@ -8117,10 +8277,9 @@
       audioRecorder = new MediaRecorder(audioOnlyStream, audioOptions);
       audioRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
       audioRecorder.onstop = () => {
+        if (session.cancelled) return;
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        const acousticMetrics = pendingAcousticMetrics;
-        pendingAcousticMetrics = null;
-        requestFeedbackWithAudio(audioBlob, elapsedSeconds, acousticMetrics, speechSessionId);
+        requestFeedbackWithAudio(audioBlob, session.duration, session.acousticMetrics || null, session.id, session.promptContext);
       };
 
       pendingAcousticMetrics = null;
@@ -8141,7 +8300,13 @@
     }
 
     function stopVideoRecording() {
-      pendingAcousticMetrics = stopAcousticAnalysis();
+      const session = activeSpeechSession;
+      if (!isRunning || !session || session.stopped || session.mode !== 'video') return;
+      session.stopped = true;
+      session.duration = Math.max(elapsedSeconds, Math.floor((performance.now() - session.startedAt) / 1000));
+      session.completedAt = new Date().toISOString();
+      activeSpeechSession = null;
+      session.acousticMetrics = stopAcousticAnalysis();
       if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
       if (audioRecorder && audioRecorder.state !== 'inactive') audioRecorder.stop();
       clearInterval(timerInterval);
@@ -8154,7 +8319,12 @@
       if (callAudioStream) { callAudioStream.getTracks().forEach(t => t.stop()); callAudioStream = null; }
       updateCallAudioIndicators(false);
       // Show rating modal immediately — AI feedback continues in the background
-      if (elapsedSeconds >= 30) showRatingModal();
+      if (session.duration >= 30) {
+        pendingSpeechCompletion = session;
+        showRatingModal();
+      } else {
+        showAchievement('Record at least 30 seconds to count a speech.');
+      }
       // Stop = end of speech: reset timer state automatically (deferred so the
       // recorder's onstop handler still reports the real speech duration)
       setTimeout(() => { elapsedSeconds = 0; updateTimerDisplay(); }, 0);
@@ -8449,6 +8619,7 @@
     document.getElementById('stopAudioBtn').addEventListener('click', stopAudioRecording);
     document.getElementById('startVideoBtn').addEventListener('click', startVideoRecording);
     document.getElementById('stopVideoBtn').addEventListener('click', stopVideoRecording);
+    document.getElementById('retryPracticeBtn').addEventListener('click', retryPracticePrompt);
 
     document.getElementById('toggleStructureBtn').addEventListener('click', () => {
       if (!currentWord) {
@@ -8981,12 +9152,23 @@
 
     // Update IndexedDB when stats change (hook into completeSpeech)
     const originalCompleteSpeech = completeSpeech;
-    completeSpeech = function() {
-      originalCompleteSpeech();
+    completeSpeech = function(session, rating) {
+      const completed = originalCompleteSpeech(session, rating);
+      if (!completed) return false;
       saveStatsToDB();
+      return true;
     };
 
     init();
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      checkNewDay();
+      updateStats();
+      updateWeekCalendar();
+      updateNudge();
+      if (typeof currentUser !== 'undefined' && currentUser && syncEnabled) calculateStatsFromFirestore();
+    });
 
     // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
@@ -9466,16 +9648,17 @@
     }
 
     async function syncSpeechToFirebase(speechData, speechSessionId = null) {
-      if (!syncEnabled || !currentUser) return;
+      if (!syncEnabled || !currentUser) return false;
+      const userId = currentUser.uid;
 
       try {
         console.log('[Firebase] Syncing speech to Firestore...');
         updateSyncStatus('syncing', 'Syncing...');
 
-        const speeches = db.collection('users').doc(currentUser.uid).collection('speeches');
+        const speeches = db.collection('users').doc(userId).collection('speeches');
         const payload = {
           ...speechData,
-          userId: currentUser.uid,
+          userId,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         if (speechSessionId) {
@@ -9486,84 +9669,108 @@
 
         console.log('[Firebase] Speech synced successfully');
         updateSyncStatus('synced', 'Synced');
+        return true;
       } catch (error) {
         console.error('[Firebase] Error syncing speech:', error);
         updateSyncStatus('offline', 'Sync failed');
+        return false;
       }
     }
 
     async function syncSpeechAnalysisToFirebase(speechSessionId, analysis) {
       if (!speechSessionId || !syncEnabled || !currentUser) return;
+      if (speechSessionOwners.get(speechSessionId) !== currentUser.uid) return;
+      // Analysis can finish before the user confirms a recording. Never let it
+      // create an uncompleted speech document in the progress collection.
+      if (!completedSpeechSessionIds.has(speechSessionId)) {
+        if (pendingSpeechCompletion?.id === speechSessionId) pendingSpeechAnalyses.set(speechSessionId, analysis);
+        return;
+      }
+      if (!syncedSpeechSessionIds.has(speechSessionId)) {
+        pendingSpeechAnalyses.set(speechSessionId, analysis);
+        return;
+      }
       try {
         await db.collection('users').doc(currentUser.uid)
-          .collection('speeches').doc(speechSessionId).set({
+          .collection('speeches').doc(speechSessionId).update({
             ...analysis,
-            userId: currentUser.uid,
             analysisVersion: 4,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          }, { merge: true });
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        pendingSpeechAnalyses.delete(speechSessionId);
       } catch (error) {
         console.warn('[Firebase] Performance report sync failed:', error);
       }
     }
 
+    function isCompletedSpeechRecord(data) {
+      if (!data || data.completed === false) return false;
+      if (data.completed === true) return Number(data.duration) >= 30;
+      // Older app versions did not set `completed`. Only the completion handler
+      // stored a mode and prompt; analysis-only documents never had both.
+      return ['audio', 'video', 'timer'].includes(data.mode) && Boolean(data.word);
+    }
+
+    function completedSpeechRecords(snapshot) {
+      const records = [];
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (!isCompletedSpeechRecord(data)) return;
+        const rawDate = data.completedAt || (data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt);
+        const date = rawDate ? new Date(rawDate) : null;
+        records.push({ ...data, _id: doc.id, _date: date && !Number.isNaN(date.getTime()) ? date : null });
+      });
+      records.sort((a, b) => (a._date?.getTime() || 0) - (b._date?.getTime() || 0));
+      return records.filter((speech, index) => {
+        if (speech.completed === true || !speech._date) return true;
+        // A legacy rating dialog could submit twice seconds apart. Two real
+        // 30-second recordings cannot finish this close together.
+        return !records.slice(0, index).some(previous =>
+          previous.completed !== true && previous._date
+          && previous.word === speech.word && previous.mode === speech.mode
+          && speech._date - previous._date < 3000
+        );
+      });
+    }
+
+    let statsCalculationGeneration = 0;
+
     // Calculate stats from Firestore speeches collection (single source of truth)
     async function calculateStatsFromFirestore() {
       if (!syncEnabled || !currentUser) return;
+      const userId = currentUser.uid;
+      const generation = ++statsCalculationGeneration;
 
       try {
         console.log('[Stats] Calculating stats from Firestore speeches...');
 
         // Get all speeches for this user
-        const speechesSnapshot = await db.collection('users').doc(currentUser.uid)
+        const speechesSnapshot = await db.collection('users').doc(userId)
           .collection('speeches')
           .orderBy('createdAt', 'desc')
           .get();
+        if (currentUser?.uid !== userId || generation !== statsCalculationGeneration) return;
 
-        // Calculate stats from actual speech documents
-        const speeches = [];
+        const speeches = completedSpeechRecords(speechesSnapshot);
         const ratings = [];
         const weekHistory = {};
 
-        speechesSnapshot.forEach(doc => {
-          const data = doc.data();
-          speeches.push(data);
-
-          if (data.rating) {
-            ratings.push(data.rating);
+        speeches.forEach(speech => {
+          if (Number.isInteger(speech.rating) && speech.rating >= 1 && speech.rating <= 5) {
+            ratings.push(speech.rating);
           }
 
           // Mark dates in week history
-          if (data.createdAt) {
-            const date = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-            weekHistory[date.toDateString()] = true;
+          if (speech._date) {
+            weekHistory[speech._date.toDateString()] = true;
           }
         });
 
         // Count today's speeches
         const today = new Date().toDateString();
-        const todaySpeeches = speeches.filter(s => {
-          if (!s.createdAt) return false;
-          const date = s.createdAt.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
-          return date.toDateString() === today;
-        }).length;
+        const todaySpeeches = speeches.filter(s => s._date?.toDateString() === today).length;
 
-        // Calculate streak
-        let streak = 0;
-        const checkDate = new Date();
-        while (true) {
-          const dateStr = checkDate.toDateString();
-          if (weekHistory[dateStr]) {
-            streak++;
-            checkDate.setDate(checkDate.getDate() - 1);
-          } else if (dateStr === today && todaySpeeches === 0) {
-            // Today doesn't break streak if no speeches yet
-            checkDate.setDate(checkDate.getDate() - 1);
-          } else {
-            break;
-          }
-        }
+        const streak = calculatePracticeStreak(weekHistory);
 
         // Update stats object
         stats.todaySpeeches = todaySpeeches;
@@ -9580,6 +9787,7 @@
         updateStats();
         updateWeekCalendar();
         updateNudge();
+        saveStatsToDB();
 
         console.log('[Stats] Stats calculated:', {
           total: stats.totalSpeeches,
@@ -9589,6 +9797,9 @@
 
       } catch (error) {
         console.error('[Stats] Error calculating stats:', error);
+        if (currentUser?.uid === userId && generation === statsCalculationGeneration) {
+          showProgressPending('Could not verify your practice progress. It will refresh when you reconnect.');
+        }
       }
     }
 
@@ -9720,6 +9931,8 @@
 
     // ===== AUTH STATE MANAGEMENT =====
 
+    let unsubscribeSpeechStats = null;
+
     function setupAuthListeners() {
       // Wire paywall buttons + native billing bootstrap.
       initBillingUI();
@@ -9774,6 +9987,10 @@
       }
 
       auth.onAuthStateChanged(async (user) => {
+        if (unsubscribeSpeechStats) {
+          unsubscribeSpeechStats();
+          unsubscribeSpeechStats = null;
+        }
         const profileSignedOut = document.getElementById('profileSignedOut');
         const profileSignedIn = document.getElementById('profileSignedIn');
         const profileUserEmail = document.getElementById('profileUserEmail');
@@ -9784,6 +10001,7 @@
 
           currentUser = user;
           console.log('[Auth] User signed in:', user.email);
+          showProgressPending('Checking your completed speeches…');
 
           // Update profile UI
           if (profileSignedOut) profileSignedOut.style.display = 'none';
@@ -9799,15 +10017,17 @@
 
           // Migrate local data if first time (settings only)
           await migrateLocalDataToFirebase();
+          if (currentUser?.uid !== user.uid) return;
 
           // Calculate stats from speeches collection (source of truth)
           await calculateStatsFromFirestore();
 
           // Set up real-time listener on speeches collection
           // This ensures stats update whenever a new speech is added from any device
-          db.collection('users').doc(user.uid)
+          unsubscribeSpeechStats = db.collection('users').doc(user.uid)
             .collection('speeches')
             .onSnapshot(() => {
+              if (currentUser?.uid !== user.uid) return;
               console.log('[Sync] Speeches changed, recalculating stats...');
               calculateStatsFromFirestore();
             });
@@ -9882,32 +10102,43 @@
 
     // Wrap completeSpeech to sync speech to Firebase
     const originalCompleteSpeechFunc = completeSpeech;
-    completeSpeech = function() {
-      originalCompleteSpeechFunc();
+    completeSpeech = function(session, rating) {
+      const completed = originalCompleteSpeechFunc(session, rating);
+      if (!completed) return false;
 
       // Sync speech document to Firebase (stats will be automatically recalculated from speeches)
-      if (syncEnabled && currentUser) {
-        const transcript = currentTranscript || '';
-        const feedback = aiFeedback?.textContent || '';
-        const speechSessionId = currentSpeechSessionId;
+      if (syncEnabled && currentUser && speechSessionOwners.get(session.id) === currentUser.uid) {
+        const userId = currentUser.uid;
+        const analysis = pendingSpeechAnalyses.get(session.id);
+        const isCurrentSession = currentSpeechSessionId === session.id;
 
-        // Always sync the speech (even without transcript/feedback for stats tracking)
+        // The completion record is the only write allowed to create a speech.
         syncSpeechToFirebase({
-          word: currentWord?.word || '',
-          definition: currentWord?.definition || '',
-          duration: elapsedSeconds,
-          transcript: transcript,
-          feedback: feedback,
-          rating: stats.ratings[stats.ratings.length - 1] || null,
-          mode: currentMode,
-          metrics: lastSpeechMetrics || null,
-          report: lastSpeechReport || null,
-          analysisVersion: lastSpeechReport ? 4 : null
-        }, speechSessionId);
-        lastSpeechMetrics = null; // Clear after sync
-        lastSpeechReport = null;
-        currentSpeechSessionId = null;
+          completed: true,
+          word: session.word,
+          definition: session.definition,
+          duration: session.duration,
+          completedAt: session.completedAt,
+          transcript: analysis?.transcript || '',
+          feedback: analysis?.feedback || '',
+          rating: Number.isInteger(rating) ? rating : null,
+          mode: session.mode,
+          metrics: analysis?.metrics || null,
+          report: analysis?.report || null,
+          analysisVersion: analysis?.report ? 4 : null
+        }, session.id).then(synced => {
+          if (!synced || currentUser?.uid !== userId) return;
+          syncedSpeechSessionIds.add(session.id);
+          const latestAnalysis = pendingSpeechAnalyses.get(session.id);
+          if (latestAnalysis) syncSpeechAnalysisToFirebase(session.id, latestAnalysis);
+        });
+        if (isCurrentSession) {
+          lastSpeechMetrics = null;
+          lastSpeechReport = null;
+          currentSpeechSessionId = null;
+        }
       }
+      return true;
     };
 
     // NOTE: Removed saveStats wrapper - stats are now calculated from speeches collection, not synced directly
@@ -10778,12 +11009,7 @@
           .get();
 
         analyticsSpeeches = [];
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          data._id = doc.id;
-          if (data.createdAt) {
-            data._date = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-          }
+        completedSpeechRecords(snapshot).forEach(data => {
           // Extract metrics from feedback text for legacy speeches without structured metrics
           if (!data.metrics && data.feedback) {
             const extracted = {};

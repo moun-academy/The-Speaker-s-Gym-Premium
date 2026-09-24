@@ -28,7 +28,7 @@ test('marks the current page and provides visible keyboard focus', () => {
   assert.match(html, /button:focus-visible,[\s\S]*outline: 3px solid #fde047 !important/);
 });
 
-test('aligns visible and Android release metadata for version 29', () => {
+test('keeps Android release metadata at version 29 and refreshes the web cache', () => {
   const gradle = readFileSync(new URL('../android/app/build.gradle', import.meta.url), 'utf8');
   const serviceWorker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 
@@ -36,5 +36,5 @@ test('aligns visible and Android release metadata for version 29', () => {
   assert.match(html, /const LAST_UPDATED = 'September 21, 2026'/);
   assert.match(gradle, /versionCode 29/);
   assert.match(gradle, /versionName "29"/);
-  assert.match(serviceWorker, /speakers-gym-v20/);
+  assert.match(serviceWorker, /speakers-gym-v21/);
 });
