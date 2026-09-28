@@ -1,5 +1,5 @@
 // Service Worker for The Speaker's Gym
-const CACHE_NAME = 'speakers-gym-v22';
+const CACHE_NAME = 'speakers-gym-v23';
 const ASSETS = [
   '/',
   '/index.html',

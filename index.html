@@ -2855,6 +2855,15 @@
     .ai-feedback-box { background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 14px; padding: 16px; color: #e2e8f0; font-size: 14px; white-space: pre-wrap; line-height: 1.6; }
     /* When showing the rich scorecard, disable pre-wrap so block layout is clean */
     .ai-feedback-box.rich { white-space: normal; }
+    .analysis-copy-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+    .analysis-copy-actions[hidden] { display: none; }
+    .ai-panel .analysis-copy-actions button { min-height: 44px; }
+    .ai-panel .analysis-copy-actions button:disabled { cursor: not-allowed; opacity: 0.45; }
+    .analysis-copy-status { min-height: 20px; margin-top: 6px; color: #a7f3d0; font-size: 12px; }
+    .analysis-copy-status.error { color: #fca5a5; }
+    @media (max-width: 420px) {
+      .analysis-copy-actions { grid-template-columns: 1fr; }
+    }
     .retry-practice { margin-top: 14px; padding: 16px; border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 14px; background: rgba(250, 204, 21, 0.07); }
     .retry-practice[hidden] { display: none; }
     .retry-practice strong { display: block; color: #fde047; margin-bottom: 6px; }
@@ -4372,6 +4381,11 @@
       <div id="transcriptDisplay" class="transcript-display transcript-empty">Your transcript will appear here after your speech, with filler words highlighted.</div>
       <div class="ai-status" id="aiStatus">Waiting for your next recording.</div>
       <div class="ai-feedback-box" id="aiFeedback">Your detailed feedback will appear here after your speech.</div>
+      <div class="analysis-copy-actions" id="analysisCopyActions" hidden>
+        <button type="button" id="copyTranscriptBtn">📋 Copy transcript</button>
+        <button type="button" id="copyReportBtn">📋 Copy coaching report</button>
+      </div>
+      <div class="analysis-copy-status" id="analysisCopyStatus" role="status" aria-live="polite"></div>
       <div class="retry-practice" id="retryPractice" hidden>
         <strong>Put this feedback into practice</strong>
         <p id="retryFocus">Try the same question again, improving one thing.</p>
@@ -6192,8 +6206,8 @@
 
     // Source update date shown in Settings > About and the app footer.
     // Android version numbers change only when packaging a Play Store release.
-    const APP_VERSION = '29';
-    const LAST_UPDATED = 'September 24, 2026';
+    const APP_VERSION = '30';
+    const LAST_UPDATED = 'September 28, 2026';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -6242,6 +6256,7 @@
       clearTranscriptDisplay();
       aiFeedback.classList.remove('rich');
       aiFeedback.textContent = 'Your detailed feedback will appear here after your speech.';
+      updateAnalysisCopyActions(false);
       document.getElementById('retryPractice').hidden = true;
       return currentSpeechSessionId;
     }
@@ -6520,6 +6535,10 @@
     const aiFeedback = document.getElementById('aiFeedback');
     const aiStatus = document.getElementById('aiStatus');
     const transcriptDisplay = document.getElementById('transcriptDisplay');
+    const analysisCopyActions = document.getElementById('analysisCopyActions');
+    const analysisCopyStatus = document.getElementById('analysisCopyStatus');
+    const copyTranscriptBtn = document.getElementById('copyTranscriptBtn');
+    const copyReportBtn = document.getElementById('copyReportBtn');
     // Holds the current transcript string (the transcript view is now a read-only div, not a textarea)
     let currentTranscript = '';
 
@@ -6531,6 +6550,60 @@
         transcriptDisplay.classList.add('transcript-empty');
       }
     }
+
+    async function writeTextToClipboard(text) {
+      const value = String(text || '').trim();
+      if (!value) return false;
+      try {
+        if (navigator.clipboard?.writeText && window.isSecureContext) {
+          await navigator.clipboard.writeText(value);
+          return true;
+        }
+      } catch (error) {
+        console.warn('[Clipboard] Modern copy failed, trying fallback.', error);
+      }
+
+      const textarea = document.createElement('textarea');
+      textarea.value = value;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      textarea.setSelectionRange(0, value.length);
+      let copied = false;
+      try {
+        copied = document.execCommand('copy');
+      } finally {
+        textarea.remove();
+      }
+      return copied;
+    }
+
+    function updateAnalysisCopyActions(isReady = false) {
+      const transcriptReady = isReady && Boolean(currentTranscript.trim());
+      analysisCopyActions.hidden = !isReady;
+      copyTranscriptBtn.disabled = !transcriptReady;
+      copyReportBtn.disabled = !isReady;
+      analysisCopyStatus.textContent = '';
+      analysisCopyStatus.classList.remove('error');
+    }
+
+    async function copyCurrentAnalysis(kind) {
+      const isTranscript = kind === 'transcript';
+      const text = isTranscript
+        ? currentTranscript
+        : (aiFeedback.innerText || aiFeedback.textContent || '');
+      const label = isTranscript ? 'Transcript' : 'Coaching report';
+      const copied = await writeTextToClipboard(text);
+      analysisCopyStatus.textContent = copied
+        ? `${label} copied.`
+        : `${label} could not be copied. Try selecting the text manually.`;
+      analysisCopyStatus.classList.toggle('error', !copied);
+    }
+
+    copyTranscriptBtn.addEventListener('click', () => copyCurrentAnalysis('transcript'));
+    copyReportBtn.addEventListener('click', () => copyCurrentAnalysis('report'));
 
     // Conversation Elements
     const conversationQuestionEl = document.getElementById('conversationQuestion');
@@ -7528,6 +7601,7 @@
         setAiStatus('Recording saved. AI transcription and feedback are disabled.');
         aiFeedback.classList.remove('rich');
         aiFeedback.textContent = 'AI feedback is disabled. Toggle it ON above to get detailed speech analysis.\n\nYour recording has been saved and you can download it below.';
+        updateAnalysisCopyActions(false);
 
         return;
       }
@@ -7603,6 +7677,7 @@
 
         // Display feedback as a visual scorecard
         renderFeedbackScorecard({ feedbackText, metrics, report });
+        updateAnalysisCopyActions(true);
         showRetryPractice(speechSessionId, report, feedbackText);
         setAiStatus('AI analysis complete! Scroll down to read your feedback.');
         console.log('[SUCCESS] AI analysis complete');
@@ -7617,6 +7692,7 @@
           setAiStatus(`Unable to analyze audio: ${err.message}`, true);
           aiFeedback.classList.remove('rich');
           aiFeedback.textContent = 'AI feedback could not be generated for this session. Try again on your next speech.';
+          updateAnalysisCopyActions(false);
         }
 
       } finally {
@@ -7646,6 +7722,7 @@
         if (!feedbackRes.ok) throw new Error('Feedback generation failed');
         const feedbackData = await feedbackRes.json();
         const feedbackText = feedbackData.feedback?.trim() || 'No feedback generated.';
+        currentTranscript = trimmed;
         lastSpeechMetrics = feedbackData.metrics || null;
         lastSpeechReport = feedbackData.report || null;
 
@@ -7658,12 +7735,14 @@
           metrics: feedbackData.metrics || null,
           report: feedbackData.report || null
         });
+        updateAnalysisCopyActions(true);
         setAiStatus('Feedback ready!');
 
         // Show chat panel for follow-up questions
         showSpeechChat(trimmed, feedbackText, feedbackData.metrics || null);
       } catch (err) {
         console.error(err);
+        updateAnalysisCopyActions(false);
         setAiStatus('Unable to fetch feedback right now.', true);
       } finally {
         isRequestingFeedback = false;
