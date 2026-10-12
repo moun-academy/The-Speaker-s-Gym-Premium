@@ -2855,7 +2855,7 @@
     .ai-feedback-box { background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 14px; padding: 16px; color: #e2e8f0; font-size: 14px; white-space: pre-wrap; line-height: 1.6; }
     /* When showing the rich scorecard, disable pre-wrap so block layout is clean */
     .ai-feedback-box.rich { white-space: normal; }
-    .analysis-copy-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+    .analysis-copy-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
     .analysis-copy-actions[hidden] { display: none; }
     .ai-panel .analysis-copy-actions button { min-height: 44px; }
     .ai-panel .analysis-copy-actions button:disabled { cursor: not-allowed; opacity: 0.45; }
@@ -4384,6 +4384,7 @@
       <div class="analysis-copy-actions" id="analysisCopyActions" hidden>
         <button type="button" id="copyTranscriptBtn">📋 Copy transcript</button>
         <button type="button" id="copyReportBtn">📋 Copy coaching report</button>
+        <button type="button" id="downloadReportBtn">⬇ Download coaching report</button>
       </div>
       <div class="analysis-copy-status" id="analysisCopyStatus" role="status" aria-live="polite"></div>
       <div class="retry-practice" id="retryPractice" hidden>
@@ -6206,8 +6207,8 @@
 
     // Source update date shown in Settings > About and the app footer.
     // Android version numbers change only when packaging a Play Store release.
-    const APP_VERSION = '30';
-    const LAST_UPDATED = 'September 28, 2026';
+    const APP_VERSION = '31';
+    const LAST_UPDATED = 'October 12, 2026';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -6539,6 +6540,7 @@
     const analysisCopyStatus = document.getElementById('analysisCopyStatus');
     const copyTranscriptBtn = document.getElementById('copyTranscriptBtn');
     const copyReportBtn = document.getElementById('copyReportBtn');
+    const downloadReportBtn = document.getElementById('downloadReportBtn');
     // Holds the current transcript string (the transcript view is now a read-only div, not a textarea)
     let currentTranscript = '';
 
@@ -6580,11 +6582,47 @@
       return copied;
     }
 
+    function coachingReportFilename(date = new Date()) {
+      return `speakers-gym-coaching-report-${date.toISOString().slice(0, 10)}.txt`;
+    }
+
+    async function saveAnalysisTextFile(text, filename) {
+      const content = String(text || '').trim();
+      if (!content) throw new Error('The coaching report is empty.');
+
+      const blob = new Blob([`${content}\n`], { type: 'text/plain;charset=utf-8' });
+      if (isCapacitorNative()) {
+        const recordingSaver = window.Capacitor?.Plugins?.RecordingSaver;
+        if (!recordingSaver?.saveToDownloads) {
+          throw new Error('Saving is unavailable in this Android build.');
+        }
+        const data = await blobToBase64(blob);
+        const saved = await recordingSaver.saveToDownloads({
+          filename,
+          mimeType: 'text/plain',
+          data,
+        });
+        return saved?.folder || 'Downloads';
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      return '';
+    }
+
     function updateAnalysisCopyActions(isReady = false) {
       const transcriptReady = isReady && Boolean(currentTranscript.trim());
       analysisCopyActions.hidden = !isReady;
       copyTranscriptBtn.disabled = !transcriptReady;
       copyReportBtn.disabled = !isReady;
+      downloadReportBtn.disabled = !isReady;
       analysisCopyStatus.textContent = '';
       analysisCopyStatus.classList.remove('error');
     }
@@ -6602,8 +6640,28 @@
       analysisCopyStatus.classList.toggle('error', !copied);
     }
 
+    async function downloadCurrentReport() {
+      const reportText = aiFeedback.innerText || aiFeedback.textContent || '';
+      downloadReportBtn.disabled = true;
+      analysisCopyStatus.textContent = 'Preparing coaching report...';
+      analysisCopyStatus.classList.remove('error');
+      try {
+        const folder = await saveAnalysisTextFile(reportText, coachingReportFilename());
+        analysisCopyStatus.textContent = folder
+          ? `Coaching report saved to ${folder}.`
+          : 'Coaching report downloaded.';
+      } catch (error) {
+        console.error('[Report] Download failed:', error);
+        analysisCopyStatus.textContent = 'Coaching report could not be downloaded. Please try again.';
+        analysisCopyStatus.classList.add('error');
+      } finally {
+        downloadReportBtn.disabled = false;
+      }
+    }
+
     copyTranscriptBtn.addEventListener('click', () => copyCurrentAnalysis('transcript'));
     copyReportBtn.addEventListener('click', () => copyCurrentAnalysis('report'));
+    downloadReportBtn.addEventListener('click', downloadCurrentReport);
 
     // Conversation Elements
     const conversationQuestionEl = document.getElementById('conversationQuestion');
