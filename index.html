@@ -6207,7 +6207,7 @@
 
     // Source update date shown in Settings > About and the app footer.
     // Android version numbers change only when packaging a Play Store release.
-    const APP_VERSION = '31';
+    const APP_VERSION = '32';
     const LAST_UPDATED = 'October 12, 2026';
 
     // State
@@ -6235,6 +6235,7 @@
     let currentVideoRecordingUrl = null;
     let lastSpeechMetrics = null; // Store metrics from last AI analysis for Firebase sync
     let lastSpeechReport = null;
+    let currentFeedbackText = '';
     let currentSpeechSessionId = null;
     let latestSpeechSessionId = null;
     let latestPracticeSession = null;
@@ -6254,6 +6255,7 @@
       speechSessionOwners.set(currentSpeechSessionId, typeof currentUser !== 'undefined' ? currentUser?.uid : null);
       lastSpeechMetrics = null;
       lastSpeechReport = null;
+      currentFeedbackText = '';
       clearTranscriptDisplay();
       aiFeedback.classList.remove('rich');
       aiFeedback.textContent = 'Your detailed feedback will appear here after your speech.';
@@ -6586,6 +6588,35 @@
       return `speakers-gym-coaching-report-${date.toISOString().slice(0, 10)}.txt`;
     }
 
+    function formatCoachingDownload(report, feedbackText, date = new Date()) {
+      const parsed = parseFeedbackSections(feedbackText || '');
+      const brief = (value, limit = 170) => {
+        const clean = String(value || '').replace(/\s+/g, ' ').replace(/^[•*-]\s*/, '').trim();
+        if (clean.length <= limit) return clean;
+        const cut = clean.slice(0, limit - 1);
+        const lastSpace = cut.lastIndexOf(' ');
+        return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+      };
+      const points = (items, fallback) => (Array.isArray(items) && items.length
+        ? items.map(item => typeof item === 'string' ? item : item?.point)
+        : fallback).map(item => brief(item)).filter(Boolean).slice(0, 2);
+      const strengths = points(report?.strengths, parsed.strengths);
+      const improvements = points(report?.improvements, parsed.improvements);
+      const summary = brief(report?.summary || parsed.summary, 220);
+      const focus = brief(plainCoachingCopy(report?.nextFocus?.action || parsed.nextFocus || improvements[0]), 200);
+      const lines = [
+        "SPEAKER'S GYM | COACHING SNAPSHOT",
+        `Date: ${date.toISOString().slice(0, 10)}`
+      ];
+      if (Number.isFinite(report?.overallScore)) lines.push(`Overall score: ${report.overallScore}/100`);
+      if (summary) lines.push('', 'IN SHORT', summary);
+      if (strengths.length) lines.push('', 'WHAT WENT WELL', ...strengths.map(item => `- ${item}`));
+      if (improvements.length) lines.push('', 'WHAT TO IMPROVE', ...improvements.map(item => `- ${item}`));
+      if (focus) lines.push('', 'NEXT PRACTICE', focus);
+      lines.push('', "For detailed scores and examples, open your report in Speaker's Gym.");
+      return lines.join('\n');
+    }
+
     async function saveAnalysisTextFile(text, filename) {
       const content = String(text || '').trim();
       if (!content) throw new Error('The coaching report is empty.');
@@ -6641,7 +6672,7 @@
     }
 
     async function downloadCurrentReport() {
-      const reportText = aiFeedback.innerText || aiFeedback.textContent || '';
+      const reportText = formatCoachingDownload(lastSpeechReport, currentFeedbackText);
       downloadReportBtn.disabled = true;
       analysisCopyStatus.textContent = 'Preparing coaching report...';
       analysisCopyStatus.classList.remove('error');
@@ -7465,6 +7496,7 @@
 
     // Render the AI feedback as a visual scorecard into #aiFeedback.
     function renderFeedbackScorecard({ feedbackText, metrics, report = null }) {
+      currentFeedbackText = feedbackText || '';
       const m = metrics || {};
       const parsed = parseFeedbackSections(feedbackText || '');
       const cards = [];

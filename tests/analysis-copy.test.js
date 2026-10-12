@@ -19,6 +19,8 @@ test('keeps copy actions hidden until an AI report is ready and announces result
   assert.match(html, /id="downloadReportBtn">⬇ Download coaching report/);
   assert.match(html, /id="analysisCopyStatus" role="status" aria-live="polite"/);
   assert.match(html, /renderFeedbackScorecard\(\{ feedbackText, metrics, report \}\);\s+updateAnalysisCopyActions\(true\)/);
+  assert.match(html, /currentFeedbackText = feedbackText \|\| ''/);
+  assert.match(html, /const reportText = formatCoachingDownload\(lastSpeechReport, currentFeedbackText\)/);
   assert.match(html, /aiFeedback\.textContent = 'AI feedback could not be generated[^;]+;\s+updateAnalysisCopyActions\(false\)/);
 });
 
@@ -70,6 +72,49 @@ test('downloads a dated coaching report as a local UTF-8 text file on the web', 
   assert.equal(clicked, true);
   assert.equal(removed, true);
   assert.equal(revoked, 'blob:coaching-report');
+});
+
+test('download is a short coaching snapshot drawn from the structured report', () => {
+  const context = {
+    parseFeedbackSections: () => ({ summary: '', strengths: [], improvements: [], nextFocus: '' }),
+    plainCoachingCopy: value => value
+  };
+  runInNewContext(sourceBetween('    function coachingReportFilename', '    async function saveAnalysisTextFile'), context);
+  const report = {
+    overallScore: 74,
+    summary: 'Your message was clear and your example helped the listener follow it.',
+    strengths: [
+      { point: 'A clear opening.' }, { point: 'A useful example.' }, { point: 'A confident ending.' }
+    ],
+    improvements: [
+      { point: 'State the main point sooner.' }, { point: 'Pause before the example.' }, { point: 'Use fewer filler words.' }
+    ],
+    nextFocus: { action: 'Start with your main point, then give one reason.' }
+  };
+  const result = context.formatCoachingDownload(report, 'FULL REPORT WITH MANY DETAILS', new Date('2026-10-12T08:00:00Z'));
+  assert.match(result, /^SPEAKER'S GYM \| COACHING SNAPSHOT\nDate: 2026-10-12\nOverall score: 74\/100/);
+  assert.match(result, /WHAT WENT WELL\n- A clear opening\.\n- A useful example\./);
+  assert.match(result, /WHAT TO IMPROVE\n- State the main point sooner\.\n- Pause before the example\./);
+  assert.match(result, /NEXT PRACTICE\nStart with your main point, then give one reason\./);
+  assert.doesNotMatch(result, /confident ending|filler words|FULL REPORT/);
+  assert.ok(result.length < 700);
+});
+
+test('download still gives a useful snapshot without a structured score', () => {
+  const context = {
+    parseFeedbackSections: () => ({
+      summary: 'You spoke with energy.',
+      strengths: ['Clear introduction.'],
+      improvements: ['Slow down at the end.'],
+      nextFocus: 'Practice one calmer final sentence.'
+    }),
+    plainCoachingCopy: value => value
+  };
+  runInNewContext(sourceBetween('    function coachingReportFilename', '    async function saveAnalysisTextFile'), context);
+  const result = context.formatCoachingDownload(null, 'unstructured feedback', new Date('2026-10-12T08:00:00Z'));
+  assert.doesNotMatch(result, /Overall score|undefined/);
+  assert.match(result, /WHAT TO IMPROVE\n- Slow down at the end\./);
+  assert.match(result, /NEXT PRACTICE\nPractice one calmer final sentence\./);
 });
 
 test('uses the existing Android Downloads bridge for coaching reports', async () => {

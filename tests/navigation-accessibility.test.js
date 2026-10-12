@@ -32,10 +32,10 @@ test('shows the October 12 update date and refreshes the web cache', () => {
   const gradle = readFileSync(new URL('../android/app/build.gradle', import.meta.url), 'utf8');
   const serviceWorker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 
-  assert.match(html, /const APP_VERSION = '31'/);
+  assert.match(html, /const APP_VERSION = '32'/);
   assert.match(html, /const LAST_UPDATED = 'October 12, 2026'/);
   assert.match(html, /settingsLastUpdated\.textContent = LAST_UPDATED/);
-  assert.match(gradle, /versionCode 31/);
-  assert.match(gradle, /versionName "31"/);
-  assert.match(serviceWorker, /speakers-gym-v24/);
+  assert.match(gradle, /versionCode 32/);
+  assert.match(gradle, /versionName "32"/);
+  assert.match(serviceWorker, /speakers-gym-v25/);
 });
