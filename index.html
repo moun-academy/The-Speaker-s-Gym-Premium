@@ -10383,6 +10383,7 @@
     let currentPage = 'main';
 
     function navigateToPage(pageName) {
+      if (currentPage === 'variety') window.VocalVariety?.stop();
       // Stop any active media/timers when leaving main page
       if (currentPage === 'main') {
         stopMedia();
@@ -10424,6 +10425,9 @@
         document.getElementById('spotChallengePage').classList.add('active');
         refreshSpotSettingsDefaults();
         updateSpotChallengeStatsUI();
+      } else if (pageName === 'variety') {
+        document.getElementById('varietyPage')?.classList.add('active');
+        window.VocalVariety?.render();
       } else if (pageName === 'analytics') {
         document.getElementById('analyticsPage').classList.add('active');
         loadAnalyticsDashboard();
@@ -13553,6 +13557,12 @@
       document.getElementById('vocabSetup').style.display = 'block';
     });
 
+  </script>
+  <script>
+    // This preview is online-only. Do not load its assets in the native app.
+    if (!window.Capacitor?.isNativePlatform?.() && !['capacitor:', 'ionic:'].includes(location.protocol)) {
+      import('./vocal-variety.js').catch(error => console.warn('Vocal variety preview could not load:', error));
+    }
   </script>
 </body>
 </html>

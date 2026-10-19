@@ -37,5 +37,5 @@ test('shows the October 19 update date and refreshes the web cache', () => {
   assert.match(html, /settingsLastUpdated\.textContent = LAST_UPDATED/);
   assert.match(gradle, /versionCode 33/);
   assert.match(gradle, /versionName "33"/);
-  assert.match(serviceWorker, /speakers-gym-v26/);
+  assert.match(serviceWorker, /speakers-gym-v27-web-variety/);
 });
