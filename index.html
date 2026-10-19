@@ -2861,6 +2861,8 @@
     .ai-panel .analysis-copy-actions button:disabled { cursor: not-allowed; opacity: 0.45; }
     .analysis-copy-status { min-height: 20px; margin-top: 6px; color: #a7f3d0; font-size: 12px; }
     .analysis-copy-status.error { color: #fca5a5; }
+    .analysis-retry-btn { width: 100%; min-height: 44px; margin-top: 8px; border-color: rgba(248, 113, 113, 0.45) !important; background: rgba(127, 29, 29, 0.2) !important; color: #fecaca !important; }
+    .analysis-retry-btn[hidden] { display: none; }
     @media (max-width: 420px) {
       .analysis-copy-actions { grid-template-columns: 1fr; }
     }
@@ -4387,6 +4389,7 @@
         <button type="button" id="downloadReportBtn">⬇ Download coaching report</button>
       </div>
       <div class="analysis-copy-status" id="analysisCopyStatus" role="status" aria-live="polite"></div>
+      <button type="button" id="retryAnalysisBtn" class="analysis-retry-btn" hidden>↻ Retry AI analysis</button>
       <div class="retry-practice" id="retryPractice" hidden>
         <strong>Put this feedback into practice</strong>
         <p id="retryFocus">Try the same question again, improving one thing.</p>
@@ -6207,8 +6210,8 @@
 
     // Source update date shown in Settings > About and the app footer.
     // Android version numbers change only when packaging a Play Store release.
-    const APP_VERSION = '32';
-    const LAST_UPDATED = 'October 12, 2026';
+    const APP_VERSION = '33';
+    const LAST_UPDATED = 'October 19, 2026';
 
     // State
     let stats = JSON.parse(localStorage.getItem('sgStats')) || {
@@ -6226,6 +6229,7 @@
     let stream = null;
     let isRequestingFeedback = false;
     const pendingFeedbackSessions = new Set();
+    let failedAnalysisRequest = null;
     let recognition = null;
     let recognitionActive = false;
     let liveTranscript = '';
@@ -6256,6 +6260,7 @@
       lastSpeechMetrics = null;
       lastSpeechReport = null;
       currentFeedbackText = '';
+      clearFailedAnalysisRetry();
       clearTranscriptDisplay();
       aiFeedback.classList.remove('rich');
       aiFeedback.textContent = 'Your detailed feedback will appear here after your speech.';
@@ -6543,6 +6548,7 @@
     const copyTranscriptBtn = document.getElementById('copyTranscriptBtn');
     const copyReportBtn = document.getElementById('copyReportBtn');
     const downloadReportBtn = document.getElementById('downloadReportBtn');
+    const retryAnalysisBtn = document.getElementById('retryAnalysisBtn');
     // Holds the current transcript string (the transcript view is now a read-only div, not a textarea)
     let currentTranscript = '';
 
@@ -6693,6 +6699,7 @@
     copyTranscriptBtn.addEventListener('click', () => copyCurrentAnalysis('transcript'));
     copyReportBtn.addEventListener('click', () => copyCurrentAnalysis('report'));
     downloadReportBtn.addEventListener('click', downloadCurrentReport);
+    retryAnalysisBtn.addEventListener('click', retryFailedAnalysis);
 
     // Conversation Elements
     const conversationQuestionEl = document.getElementById('conversationQuestion');
@@ -7025,7 +7032,7 @@
         pendingSpeechCompletion = session;
         showRatingModal();
       } else {
-        showAchievement('Practise for at least 30 seconds to count a speech.');
+        showAchievement('Practice for at least 30 seconds to count a speech.');
       }
       // Stop = end of speech: reset timer state automatically for the next round
       elapsedSeconds = 0;
@@ -7673,6 +7680,39 @@
       }
     }
 
+    function clearFailedAnalysisRetry(sessionId = null) {
+      if (sessionId && failedAnalysisRequest?.speechSessionId !== sessionId) return;
+      failedAnalysisRequest = null;
+      retryAnalysisBtn.hidden = true;
+      retryAnalysisBtn.disabled = false;
+    }
+
+    function offerFailedAnalysisRetry(request) {
+      if (!request?.audioBlob || latestSpeechSessionId !== request.speechSessionId) return;
+      failedAnalysisRequest = request;
+      retryAnalysisBtn.hidden = false;
+      retryAnalysisBtn.disabled = false;
+    }
+
+    async function retryFailedAnalysis() {
+      const request = failedAnalysisRequest;
+      if (!request || pendingFeedbackSessions.has(request.speechSessionId)) return false;
+      retryAnalysisBtn.disabled = true;
+      setAiStatus('Retrying AI analysis...');
+      try {
+        await requestFeedbackWithAudio(
+          request.audioBlob,
+          request.duration,
+          request.acousticMetrics,
+          request.speechSessionId,
+          request.promptContext
+        );
+        return true;
+      } finally {
+        if (failedAnalysisRequest) retryAnalysisBtn.disabled = false;
+      }
+    }
+
     async function requestFeedbackWithAudio(audioBlob, duration, acousticMetrics = null, speechSessionId = null, promptContext = '') {
       console.log('[DEBUG] requestFeedbackWithAudio called');
       console.log('[DEBUG] Audio blob:', audioBlob ? `${audioBlob.size} bytes, type: ${audioBlob.type}` : 'null');
@@ -7774,6 +7814,7 @@
 
         // Show chat panel for follow-up questions
         showSpeechChat(transcript, feedbackText, metrics);
+        clearFailedAnalysisRetry(speechSessionId);
 
       } catch (err) {
         console.error('[ERROR] Failed to get feedback:', err);
@@ -7781,8 +7822,9 @@
         if (latestSpeechSessionId === speechSessionId) {
           setAiStatus(`Unable to analyze audio: ${err.message}`, true);
           aiFeedback.classList.remove('rich');
-          aiFeedback.textContent = 'AI feedback could not be generated for this session. Try again on your next speech.';
+          aiFeedback.textContent = 'AI feedback could not be generated. Your recording is ready to retry.';
           updateAnalysisCopyActions(false);
+          offerFailedAnalysisRetry({ audioBlob, duration, acousticMetrics, speechSessionId, promptContext });
         }
 
       } finally {
@@ -10450,7 +10492,7 @@
     const tutorialSteps = [
       {
         target: '.prompt-mode-toggle',
-        title: 'Choose how you want to practise',
+        title: 'Choose how you want to practice',
         copy: 'Use Questions for everyday answers, or Random Words for quick-thinking practice.'
       },
       {
