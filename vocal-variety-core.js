@@ -72,6 +72,51 @@ export class RhythmTracker {
   }
 }
 
+// Speaking rate for the pace game: syllable-like energy peaks per second over a short
+// window, pauses included (a pause is part of slowing down). A peak must stand 3 dB above
+// the valley before it, and be louder than `gateDb`, so room noise does not count.
+export class PaceMeter {
+  constructor({ window = 2.5, gateDb = -55 } = {}) { this.window = window; this.gateDb = gateDb; this.reset(); }
+  reset() { this.peaks = []; this.heard = []; this.smooth = null; this.rising = true; this.max = -Infinity; this.maxT = 0; this.min = Infinity; this.lastPeak = -1; this.start = null; }
+  push(t, rms) {
+    if (this.start === null) this.start = t;
+    const db = 20 * Math.log10(Math.max(rms, 1e-5));
+    this.smooth = this.smooth === null ? db : this.smooth * 0.45 + db * 0.55;
+    const value = this.smooth;
+    if (this.rising) {
+      if (value > this.max) { this.max = value; this.maxT = t; }
+      if (value < this.max - 3) {
+        if (this.max > this.gateDb && this.maxT - this.lastPeak >= 0.1) { this.peaks.push(this.maxT); this.lastPeak = this.maxT; }
+        this.rising = false; this.min = value;
+      }
+    } else {
+      this.min = Math.min(this.min, value);
+      if (value > this.min + 3) { this.rising = true; this.max = value; this.maxT = t; }
+    }
+    if (value > this.gateDb) this.heard.push(t);
+    const from = t - this.window;
+    while (this.peaks.length && this.peaks[0] < from) this.peaks.shift();
+    while (this.heard.length && this.heard[0] < from) this.heard.shift();
+    const span = Math.min(this.window, t - this.start);
+    if (span < 1.2 || this.heard.length < 5) return null;
+    return this.peaks.length / span;
+  }
+}
+
+// Pitch for the pitch game: the median of recent voiced estimates, held briefly across
+// unvoiced consonants so the line does not break on every "s" or "t".
+export class PitchSmoother {
+  constructor({ window = 0.35, hold = 0.5 } = {}) { this.window = window; this.hold = hold; this.reset(); }
+  reset() { this.recent = []; this.lastVoiced = -Infinity; this.value = null; }
+  push(t, midi) {
+    if (Number.isFinite(midi)) { this.recent.push({ t, midi }); this.lastVoiced = t; }
+    while (this.recent.length && this.recent[0].t < t - this.window) this.recent.shift();
+    if (this.recent.length) this.value = quantile(this.recent.map(item => item.midi), 0.5);
+    if (t - this.lastVoiced > this.hold) this.value = null;
+    return this.value;
+  }
+}
+
 export function summarize(frames) {
   const voiced = frames.filter(frame => Number.isFinite(frame.midi));
   const notes = new Map();

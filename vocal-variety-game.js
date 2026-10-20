@@ -1,26 +1,34 @@
 // Rules for the Vocal Variety Arena. Pure functions only: no DOM, no microphone.
+// Every round is a PREP answer (Point, Reason, Example, Final Point) spoken with vocal variety
+// in one of three dimensions: volume, pitch or pace (or all three together).
 // Everything here is browser-only practice. It never feeds the app's AI coaching scores.
-import { quantile } from './vocal-variety-core.js';
+import { quantile, PaceMeter, PitchSmoother, noteName } from './vocal-variety-core.js';
 
 export const FRAME_DT = 0.05;       // one stored frame every 50 ms
-export const SOFT_EDGE = 0.28;      // below this level the voice is in the soft zone
-export const STRONG_EDGE = 0.72;    // above this level the voice is in the strong zone
-export const BAND = 0.2;            // distance from the ribbon centre that still counts as a hit
+export const SOFT_EDGE = 0.28;      // below this level: the low zone (whisper / low / slow)
+export const STRONG_EDGE = 0.72;    // above this level: the high zone (boom / high / fast)
 const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 const mean = values => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 
-export const ZONES = {
-  soft: { id: 'soft', label: 'Whisper', color: '#a78bfa' },
-  natural: { id: 'natural', label: 'Steady', color: '#2dd4bf' },
-  strong: { id: 'strong', label: 'Boom', color: '#fbbf24' }
+// Each dimension maps its measurement to the same 0..1 "level", so one engine scores them all.
+// `band` is how far from the ribbon still counts as a hit; `lag` allows for measurement delay
+// (pace is measured over a 2.5 s window, so it shows a change about a second late).
+export const DIMENSIONS = {
+  volume: { id: 'volume', name: 'Volume', zones: { soft: 'Whisper', natural: 'Steady', strong: 'Boom' }, band: 0.2, lag: 0 },
+  pitch: { id: 'pitch', name: 'Pitch', zones: { soft: 'Low', natural: 'Mid', strong: 'High' }, band: 0.22, lag: 0.3 },
+  pace: { id: 'pace', name: 'Pace', zones: { soft: 'Slow', natural: 'Steady', strong: 'Fast' }, band: 0.24, lag: 1.2 }
 };
+export const DIM_ORDER = ['volume', 'pitch', 'pace'];
 export const ZONE_ORDER = ['soft', 'natural', 'strong'];
 export const zoneOf = level => level < SOFT_EDGE ? 'soft' : level > STRONG_EDGE ? 'strong' : 'natural';
+export const zoneLabel = (dim, zone) => DIMENSIONS[dim].zones[zone];
 
-// ---- The personal volume scale -------------------------------------------------
-// Microphones differ, so levels are relative to the player's own whisper, natural voice
-// and power voice (measured in "Find your range"): whisper = 0, natural = 0.5, power = 1.
-export const DEFAULT_SCALE = Object.freeze({ floor: -66, soft: -50, natural: -33, power: -19 });
+// ---- The personal scale ------------------------------------------------------------
+// Volume: whisper = 0, natural = 0.5, power = 1 (dB measured in "Find your range").
+// Pitch: the natural speaking note is 0.5; six semitones up is 1, six down is 0.
+// Pace: the natural speaking rate is 0.5; twice as fast is 1, half as fast is 0.
+export const DEFAULT_SCALE = Object.freeze({ floor: -66, soft: -50, natural: -33, power: -19, pitchCenter: null, pace: null });
+export const DEFAULT_PACE = 3.2;
 
 export function normalizeScale(raw = {}) {
   const pick = (value, fallback) => Number.isFinite(value) ? value : fallback;
@@ -30,7 +38,9 @@ export function normalizeScale(raw = {}) {
   if (natural - soft < 6) { soft = natural - 8; widened = true; }
   if (power - natural < 6) { power = natural + 10; widened = true; }
   if (soft - floor < 6) floor = soft - 6;
-  return { floor, soft, natural, power, span: power - soft, widened };
+  const pitchCenter = Number.isFinite(raw.pitchCenter) && raw.pitchCenter >= 30 && raw.pitchCenter <= 90 ? raw.pitchCenter : null;
+  const pace = Number.isFinite(raw.pace) && raw.pace >= 1 && raw.pace <= 9 ? raw.pace : null;
+  return { floor, soft, natural, power, span: power - soft, widened, pitchCenter, pace };
 }
 
 export function levelOf(db, scale) {
@@ -40,19 +50,29 @@ export function levelOf(db, scale) {
     : 0.5 + (db - scale.natural) / (scale.power - scale.natural) * 0.5;
   return clamp(level, -0.3, 1.3);
 }
-
+// The inverse of levelOf (inside the clamp): the dB value a volume level stands for.
+export const dbOfLevel = (level, scale) => level <= 0.5
+  ? scale.soft + level / 0.5 * (scale.natural - scale.soft)
+  : scale.natural + (level - 0.5) / 0.5 * (scale.power - scale.natural);
+export const pitchLevel =(midi, center) => Number.isFinite(midi) && Number.isFinite(center) ? clamp(0.5 + (midi - center) / 12, -0.3, 1.3) : null;
+export const paceLevel = (rate, natural) => Number.isFinite(rate) && rate >= 0 ? clamp(0.5 + 0.5 * Math.log2(Math.max(rate, 0.25) / natural), -0.3, 1.3) : null;
 export const activeThreshold = scale => scale.floor + Math.max(4, (scale.soft - scale.floor) * 0.4);
 export const relativeDb = (db, scale) => db - scale.natural;
 
-// Frames are dB readings (20 * log10 rms) captured during the "Find your range" steps.
-export function scaleFromCalibration({ silence = [], whisper = [], normal = [], power = [] }) {
+// Frames are dB readings captured during the "Find your range" steps. `pitches` are note
+// estimates (MIDI numbers) from the natural-voice sentence; `paceRate` is its syllables per second.
+export function scaleFromCalibration({ silence = [], whisper = [], normal = [], power = [], pitches = [], paceRate = null }) {
   const floor = quantile(silence, 0.9);
   const gate = (Number.isFinite(floor) ? floor : DEFAULT_SCALE.floor) + 5;
   const heard = frames => frames.filter(db => Number.isFinite(db) && db > gate);
   const soft = heard(whisper), natural = heard(normal), strong = heard(power);
+  const voiced = pitches.filter(Number.isFinite);
   return {
-    heard: { whisper: soft.length, normal: natural.length, power: strong.length },
-    scale: normalizeScale({ floor: floor ?? undefined, soft: quantile(soft, 0.5) ?? undefined, natural: quantile(natural, 0.5) ?? undefined, power: quantile(strong, 0.8) ?? undefined })
+    heard: { whisper: soft.length, normal: natural.length, power: strong.length, pitch: voiced.length },
+    scale: normalizeScale({
+      floor: floor ?? undefined, soft: quantile(soft, 0.5) ?? undefined, natural: quantile(natural, 0.5) ?? undefined,
+      power: quantile(strong, 0.8) ?? undefined, pitchCenter: voiced.length >= 10 ? quantile(voiced, 0.5) : undefined, pace: paceRate ?? undefined
+    })
   };
 }
 
@@ -75,132 +95,157 @@ export class EnvelopeTracker {
   }
 }
 
-// ---- Rounds ----------------------------------------------------------------------
-const smooth = s => s * s * (3 - 2 * s);
+// Turns one microphone reading into the three levels. Without a tuned pitch the centre is the
+// median of this take so far; without a tuned pace a typical rate is used.
+export class VoiceTracker {
+  constructor(scale) { this.scale = scale; this.reset(); }
+  reset() {
+    this.envelope = new EnvelopeTracker(this.scale); this.smoother = new PitchSmoother();
+    this.meter = new PaceMeter({ window: 2.5, gateDb: activeThreshold(this.scale) }); this.history = [];
+  }
+  push(t, rms, midi) {
+    const db = 20 * Math.log10(Math.max(rms, 1e-5));
+    const env = this.envelope.push(t, db);
+    const talking = env.level !== null;
+    if (Number.isFinite(midi) && env.active) { this.history.push(midi); if (this.history.length > 600) this.history.shift(); }
+    const smooth = this.smoother.push(t, env.active ? midi : null);
+    const center = this.scale.pitchCenter ?? (this.history.length >= 15 ? quantile(this.history, 0.5) : null);
+    const rate = this.meter.push(t, rms);
+    return {
+      t, db, active: env.active, volume: env.level,
+      midi: talking ? smooth : null, pitch: talking ? pitchLevel(smooth, center) : null,
+      rate, pace: paceLevel(rate, this.scale.pace ?? DEFAULT_PACE), center
+    };
+  }
+}
+
+// ---- PREP and the games ------------------------------------------------------------------
+export const PREP_PARTS = [
+  { key: 'point', letter: 'P', label: 'Point', ask: 'Answer the question directly.', starters: '“My answer is…” or “I believe…”' },
+  { key: 'reason', letter: 'R', label: 'Reason', ask: 'Explain why you think that.', starters: '“The main reason is…” or “This matters because…”' },
+  { key: 'example', letter: 'E', label: 'Example', ask: 'Give a specific example, experience or evidence.', starters: '“For example…” or “One time…”' },
+  { key: 'finalPoint', letter: 'P', label: 'Final Point', ask: 'Restate your answer and leave one clear takeaway.', starters: '“That is why…” or “The takeaway is…”' }
+];
+function prepPhases(durations, cues) {
+  let from = 0;
+  return PREP_PARTS.map((part, i) => {
+    const phase = { ...part, from, to: from + durations[i], zone: cues[i][0], cue: cues[i][1] };
+    from += durations[i];
+    return phase;
+  });
+}
 export function targetAt(plan, t) {
   const keys = plan.keys;
   if (!keys?.length) return null;
   if (t <= keys[0][0]) return keys[0][1];
   for (let i = 1; i < keys.length; i++) {
     if (t <= keys[i][0]) {
-      const [t0, v0] = keys[i - 1], [t1, v1] = keys[i];
-      return v0 + (v1 - v0) * smooth((t - t0) / (t1 - t0));
+      const [t0, v0] = keys[i - 1], [t1, v1] = keys[i], s = (t - t0) / (t1 - t0);
+      return v0 + (v1 - v0) * s * s * (3 - 2 * s);
     }
   }
   return keys.at(-1)[1];
 }
 export const phaseAt = (plan, t) => plan.phases.find(phase => t >= phase.from && t < phase.to) || plan.phases.at(-1);
 
-const phase = (from, to, label, icon, cue) => ({ from, to, label, icon, cue });
-
 export const STAGES = [
   {
-    id: 'whisper-boom', n: 1, kind: 'guided', title: 'Whisper to Boom', tagline: 'Pull them in. Then let it ring.',
-    icon: '◌',
+    id: 'volume-ribbon', dim: 'volume', kind: 'guided', title: 'Volume: Loud & Soft',
+    what: 'Follow the glowing ribbon. Boom your Point, whisper into your Example, land your Final Point strong.',
     plan: {
-      duration: 30, goalSwings: 3,
-      keys: [[0, 0.16], [8, 0.16], [11.5, 0.8], [21, 0.8], [24.5, 0.18], [30, 0.18]],
-      phases: [
-        phase(0, 9.5, 'Whisper it', '◌', 'Lean in. Make them come closer.'),
-        phase(9.5, 22.5, 'Boom!', '↗', 'Lift it. Fill the room, comfortably.'),
-        phase(22.5, 30, 'Land softly', '↘', 'Settle down. Let the last idea breathe.')
-      ]
-    },
-    questions: [
-      'Describe a moment that completely surprised you.',
-      'What is the best news you have ever received?',
-      'Tell us about a time you almost gave up, and did not.',
-      'What is something you wish more people understood?'
-    ]
+      duration: 40, goalSwings: 3,
+      keys: [[0, 0.8], [7, 0.8], [8.5, 0.5], [17, 0.5], [18.5, 0.18], [24, 0.2], [30, 0.8], [32, 0.8], [33.5, 0.86], [40, 0.86]],
+      phases: prepPhases([8, 10, 14, 8], [['Boom', 'Say your answer with energy.'], ['Steady', 'Explain why in your natural voice.'], ['Whisper → Boom', 'Start the story softly, then build it up.'], ['Boom', 'Land your takeaway strong.']])
+    }
   },
   {
-    id: 'staircase', n: 2, kind: 'guided', title: 'The Staircase', tagline: 'Four steps. Each one louder.',
-    icon: '▤',
+    id: 'volume-free', dim: 'volume', kind: 'free', title: 'Volume: Freestyle',
+    what: 'No ribbon. Use Whisper, Steady and Boom your own way across your PREP answer.',
     plan: {
-      duration: 30, goalSwings: 2,
-      keys: [[0, 0.18], [7, 0.18], [8.5, 0.5], [15, 0.5], [16.5, 0.78], [24, 0.78], [25.5, 0.9], [30, 0.9]],
-      phases: [
-        phase(0, 7.75, 'Quiet start', '◌', 'Begin gently. Plant your first idea.'),
-        phase(7.75, 15.75, 'Steady voice', '〰', 'Speak like you are talking to a friend.'),
-        phase(15.75, 24.75, 'Strong', '↗', 'Add energy. Mean every word.'),
-        phase(24.75, 30, 'Peak', '✦', 'Finish on your strongest line.')
-      ]
-    },
-    questions: [
-      'Why does your biggest goal matter to you?',
-      'What would change if everyone on your team spoke with more confidence?',
-      'Convince us to try something new this week.',
-      'What does success mean to you?'
-    ]
+      duration: 45, goalSwings: 4,
+      phases: prepPhases([9, 11, 15, 10], [['Try Boom', 'Make your point land.'], ['Steady', 'Clear and calm for the reason.'], ['Whisper + Boom', 'Use contrast in the story.'], ['Strong finish', 'Land the takeaway with presence.']])
+    }
   },
   {
-    id: 'pulse', n: 3, kind: 'guided', title: 'The Pulse', tagline: 'Punch. Hush. Punch. Hush.',
-    icon: '◖◗',
+    id: 'pitch-ribbon', dim: 'pitch', kind: 'guided', title: 'Pitch: High & Low',
+    what: 'Follow the ribbon up and down. Lift your Point, paint the Example, let the Final Point fall low and certain.',
     plan: {
-      duration: 36, goalSwings: 6,
-      keys: [[0, 0.78], [5, 0.78], [6.2, 0.18], [11, 0.18], [12.2, 0.8], [17, 0.8], [18.2, 0.2], [23, 0.2], [24.2, 0.82], [30, 0.82], [31.2, 0.5], [36, 0.5]],
-      phases: [
-        phase(0, 5.6, 'Punch', '↗', 'Hit your point with energy.'),
-        phase(5.6, 11.6, 'Hush', '◌', 'Drop the volume. Let them lean in.'),
-        phase(11.6, 17.6, 'Punch', '↗', 'Back up. Own the room.'),
-        phase(17.6, 23.6, 'Hush', '◌', 'Softer again. Make it a secret.'),
-        phase(23.6, 30.6, 'Punch', '↗', 'Your biggest one yet.'),
-        phase(30.6, 36, 'Steady close', '〰', 'Come back to your natural voice.')
-      ]
-    },
-    questions: [
-      'Sell us your favourite book, film, or place in 30 seconds.',
-      'Argue for or against: mornings are the best part of the day.',
-      'Explain what you do to someone who has never heard of it.',
-      'Pitch a startup idea for a problem you face every day.'
-    ]
+      duration: 40, goalSwings: 4,
+      keys: [[0, 0.8], [7, 0.8], [8.5, 0.5], [17, 0.5], [18.5, 0.2], [23, 0.2], [24.5, 0.8], [30, 0.8], [31.2, 0.5], [32, 0.5], [33.5, 0.18], [40, 0.18]],
+      phases: prepPhases([8, 10, 14, 8], [['High', 'Lift your voice on the key words.'], ['Mid', 'Explain why in your natural melody.'], ['Low → High', 'Paint the story: go low, then lift.'], ['Low', 'Let your pitch fall. Finish low and certain.']])
+    }
   },
   {
-    id: 'story-arc', n: 4, kind: 'guided', title: 'The Story Arc', tagline: 'Hook, build, peak, land.',
-    icon: '⌒',
+    id: 'pitch-free', dim: 'pitch', kind: 'free', title: 'Pitch: Freestyle',
+    what: 'No ribbon. Use your low, mid and high voice your own way across your PREP answer.',
     plan: {
-      duration: 36, goalSwings: 4,
-      keys: [[0, 0.18], [7, 0.2], [15, 0.55], [21, 0.85], [27, 0.85], [31, 0.4], [36, 0.3]],
-      phases: [
-        phase(0, 8, 'The hook', '◌', 'Open quietly and pull us in.'),
-        phase(8, 21, 'The build', '↗', 'Climb with the story. Speed up. Grow.'),
-        phase(21, 27.5, 'The peak', '✦', 'This is the moment. Own it.'),
-        phase(27.5, 36, 'The landing', '↘', 'Come down slowly. Leave us with a thought.')
-      ]
-    },
-    questions: [
-      'Tell the story of the best day of your life so far.',
-      'Describe a challenge you overcame.',
-      'Tell us about a person who changed how you see the world.',
-      'Describe a place you could return to a thousand times.'
-    ]
+      duration: 45, goalSwings: 4,
+      phases: prepPhases([9, 11, 15, 10], [['Lift', 'Lift the key word of your answer.'], ['Mid', 'Talk it through naturally.'], ['Low + High', 'Use your whole range in the story.'], ['Fall', 'End on a falling, confident note.']])
+    }
   },
   {
-    id: 'freestyle', n: 5, kind: 'free', title: 'Freestyle Boss', tagline: 'No ribbon. Just you and the zones.',
-    icon: '✺',
+    id: 'pace-ribbon', dim: 'pace', kind: 'guided', title: 'Pace: Fast, Slow & Pause',
+    what: 'Follow the ribbon. Slow for your Point, faster for your Example, then pause and slow right down to finish.',
     plan: {
-      duration: 45, goalSwings: 5,
-      phases: [
-        phase(0, 15, 'Open', '◌', 'Start anywhere. Make one deliberate change.'),
-        phase(15, 30, 'Explore', '〰', 'Visit every zone at least once.'),
-        phase(30, 45, 'Finish', '✦', 'Land your boldest moment.')
-      ]
-    },
-    questions: [
-      'If you could give one speech to the whole world, what would it say?',
-      'Describe the future you are building, as if it already happened.',
-      'What would you say to someone about to give up on their dream?',
-      'Tell us about the moment you decided to become a better speaker.'
-    ]
+      duration: 40, goalSwings: 3,
+      keys: [[0, 0.22], [7, 0.22], [8.5, 0.5], [17, 0.5], [18.5, 0.8], [30, 0.8], [32, 0.2], [40, 0.18]],
+      phases: prepPhases([8, 10, 14, 8], [['Slow', 'Slow and clear. Let each word count.'], ['Steady', 'Explain why at your natural speed.'], ['Fast', 'Speed up. The story has energy.'], ['Slow + Pause', 'Pause, then slow right down for the takeaway.']])
+    }
+  },
+  {
+    id: 'pace-free', dim: 'pace', kind: 'free', title: 'Pace: Freestyle',
+    what: 'No ribbon. Change speed and use pauses your own way across your PREP answer.',
+    plan: {
+      duration: 45, goalSwings: 4,
+      phases: prepPhases([9, 11, 15, 10], [['Slow', 'Open slowly. Let it land.'], ['Steady', 'Natural speed for the reason.'], ['Fast', 'Pick up speed in the story.'], ['Pause', 'Pause, then deliver the takeaway slowly.']])
+    }
+  },
+  {
+    id: 'all-three', dim: 'all', kind: 'free', title: 'All Three: Full Vocal Variety',
+    what: 'Volume, pitch and pace together in one PREP answer. Two swings in each to win. The final test.',
+    plan: {
+      duration: 50, goalSwings: 2,
+      phases: prepPhases([10, 12, 16, 12], [['Boom + Slow', 'A strong, slow, clear answer.'], ['Steady', 'Natural voice and speed.'], ['Mix it', 'Whisper, lift, speed up: bring the story alive.'], ['Low + Slow', 'Slow down, pitch down, land it.']])
+    }
   }
 ];
 export const stageById = id => STAGES.find(stage => stage.id === id);
+
+// PREP works best with questions that ask for an opinion you can back up with an example.
+export const QUESTIONS = [
+  'Should every student learn public speaking at school?',
+  'What is the most important skill for the future, and why?',
+  'Is it better to work from home or from an office?',
+  'What makes a great leader?',
+  'Should social media have an age limit?',
+  'What habit has changed your life the most?',
+  'Is failure necessary for success?',
+  'What is the best advice you have ever received?',
+  'Should young people take a gap year before university?',
+  'What makes a great teacher?',
+  'Is it better to be a specialist or a generalist?',
+  'Which city would you recommend to a first-time visitor, and why?',
+  'Should companies move to a four-day work week?',
+  'What is one thing you would change about education?',
+  'Is it more important to be liked or to be respected?',
+  'Which book or film should everyone experience?',
+  'Should phones be banned in classrooms?',
+  'What does confidence mean to you?',
+  'Is it better to plan your life or go with the flow?',
+  'What is the most underrated quality in a friend?',
+  'Should everyone learn a second language?',
+  'Is it better to travel alone or with others?',
+  'What is the best way to deal with stress?',
+  'Does money make people happier?'
+];
+// Each game starts at a different place in the list so the games do not all ask the same question.
+export const questionIndexFor = (progress, stage) => progress.seen?.[stage.id] ?? (STAGES.indexOf(stage) * 3) % QUESTIONS.length;
 
 // ---- Scoring -----------------------------------------------------------------------
 const STAR_CUTS = { guided: [55, 72, 88], free: [50, 68, 85] };
 export const starsFor = (score, kind) => STAR_CUTS[kind].filter(cut => score >= cut).length;
 
-// Counts zone changes. A jump from whisper to boom counts as two swings.
+// Counts zone changes. A jump from the low zone to the high zone counts as two swings.
 // Short dips are ignored (dwell) and edges have hysteresis so a wobble on a border is not a swing.
 export function countSwings(frames, dwell = 0.4) {
   const hysteresis = 0.04;
@@ -227,86 +272,167 @@ export function countSwings(frames, dwell = 0.4) {
   return { swings, moments };
 }
 
-export function scoreRound({ frames, stage, scale }) {
-  const plan = stage.plan, guided = stage.kind === 'guided';
-  const elapsed = Math.max(FRAME_DT, frames.at(-1)?.t ?? 0);
-  const shown = frames.filter(frame => Number.isFinite(frame.level));
-  const activeFrames = frames.filter(frame => frame.active);
-  const activeFraction = frames.length ? shown.length / frames.length : 0;
-  const coverage = clamp(activeFraction / 0.5, 0, 1);
-  const completion = clamp(elapsed / (plan.duration * 0.8), 0, 1);
+// 1 inside the ribbon, fading to 0 just outside it. Shared by live scoring and final scoring.
+export function ribbonCredit(dim, level, plan, t) {
+  const cfg = DIMENSIONS[dim];
+  const distance = Math.abs(level - targetAt(plan, Math.max(0, t - cfg.lag)));
+  return distance <= cfg.band ? 1 : Math.max(0, 1 - (distance - cfg.band) / 0.15);
+}
 
-  const levels = shown.map(frame => frame.level);
+// Statistics for one dimension of a take. `guided` adds how closely the ribbon was followed.
+export function dimensionStats(frames, dim, plan, guided, scale) {
+  const cfg = DIMENSIONS[dim];
+  const shown = frames.filter(frame => Number.isFinite(frame[dim]));
+  const levels = shown.map(frame => frame[dim]);
   const lo = quantile(levels, 0.1) ?? 0, hi = quantile(levels, 0.9) ?? 0;
-  const dbs = activeFrames.map(frame => frame.db);
-  const rangeDb = dbs.length >= 10 ? quantile(dbs, 0.9) - quantile(dbs, 0.1) : 0;
   const rangeScore = clamp((hi - lo) / 0.7, 0, 1);
-
   const seconds = { soft: 0, natural: 0, strong: 0 };
-  for (const frame of shown) seconds[zoneOf(frame.level)] += FRAME_DT;
-  const shownSeconds = shown.length * FRAME_DT || 1;
-  const shares = { soft: seconds.soft / shownSeconds, natural: seconds.natural / shownSeconds, strong: seconds.strong / shownSeconds };
+  for (const frame of shown) seconds[zoneOf(frame[dim])] += FRAME_DT;
+  const total = shown.length * FRAME_DT || 1;
+  const shares = { soft: seconds.soft / total, natural: seconds.natural / total, strong: seconds.strong / total };
   const balance = (Math.min(1, shares.soft / 0.15) + Math.min(1, shares.natural / 0.25) + Math.min(1, shares.strong / 0.15)) / 3;
-
-  const { swings, moments } = countSwings(frames);
+  const { swings, moments } = countSwings(frames.map(frame => ({ t: frame.t, level: Number.isFinite(frame[dim]) ? frame[dim] : null })));
   const swingGoal = plan.goalSwings;
-  const swingScore = clamp(swings / swingGoal, 0, 1);
-  const varietyFraction = 0.45 * rangeScore + 0.35 * swingScore + 0.2 * balance;
+  const varietyFraction = 0.45 * rangeScore + 0.35 * clamp(swings / swingGoal, 0, 1) + 0.2 * balance;
 
   let match = null, bestStreak = 0;
-  if (guided) {
+  if (guided && plan.keys) {
     let run = 0, credit = 0;
     for (const frame of shown) {
-      const distance = Math.abs(frame.level - targetAt(plan, frame.t));
-      const value = distance <= BAND ? 1 : Math.max(0, 1 - (distance - BAND) / 0.25);
+      const value = ribbonCredit(dim, frame[dim], plan, frame.t);
       credit += value;
       run = value === 1 ? run + FRAME_DT : 0;
       bestStreak = Math.max(bestStreak, run);
     }
     match = shown.length ? credit / shown.length : 0;
   }
-  const base = guided ? 0.7 * match + 0.3 * varietyFraction : varietyFraction;
-  const score = Math.round(100 * clamp(base * coverage * completion, 0, 1));
 
-  const peakFrame = shown.reduce((best, frame) => !best || frame.level > best.level ? frame : best, null);
-  const lowFrame = activeFrames.filter(frame => Number.isFinite(frame.level)).reduce((best, frame) => !best || frame.level < best.level ? frame : best, null);
-  const goals = guided
-    ? [
-      { id: 'match', label: 'Follow the ribbon', detail: `${Math.round(match * 100)}% of 70%`, done: match >= 0.7 },
-      { id: 'swings', label: `${swingGoal} swings`, detail: `${swings} of ${swingGoal}`, done: swings >= swingGoal },
-      { id: 'flow', label: 'Keep talking', detail: `${Math.round(activeFraction * 100)}% of 60%`, done: activeFraction >= 0.6 }
-    ]
-    : [
-      { id: 'whisper', label: 'Find a whisper', detail: `${seconds.soft.toFixed(1)}s of 1.2s`, done: seconds.soft >= 1.2 },
-      { id: 'boom', label: 'Hit a boom', detail: `${seconds.strong.toFixed(1)}s of 1.2s`, done: seconds.strong >= 1.2 },
-      { id: 'swings', label: `${swingGoal} swings`, detail: `${swings} of ${swingGoal}`, done: swings >= swingGoal },
-      { id: 'flow', label: 'Keep talking', detail: `${Math.round(activeFraction * 100)}% of 60%`, done: activeFraction >= 0.6 }
-    ];
-
+  // The range and the extreme moments, in units a person understands.
+  let range;
+  const center = dim === 'pitch' ? (scale.pitchCenter ?? quantile(shown.map(f => f.midi), 0.5)) : null;
+  if (dim === 'volume') {
+    // Measured on the smoothed loudness line, so the dips between syllables of a steady
+    // voice do not count as range.
+    const value = levels.length >= 10 ? dbOfLevel(hi, scale) - dbOfLevel(lo, scale) : 0;
+    range = { value, text: `${value.toFixed(0)} dB` };
+  } else if (dim === 'pitch') {
+    const midis = shown.map(frame => frame.midi).filter(Number.isFinite);
+    const value = midis.length >= 10 ? quantile(midis, 0.9) - quantile(midis, 0.1) : 0;
+    range = { value, text: `${value.toFixed(1)} semitones`, low: quantile(midis, 0.1), high: quantile(midis, 0.9) };
+  } else {
+    const rates = shown.map(frame => frame.rate).filter(Number.isFinite);
+    const low = quantile(rates, 0.1), high = quantile(rates, 0.9);
+    const value = rates.length >= 10 && low > 0 ? high / low : 0;
+    range = { value, text: rates.length >= 10 ? `${low.toFixed(1)}–${high.toFixed(1)} syllables/s` : '—', low, high };
+  }
+  const describe = frame => {
+    if (!frame) return null;
+    const base = { t: frame.t, level: frame[dim] };
+    if (dim === 'volume') {
+      const rel = dbOfLevel(frame.volume, scale) - scale.natural;
+      return { ...base, rel, text: `${signedNumber(rel)} dB vs your natural voice` };
+    }
+    if (dim === 'pitch') return { ...base, rel: Number.isFinite(center) ? frame.midi - center : 0, text: `${noteName(frame.midi)}, ${signedNumber(Number.isFinite(center) ? frame.midi - center : 0, 1)} semitones vs your natural note` };
+    return { ...base, rel: frame.rate, text: `about ${frame.rate.toFixed(1)} syllables per second` };
+  };
+  const peak = shown.reduce((best, frame) => !best || frame[dim] > best[dim] ? frame : best, null);
+  const low = shown.filter(frame => frame.active || dim !== 'volume').reduce((best, frame) => !best || frame[dim] < best[dim] ? frame : best, null);
   return {
-    score, stars: starsFor(score, stage.kind), kind: stage.kind,
-    match, varietyScore: Math.round(100 * varietyFraction), coverage, activeFraction, completion, elapsed,
-    rangeDb, rangeLevel: hi - lo, lo, hi, shares, seconds, balance,
-    swings, swingGoal, swingMoments: moments, bestStreak,
-    peak: peakFrame && { t: peakFrame.t, level: peakFrame.level, rel: relativeDb(peakFrame.db, scale) },
-    low: lowFrame && { t: lowFrame.t, level: lowFrame.level, rel: relativeDb(lowFrame.db, scale) },
-    goals
+    dim, samples: shown.length, match, bestStreak, varietyFraction, varietyScore: Math.round(100 * varietyFraction),
+    rangeScore, rangeLevel: hi - lo, lo, hi, range, seconds, shares, balance, swings, swingGoal, swingMoments: moments,
+    peak: describe(peak), low: describe(low), center
   };
 }
+const signedNumber = (value, digits = 0) => `${value >= 0 ? '+' : '−'}${Math.abs(value).toFixed(digits)}`;
 
-export function rangeLabel(rangeDb) {
-  return rangeDb < 6 ? 'Flat' : rangeDb < 12 ? 'Gentle' : rangeDb < 20 ? 'Dynamic' : 'Electric';
+export function scoreRound({ frames, stage, scale }) {
+  const plan = stage.plan, guided = stage.kind === 'guided';
+  const elapsed = Math.max(FRAME_DT, frames.at(-1)?.t ?? 0);
+  const talking = frames.filter(frame => Number.isFinite(frame.volume));
+  const activeFraction = frames.length ? talking.length / frames.length : 0;
+  const coverage = clamp(activeFraction / 0.5, 0, 1);
+  const completion = clamp(elapsed / (plan.duration * 0.8), 0, 1);
+  const dims = Object.fromEntries(DIM_ORDER.map(dim => [dim, dimensionStats(frames, dim, plan, guided && dim === stage.dim, scale)]));
+  const common = { kind: stage.kind, dim: stage.dim, dims, coverage, activeFraction, completion, elapsed };
+  const flow = { id: 'flow', label: 'Keep talking', detail: `${Math.round(activeFraction * 100)}% of 60%`, done: activeFraction >= 0.6 };
+
+  if (stage.dim === 'all') {
+    const variety = mean(DIM_ORDER.map(dim => dims[dim].varietyFraction));
+    const score = Math.round(100 * clamp(variety * coverage * completion, 0, 1));
+    const goals = [...DIM_ORDER.map(dim => ({ id: dim, label: `${DIMENSIONS[dim].name}: ${plan.goalSwings} swings`, detail: `${dims[dim].swings} of ${plan.goalSwings}`, done: dims[dim].swings >= plan.goalSwings })), flow];
+    return { ...common, main: null, score, stars: starsFor(score, 'free'), varietyScore: Math.round(variety * 100), goals };
+  }
+  const main = dims[stage.dim], names = DIMENSIONS[stage.dim].zones;
+  const base = guided ? 0.7 * main.match + 0.3 * main.varietyFraction : main.varietyFraction;
+  const score = Math.round(100 * clamp(base * coverage * completion, 0, 1));
+  const goals = guided
+    ? [
+      { id: 'match', label: 'Follow the ribbon', detail: `${Math.round(main.match * 100)}% of 70%`, done: main.match >= 0.7 },
+      { id: 'swings', label: `${main.swingGoal} swings`, detail: `${main.swings} of ${main.swingGoal}`, done: main.swings >= main.swingGoal },
+      flow
+    ]
+    : [
+      { id: 'low', label: `Reach ${names.soft}`, detail: `${main.seconds.soft.toFixed(1)}s of 1.2s`, done: main.seconds.soft >= 1.2 },
+      { id: 'high', label: `Reach ${names.strong}`, detail: `${main.seconds.strong.toFixed(1)}s of 1.2s`, done: main.seconds.strong >= 1.2 },
+      { id: 'swings', label: `${main.swingGoal} swings`, detail: `${main.swings} of ${main.swingGoal}`, done: main.swings >= main.swingGoal },
+      flow
+    ];
+  return { ...common, main, score, stars: starsFor(score, stage.kind), varietyScore: main.varietyScore, match: main.match, goals };
 }
 
+// How each PREP part sounded: the zone the voice spent most time in (per dimension), how
+// much of the part was spoken, and for guided games how well the ribbon was followed.
+export function prepBreakdown(frames, stage) {
+  const dims = stage.dim === 'all' ? DIM_ORDER : [stage.dim];
+  return stage.plan.phases.map(phase => {
+    const inPart = frames.filter(frame => frame.t >= phase.from && frame.t < phase.to);
+    const talking = inPart.length ? inPart.filter(frame => Number.isFinite(frame.volume)).length / inPart.length : 0;
+    const byDim = Object.fromEntries(dims.map(dim => {
+      const voiced = inPart.filter(frame => Number.isFinite(frame[dim]));
+      const counts = { soft: 0, natural: 0, strong: 0 };
+      voiced.forEach(frame => { counts[zoneOf(frame[dim])]++; });
+      const zone = voiced.length ? ZONE_ORDER.reduce((a, b) => counts[b] > counts[a] ? b : a) : null;
+      const match = stage.kind === 'guided' && voiced.length ? mean(voiced.map(frame => ribbonCredit(dim, frame[dim], stage.plan, frame.t))) : null;
+      return [dim, { zone, label: zone ? zoneLabel(dim, zone) : null, share: zone ? counts[zone] / voiced.length : 0, match }];
+    }));
+    return { key: phase.key, letter: phase.letter, label: phase.label, goal: phase.zone, talking, dims: byDim };
+  });
+}
+
+export function rangeLabel(dim, value) {
+  const cuts = { volume: [6, 12, 20], pitch: [2, 4, 7], pace: [1.3, 1.7, 2.3] }[dim];
+  return value < cuts[0] ? 'Flat' : value < cuts[1] ? 'Gentle' : value < cuts[2] ? 'Dynamic' : 'Electric';
+}
+
+const MISSING = {
+  volume: {
+    strong: 'Your Boom zone is still untouched. Give your Point real energy: strong, never strained.',
+    soft: 'You never reached Whisper. Drop your voice at the start of your Example to pull people in.'
+  },
+  pitch: {
+    strong: 'Your voice never went High. Lift the key word of your Point, the way you would when you are excited.',
+    soft: 'Your voice never went Low. Let your pitch fall on the Final Point: falling pitch sounds certain.'
+  },
+  pace: {
+    strong: 'You never sped up. Tell your Example faster, as if the story is exciting.',
+    soft: 'You never slowed down. Slow your Point, and pause before your Final Point.'
+  }
+};
 export function coachingTip(result) {
-  if (result.activeFraction < 0.3) return 'We barely heard you. Move a little closer to the microphone, keep it still, and keep talking: pauses are powerful, but we need the voice too.';
-  if (result.activeFraction < 0.5) return 'Great pauses, but you were silent for more than half the round. Keep one idea flowing into the next and let the volume do the changing.';
-  if (result.shares.strong < 0.08) return 'Your Boom zone is still untouched. Choose one word per sentence and give it real energy. Keep it comfortable, never strained.';
-  if (result.shares.soft < 0.08) return 'You stayed out of the Whisper zone. Try getting softer on purpose before your biggest point. Quiet makes people lean in.';
-  if (result.swings < result.swingGoal) return 'You stayed in one gear for long stretches. Change zones at the start of a new idea, not in the middle of a word.';
-  if (result.kind === 'guided' && result.match < 0.6) return 'Watch the glowing ribbon a little earlier. Start changing volume as the ribbon turns, not after it has passed.';
-  if (result.kind === 'guided' && result.match < 0.85) return 'Strong contrast. To tighten up, change volume on a sentence boundary and hold it until the ribbon moves.';
-  return 'That is real vocal variety: clear zones, confident changes, and a voice that never gets stuck. Try a new question to keep it fresh.';
+  if (result.activeFraction < 0.3) return 'We barely heard you. Move a little closer to the microphone, keep it still, and keep talking through all four PREP parts.';
+  if (result.activeFraction < 0.5) return 'Great pauses, but you were silent for more than half the round. Use your notes to move from Point to Reason to Example to Final Point.';
+  const focus = result.dim === 'all'
+    ? DIM_ORDER.reduce((worst, dim) => result.dims[dim].varietyFraction < result.dims[worst].varietyFraction ? dim : worst, 'volume')
+    : result.dim;
+  const stats = result.dims[focus], prefix = result.dim === 'all' ? `${DIMENSIONS[focus].name} varied the least. ` : '';
+  if (stats.shares.strong < 0.08) return prefix + MISSING[focus].strong;
+  if (stats.shares.soft < 0.08) return prefix + MISSING[focus].soft;
+  if (stats.swings < stats.swingGoal) return `${prefix}You stayed in one gear for long stretches. Every PREP step is a chance to change: try a new ${DIMENSIONS[focus].name.toLowerCase()} for each part.`;
+  if (result.kind === 'guided' && result.match < 0.6) {
+    return focus === 'pace' ? 'Speed changes take about a second to show. Start speeding up or slowing down as the ribbon begins to turn.' : 'Watch the glowing ribbon a little earlier. Start changing as the ribbon turns, not after it has passed.';
+  }
+  if (result.kind === 'guided' && result.match < 0.85) return 'Strong contrast. To tighten up, change on a PREP boundary and hold it until the ribbon moves.';
+  return 'That is real vocal variety with a clear structure: every PREP part sounded different. Try a new question to keep it fresh.';
 }
 
 // ---- Progress, ranks, badges -----------------------------------------------------------
@@ -335,7 +461,7 @@ export function sanitizeProgress(raw) {
     best: table(raw.best, v => Number.isFinite(v) && v >= 0 && v <= 100),
     badges: table(raw.badges, v => typeof v === 'string'),
     streak: { count: number(raw.streak?.count), last: typeof raw.streak?.last === 'string' ? raw.streak.last : null },
-    seen: table(raw.seen, v => Number.isInteger(v) && v >= 0),
+    seen: table(raw.seen, v => Number.isInteger(v) && v >= 0 && v < QUESTIONS.length),
     tuned: raw.tuned === true
   };
 }
@@ -348,18 +474,21 @@ function nextStreak(streak, now) {
   return { count: streak.last === dayKey(yesterday) ? streak.count + 1 : 1, last: today };
 }
 
-export const isUnlocked = (progress, stage) => stage.n === 1 || (progress.stars[STAGES[stage.n - 2].id] || 0) >= 1;
-
+const dimOf = (ctx, dim) => ctx.result?.dims?.[dim] || null;
 export const BADGES = [
   { id: 'tuned', name: 'Tuned In', icon: '🎚️', desc: 'Find your range for the first time.', earned: ctx => ctx.progress.tuned },
-  { id: 'whisper', name: 'First Whisper', icon: '◌', desc: 'Spend 2 seconds in the Whisper zone.', earned: ctx => ctx.result && ctx.result.seconds.soft >= 2 },
-  { id: 'boom', name: 'Boom!', icon: '💥', desc: 'Spend 2 seconds in the Boom zone.', earned: ctx => ctx.result && ctx.result.seconds.strong >= 2 },
-  { id: 'range', name: 'Wide Range', icon: '↕', desc: 'Show a 20 dB range in one take.', earned: ctx => ctx.result && ctx.result.rangeDb >= 20 },
-  { id: 'swing', name: 'Swing King', icon: '🎢', desc: 'Make 8 swings between zones.', earned: ctx => ctx.result && ctx.result.swings >= 8 },
-  { id: 'ribbon', name: 'On the Ribbon', icon: '🎯', desc: 'Match the ribbon 90% or better.', earned: ctx => ctx.result && ctx.result.match !== null && ctx.result.match >= 0.9 },
-  { id: 'trio', name: 'Triple Star', icon: '⭐', desc: 'Earn three stars on any round.', earned: ctx => ctx.result && ctx.result.stars === 3 },
+  { id: 'prepared', name: 'Prepared', icon: '📝', desc: 'Write notes for all four PREP parts before a round.', earned: ctx => ctx.prepared === true },
+  { id: 'whisper', name: 'First Whisper', icon: '◌', desc: 'Spend 2 seconds in the Whisper zone.', earned: ctx => dimOf(ctx, 'volume')?.seconds.soft >= 2 },
+  { id: 'boom', name: 'Boom!', icon: '💥', desc: 'Spend 2 seconds in the Boom zone.', earned: ctx => dimOf(ctx, 'volume')?.seconds.strong >= 2 },
+  { id: 'range', name: 'Wide Range', icon: '↕', desc: 'Show a 20 dB volume range in one answer.', earned: ctx => dimOf(ctx, 'volume')?.range.value >= 20 },
+  { id: 'melody', name: 'Melody Maker', icon: '🎵', desc: 'Use 6 semitones of pitch range in one answer.', earned: ctx => dimOf(ctx, 'pitch')?.range.value >= 6 },
+  { id: 'shifter', name: 'Pace Shifter', icon: '⏱️', desc: 'Spend 2 seconds both Slow and Fast in one answer.', earned: ctx => dimOf(ctx, 'pace')?.seconds.soft >= 2 && dimOf(ctx, 'pace')?.seconds.strong >= 2 },
+  { id: 'swing', name: 'Swing King', icon: '🎢', desc: 'Make 8 swings in one dimension.', earned: ctx => DIM_ORDER.some(dim => dimOf(ctx, dim)?.swings >= 8) },
+  { id: 'ribbon', name: 'On the Ribbon', icon: '🎯', desc: 'Match a ribbon 90% or better.', earned: ctx => ctx.result?.match >= 0.9 },
+  { id: 'trio', name: 'Triple Star', icon: '⭐', desc: 'Earn three stars on any game.', earned: ctx => ctx.result?.stars === 3 },
+  { id: 'threat', name: 'Triple Threat', icon: '👑', desc: 'Earn three stars on All Three.', earned: ctx => ctx.stage?.dim === 'all' && ctx.result?.stars === 3 },
   { id: 'spark', name: '3 Day Spark', icon: '🔥', desc: 'Practice three days in a row.', earned: ctx => ctx.progress.streak.count >= 3 },
-  { id: 'journey', name: 'Full Journey', icon: '🏁', desc: 'Earn a star on every stage.', earned: ctx => STAGES.every(stage => (ctx.progress.stars[stage.id] || 0) >= 1) }
+  { id: 'journey', name: 'Full Set', icon: '🏁', desc: 'Earn a star in every game.', earned: ctx => STAGES.every(stage => (ctx.progress.stars[stage.id] || 0) >= 1) }
 ];
 
 function awardBadges(progress, ctx, now) {
@@ -382,24 +511,21 @@ export function applyTune(progress, now = new Date()) {
 }
 
 // `questionIndex` is the question that was just played; `seen[stage]` stores the next one to offer.
-export function applyRound(progress, stage, result, now = new Date(), questionIndex = null) {
+// `prepared` is true when the player wrote notes for all four PREP parts.
+export function applyRound(progress, stage, result, now = new Date(), questionIndex = null, { prepared = false } = {}) {
   const before = sanitizeProgress(progress);
   const next = { ...before, stars: { ...before.stars }, best: { ...before.best }, badges: { ...before.badges }, seen: { ...before.seen } };
   const previousStars = next.stars[stage.id] || 0, previousBest = next.best[stage.id] || 0;
   const firstClear = previousStars === 0 && result.stars >= 1;
   const personalBest = result.score > previousBest;
   const goalXp = result.goals.filter(goal => goal.done).length * 4;
-  const xpGained = 10 + result.stars * 12 + Math.round(result.score * 0.4) + goalXp + (firstClear ? 25 : 0) + (personalBest && previousBest > 0 ? 5 : 0);
+  const xpGained = 10 + result.stars * 12 + Math.round(result.score * 0.4) + goalXp + (firstClear ? 25 : 0) + (personalBest && previousBest > 0 ? 5 : 0) + (prepared ? 5 : 0);
   next.xp = before.xp + xpGained;
   next.rounds = before.rounds + 1;
   next.stars[stage.id] = Math.max(previousStars, result.stars);
   next.best[stage.id] = Math.max(previousBest, result.score);
-  next.seen[stage.id] = ((questionIndex ?? before.seen[stage.id] ?? 0) + 1) % stage.questions.length;
+  next.seen[stage.id] = ((questionIndex ?? questionIndexFor(before, stage)) + 1) % QUESTIONS.length;
   next.streak = nextStreak(before.streak, now);
-  const newBadges = awardBadges(next, { stage, result }, now);
-  return {
-    progress: next, xpGained, firstClear, personalBest, newBadges,
-    rankBefore: rankFor(before.xp), rank: rankFor(next.xp),
-    unlockedNext: firstClear ? STAGES[stage.n] || null : null
-  };
+  const newBadges = awardBadges(next, { stage, result, prepared }, now);
+  return { progress: next, xpGained, firstClear, personalBest, newBadges, rankBefore: rankFor(before.xp), rank: rankFor(next.xp) };
 }
