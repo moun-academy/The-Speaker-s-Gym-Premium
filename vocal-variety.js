@@ -3,8 +3,8 @@
 // Audio stays in this browser and nothing is uploaded.
 import { detectPitch, rmsOf, midiOf, noteName, PaceMeter } from './vocal-variety-core.js';
 import {
-  BADGES, DEFAULT_SCALE, DEFAULT_SPEECH, DIMENSIONS, DIM_ORDER, FRAME_DT, PREP_PARTS, QUESTIONS, SOFT_EDGE, SPEECH_LENGTHS, STAGES, STRONG_EDGE,
-  VoiceTracker, applyRound, applyTune, coachingTip, countSwings, lengthLabel, normalizeScale, phaseAt, prepBreakdown, questionIndexFor,
+  BADGES, CALL_DEFAULT_NATURAL, DEFAULT_SCALE, DEFAULT_SPEECH, DIMENSIONS, DIM_ORDER, FRAME_DT, PREP_PARTS, QUESTIONS, SOFT_EDGE, SPEECH_LENGTHS, STAGES, STRONG_EDGE,
+  VoiceTracker, applyRound, applyTune, callScale, coachingTip, learnCallLevel, countSwings, lengthLabel, normalizeScale, phaseAt, prepBreakdown, questionIndexFor,
   rangeLabel, rankFor, ribbonCredit, sanitizeProgress, scaleFromCalibration, scaleStage, scoreRound, stageById, targetAt, zoneLabel, zoneOf
 } from './vocal-variety-game.js';
 
@@ -13,7 +13,7 @@ const native = window.Capacitor?.isNativePlatform?.() || ['capacitor:', 'ionic:'
 // ---------------------------------------------------------------------------------------
 // small helpers
 // ---------------------------------------------------------------------------------------
-const PROGRESS_KEY = 'sg-vocal-arena-v1', SCALE_KEY = 'sg-vocal-arena-scale-v1', MUTE_KEY = 'sg-vocal-arena-muted', PREP_KEY = 'sg-vocal-arena-prep', SPEECH_KEY = 'sg-vocal-arena-speech';
+const PROGRESS_KEY = 'sg-vocal-arena-v1', SCALE_KEY = 'sg-vocal-arena-scale-v1', MUTE_KEY = 'sg-vocal-arena-muted', PREP_KEY = 'sg-vocal-arena-prep', SPEECH_KEY = 'sg-vocal-arena-speech', CALL_KEY = 'sg-vocal-arena-call-v1';
 const PREP_CHOICES = [30, 60, 90, 120];
 const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -182,7 +182,21 @@ function mount() {
   const prepared = () => PREP_PARTS.every(part => notes[part.key].trim().length > 0);
 
   // ----- audio helpers ---------------------------------------------------------------------
+  // The audio source is the microphone, or, when "Capture Audio from Video Calls" is on in Settings
+  // (the same switch the home-page recorder uses), the audio of a call tab such as Google Meet.
+  const callOn = () => { try { return localStorage.getItem('callAudioMode') === 'true'; } catch { return false; } };
+  let callNatural = CALL_DEFAULT_NATURAL;
+  const savedCall = read(CALL_KEY);
+  if (Number.isFinite(savedCall?.natural) && Date.now() - savedCall.at < 12 * 3600e3) callNatural = savedCall.natural;
+  const learnCall = (dbs, weight) => { callNatural = learnCallLevel(callNatural, dbs, weight); write(CALL_KEY, { natural: callNatural, at: Date.now() }); };
+  // The tuned range for a microphone; zones that follow the call's typical level for a call tab.
+  const activeScale = () => callOn() ? callScale(callNatural) : scale;
+  let callStream = null;   // the shared call-tab audio, kept for the session so the picker shows once
+
   async function openMic(token) {
+    return callOn() ? openCall(token) : openMicrophone(token);
+  }
+  async function openMicrophone(token) {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!navigator.mediaDevices?.getUserMedia || !Ctx) throw Object.assign(new Error('unsupported'), { name: 'Unsupported' });
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
@@ -193,14 +207,46 @@ function mount() {
     const source = context.createMediaStreamSource(stream); source.connect(analyser);
     return { stream, context, analyser, source, buffer: new Float32Array(analyser.fftSize) };
   }
+  async function openCall(token) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!navigator.mediaDevices?.getDisplayMedia || !Ctx) throw Object.assign(new Error('unsupported'), { name: 'UnsupportedCall' });
+    if (!callStream || callStream.getAudioTracks().every(track => track.readyState !== 'live')) {
+      // getDisplayMedia needs a video track in most browsers; only the audio is kept.
+      const display = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      display.getVideoTracks().forEach(track => track.stop());
+      const tracks = display.getAudioTracks();
+      if (!tracks.length) throw Object.assign(new Error('no audio'), { name: 'NoCallAudio' });
+      if (token !== micToken) { tracks.forEach(track => track.stop()); return null; }
+      callStream = new MediaStream(tracks);
+      tracks[0].addEventListener('ended', () => {
+        if (!callStream || callStream.getAudioTracks()[0] !== tracks[0]) return;
+        callStream = null;
+        toast('Call audio stopped. The tab may have been closed.', '📞');
+        if (round || prep || tune) { notice = 'The call audio stopped. Press Start preparing and choose your Meet tab again.'; if (tune) { tune = null; go('home', { quiet: true }); } else go('brief', { quiet: true }); }
+        else render();
+      });
+    }
+    const context = new Ctx(); await context.resume();
+    if (token !== micToken) { context.close().catch(() => {}); return null; }
+    const analyser = context.createAnalyser(); analyser.fftSize = 2048;
+    const source = context.createMediaStreamSource(callStream); source.connect(analyser);
+    return { stream: callStream, context, analyser, source, buffer: new Float32Array(analyser.fftSize), shared: true };
+  }
+  function disconnectCall() {
+    callStream?.getTracks().forEach(track => track.stop());
+    callStream = null;
+  }
   function closeMic(mic) {
     if (!mic) return;
-    mic.stream.getTracks().forEach(track => track.stop());
+    if (!mic.shared) mic.stream.getTracks().forEach(track => track.stop());   // the call tab stays connected between rounds
     try { mic.source.disconnect(); } catch { /* already disconnected */ }
     if (mic.context.state !== 'closed') mic.context.close().catch(() => {});
   }
   const dbOf = rms => 20 * Math.log10(Math.max(rms, 1e-5));
-  const micMessage = error => error?.name === 'NotAllowedError' ? 'Microphone access was declined. Allow it in your browser’s site settings, then try again.'
+  const micMessage = error => error?.name === 'NotAllowedError'
+    ? (callOn() ? 'The call tab was not shared. Press Start preparing again and choose your Google Meet tab.' : 'Microphone access was declined. Allow it in your browser’s site settings, then try again.')
+    : error?.name === 'NoCallAudio' ? 'No audio was shared. Choose your Google Meet tab and tick “Also share tab audio”, then try again.'
+    : error?.name === 'UnsupportedCall' ? 'Call audio needs Chrome or Edge on a computer. Turn off “Capture Audio from Video Calls” in Settings to use the microphone.'
     : error?.name === 'Unsupported' ? 'Live practice needs a browser with microphone support. Try Chrome, Edge, or Safari over HTTPS.'
     : 'Could not start the microphone. Check that it is connected and not used by another app, then try again.';
 
@@ -303,7 +349,9 @@ function mount() {
       <div class="vv-stat"><strong>${totalStars()}<span aria-hidden="true">★</span></strong><small>of ${STAGES.length * 3} stars</small></div>
       <div class="vv-stat"><strong>${Object.keys(progress.badges).filter(id => BADGES.some(b => b.id === id)).length}<span aria-hidden="true">🏅</span></strong><small>of ${BADGES.length} badges</small></div>
     </section>
-    <section class="vv-tunebar" aria-label="Voice range">${scale
+    <section class="vv-tunebar ${callOn() ? 'call' : ''}" aria-label="Audio source">${callOn()
+      ? `<div><strong>📞 Listening to your video call</strong><small>${callStream ? 'The call tab is connected. Students can take turns: no tuning needed, the zones adjust to the call as you play.' : 'Press Start on any game, then choose your Google Meet tab and tick “Also share tab audio”. No tuning needed: the zones adjust to the call as you play.'}</small></div>${callStream ? '<button type="button" class="vv-ghost" data-act="disconnect-call">Disconnect call</button>' : '<button type="button" class="vv-ghost" data-act="open-settings">Call audio settings</button>'}`
+      : scale
       ? `<div><strong>Your voice is tuned</strong><small>${scaleIsDefault ? 'Using a typical range. Tune it so the zones fit your voice and microphone.' : `Volume range about ${scale.span.toFixed(0)} dB${scale.pitchCenter ? ` · natural note ${noteName(scale.pitchCenter)}` : ''}${scale.pace ? ` · natural pace ${scale.pace.toFixed(1)} syllables/s` : ''}.`}</small></div><button type="button" class="vv-ghost" data-act="tune">Retune ↻</button>`
       : `<div><strong>Tune your voice first (15 seconds)</strong><small>We learn your whisper, natural and strong voice, your natural pitch and your natural pace, so every zone fits you.</small></div><button type="button" class="vv-ghost" data-act="tune">Find my range</button>`}</section>
     <section aria-labelledby="vvGamesTitle"><div class="vv-section-head"><div class="vv-section-label">ALL GAMES · ALL OPEN</div><h2 id="vvGamesTitle">Choose what to train.</h2></div>
@@ -356,8 +404,10 @@ function mount() {
         <div class="vv-section-label">PREPARATION TIME</div>
         <div class="vv-seg" role="radiogroup" aria-label="Preparation time">${PREP_CHOICES.map(s => `<button type="button" role="radio" aria-checked="${s === prepSeconds}" data-act="prep-time" data-seconds="${s}">${s < 60 ? `${s}s` : `${s / 60} min`.replace('1.5 min', '1½ min')}</button>`).join('')}</div>
         ${notice ? `<p class="vv-warning" role="alert">${esc(notice)}</p>` : ''}
-        <button type="button" class="vv-primary vv-big" data-act="start-prep"><span aria-hidden="true">✎</span> ${scale ? `Start preparing (${prepSeconds}s)` : 'Tune my voice, then prepare'}</button>
-        <p class="vv-fine">You will plan your PREP answer first. The microphone turns on for a sound check, and nothing is recorded until you start speaking. Strong means energetic, never strained.</p>
+        <button type="button" class="vv-primary vv-big" data-act="start-prep"><span aria-hidden="true">✎</span> ${callOn() || scale ? `Start preparing (${prepSeconds}s)` : 'Tune my voice, then prepare'}</button>
+        <p class="vv-fine">${callOn()
+          ? '📞 Call audio is on. Your browser will ask you to choose the call tab once (tick “Also share tab audio”). Stay on this tab so the class sees the game. Nothing is recorded until the student starts speaking.'
+          : 'You will plan your PREP answer first. The microphone turns on for a sound check, and nothing is recorded until you start speaking. Strong means energetic, never strained.'}</p>
       </aside>
     </div>`;
   }
@@ -387,15 +437,16 @@ function mount() {
     </div>`;
   }
   async function startPrep() {
-    if (!scale) { after = 'prep'; startTune(); return; }
+    if (!callOn() && !scale) { after = 'prep'; startTune(); return; }
     teardown(); releaseAudio(); notice = '';
     view = 'prep'; render();
     root.scrollIntoView({ block: 'start', behavior: 'instant' });
     viewEl.querySelector('[data-focus]')?.focus({ preventScroll: true });
     announce(`Prepare your answer. You have ${prepSeconds} seconds.`);
     const token = micToken;
-    prep = { mic: null, endsAt: performance.now() + prepSeconds * 1000, total: prepSeconds };
+    prep = { mic: null, endsAt: performance.now() + prepSeconds * 1000, total: prepSeconds, call: callOn(), dbs: [] };
     const state = prep;
+    if (state.call) $('#vvMicText').textContent = callStream ? 'Connecting the call audio…' : 'Choose your Google Meet tab and tick “Also share tab audio”…';
     state.interval = setInterval(() => tickPrep(state), 100);
     let mic;
     try { mic = await openMic(token); } catch (error) {
@@ -404,7 +455,9 @@ function mount() {
     }
     if (!mic || token !== micToken) return;
     state.mic = mic;
-    $('#vvMicText').textContent = 'Mic check: say a few words. Nothing is recorded yet.';
+    $('#vvMicText').textContent = state.call
+      ? 'Call check: ask the student to say a few words in their normal voice. The zones adjust to them. Nothing is recorded yet.'
+      : 'Mic check: say a few words. Nothing is recorded yet.';
   }
   function tickPrep(state) {
     if (prep !== state) return;
@@ -415,7 +468,9 @@ function mount() {
     $('#vvPrepTimer').classList.toggle('soon', left <= 10);
     if (state.mic) {
       state.mic.analyser.getFloatTimeDomainData(state.mic.buffer);
-      const level = clamp((dbOf(rmsOf(state.mic.buffer)) + 70) / 50, 0, 1);
+      const db = dbOf(rmsOf(state.mic.buffer));
+      if (state.call && state.dbs.length < 3000) state.dbs.push(db);   // the sound check teaches the zones this speaker's level
+      const level = clamp((db + 70) / 50, 0, 1);
       $('#vvMicLevel').style.width = `${(level * 100).toFixed(0)}%`;
       $('#vvMicCheck').classList.toggle('hearing', level > 0.35);
     }
@@ -424,6 +479,7 @@ function mount() {
   function beginRound() {
     const state = prep; if (!state?.mic) return;
     const mic = state.mic;
+    if (state.call) learnCall(state.dbs, 0.85);   // the sound check is this very student, so trust it most
     teardown({ keepMic: true });
     view = 'live'; render();
     root.scrollIntoView({ block: 'start', behavior: 'instant' });
@@ -548,7 +604,7 @@ function mount() {
     const hud = stage.dim === 'all'
       ? DIM_ORDER.map((dim, i) => `<div><small>${DIMENSIONS[dim].name.toUpperCase()} SWINGS</small><strong id="vvHud${i + 1}">0</strong></div>`).join('')
       : `<div><small>${guided ? 'ON THE RIBBON' : 'ZONES HIT'}</small><strong id="vvHud1">${guided ? '—' : '0 / 3'}</strong></div><div><small>${guided ? 'STREAK' : 'RIGHT NOW'}</small><strong id="vvHud2">${guided ? '0.0s' : '—'}</strong></div><div><small>SWINGS</small><strong id="vvHud3">0</strong></div>`;
-    const goals = stage.kind === 'free' ? scoreRound({ frames: [], stage, scale }).goals : [];
+    const goals = stage.kind === 'free' ? scoreRound({ frames: [], stage, scale: activeScale() || normalizeScale(DEFAULT_SCALE) }).goals : [];
     return `
     <div class="vv-live" data-kind="${stage.kind}" data-dim="${stage.dim}">
       <div class="vv-live-top">
@@ -572,9 +628,9 @@ function mount() {
     </div>`;
   }
   function startRound(mic) {
-    const plan = stage.plan;
+    const plan = stage.plan, roundScale = activeScale();
     round = {
-      mic, plan, guided: stage.kind === 'guided', mode: 'countdown', t0: 0, frames: [], tracker: new VoiceTracker(scale), tick: 0, lastMidi: null,
+      mic, plan, guided: stage.kind === 'guided', mode: 'countdown', t0: 0, frames: [], scale: roundScale, call: callOn(), tracker: new VoiceTracker(roundScale), tick: 0, lastMidi: null,
       live: { t: 0, volume: null, pitch: null, pace: null, active: false, db: -90 }, display: { volume: -0.1, pitch: -0.1, pace: -0.1 },
       particles: [], timers: [], recorder: null, chunks: [], credit: 0, creditN: 0, streak: 0, miss: 0, lastHud: 0, lastScore: 0, phaseKey: -1, unlocked: new Set()
     };
@@ -637,7 +693,8 @@ function mount() {
     if (r.recorder?.state === 'recording') r.recorder.stop();
     closeMic(r.mic); round = null; micToken++;
     if (!played || frames.length < 20) { notice = 'That round ended before we heard enough. Try again when you are ready.'; go('brief', { quiet: true }); return; }
-    result = scoreRound({ frames, stage, scale }); result.frames = frames; result.notes = { ...notes };
+    result = scoreRound({ frames, stage, scale: r.scale }); result.frames = frames; result.notes = { ...notes };
+    if (r.call) learnCall(frames.filter(frame => frame.active).map(frame => frame.db), 0.5);   // the next student starts from what this call sounded like
     award = applyRound(progress, stage, result, new Date(), questionIndex, { prepared: prepared() });
     progress = award.progress; save(); example = false;
     go('results');
@@ -672,7 +729,7 @@ function mount() {
     }
     if (stage.kind === 'free' && now - r.lastScore > 500 && r.frames.length >= 10) {
       r.lastScore = now;
-      scoreRound({ frames: r.frames, stage, scale }).goals.forEach(goal => $(`#vvGoals [data-goal="${goal.id}"]`)?.classList.toggle('done', goal.done));
+      scoreRound({ frames: r.frames, stage, scale: r.scale }).goals.forEach(goal => $(`#vvGoals [data-goal="${goal.id}"]`)?.classList.toggle('done', goal.done));
     }
     const index = plan.phases.indexOf(phaseAt(plan, t));
     if (index !== r.phaseKey && r.mode === 'live') {
@@ -1062,6 +1119,8 @@ function mount() {
       case 'tune': after = null; notice = ''; tune = null; go('tune'); break;
       case 'tune-start': case 'tune-retry': startTune(); break;
       case 'tune-cancel': after = null; go('home'); break;
+      case 'disconnect-call': disconnectCall(); toast('Call tab disconnected.', '📞'); render(); break;
+      case 'open-settings': window.navigateToPage('settings'); break;
       case 'tune-skip': scale = normalizeScale(DEFAULT_SCALE); scaleIsDefault = true; continueAfterTune(); break;
       case 'tune-continue': continueAfterTune(); break;
       case 'swap': questionIndex = (questionIndex + 1) % QUESTIONS.length; clearNotes(); window.speechSynthesis?.cancel(); render(); viewEl.querySelector('[data-focus]')?.focus({ preventScroll: true }); break;
@@ -1098,12 +1157,12 @@ function mount() {
     notice = 'We paused because the page was hidden. Your microphone is off. Start again when you are ready.';
     if (tune) { tune = null; go('tune', { quiet: true }); } else go('brief', { quiet: true });
   });
-  window.addEventListener('pagehide', () => { teardown(); releaseAudio(); try { sfx?.close(); } catch { /* ignore */ } });
+  window.addEventListener('pagehide', () => { teardown(); disconnectCall(); releaseAudio(); try { sfx?.close(); } catch { /* ignore */ } });
   new ResizeObserver(() => { if (view === 'results') drawMap(); if (view === 'live') drawStageFrame(); }).observe(root);
 
   // Used by the app's navigation (see index.html).
   window.VocalVariety = {
-    stop() { audioEl.pause(); if (round || tune || prep) { notice = ''; go('home', { quiet: true }); } },
+    stop() { audioEl.pause(); if (round || tune || prep) { notice = ''; go('home', { quiet: true }); } disconnectCall(); },
     render() { if (view === 'live' || view === 'tune' || view === 'prep') return; render(); }
   };
   render();

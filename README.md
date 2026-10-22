@@ -40,6 +40,23 @@ game shows the student's voice live.
 natural speaking note, and the natural pace, so every zone fits the student's own voice and
 microphone. It is remembered for 12 hours on this device.
 
+**Playing over a video call.** Turn on **Settings → Video Call Audio → Capture Audio from
+Video Calls** (the same switch the home-page recorder uses). The games then listen to the
+audio of a call tab (Google Meet, Zoom web, Teams web) instead of the microphone, so a coach
+can share one screen while students take turns speaking from their own laptops.
+- Chrome or Edge on a computer only. The browser asks for the call tab once, with "Also share
+  tab audio" ticked, and the tab stays connected for every round and every student until the
+  coach presses "Disconnect call", closes the tab, or leaves the game. Stay on the game tab:
+  the round stops if the game tab is hidden.
+- **No tuning.** The zones follow the call's typical speech level (`callScale`). It starts at a
+  typical value, adjusts to each student from the sound check before the round ("ask the
+  student to say a few words"), and keeps learning across students (`learnCallLevel`, kept
+  12 hours). Pitch and pace adapt to each speaker automatically; call-mode volume zones are a
+  little narrower because the call levels and compresses the voice.
+- Expect pitch and pace to track well and volume to be the roughest of the three, because the
+  call's own loudness levelling and each student's microphone settings happen before the game
+  hears the audio. Only the students are heard: the coach's own voice is not in the tab audio.
+
 Game rules live in `vocal-variety-game.js` (pure functions, covered by
 `tests/vocal-variety-game.test.js`). Signal processing is in `vocal-variety-core.js`
 (pitch detection, the pace meter, pitch smoothing), the interface in `vocal-variety.js` and

@@ -131,7 +131,51 @@ async (page) => {
   });
   check(canceled === 'ended', 'canceled microphone request left a live track');
 
-  // 8. The preview stays web-only.
+  // 8. Playing over a video call: the Settings switch makes the game listen to the call tab,
+  //    with no tuning, one picker for the whole session, and the tab audio released on leaving.
+  await page.evaluate(() => {
+    localStorage.setItem('callAudioMode', 'true');
+    window.fixture.picks = 0; window.fixture.callStreams = [];
+    navigator.mediaDevices.getDisplayMedia = async () => {
+      window.fixture.picks++;
+      const canvas = document.createElement('canvas'); canvas.width = canvas.height = 16;
+      const out = new MediaStream(canvas.captureStream(1).getVideoTracks());
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      out.addTrack(stream.getAudioTracks()[0]);
+      window.fixture.callStreams.push(out);
+      return out;
+    };
+    navigator.mediaDevices.getUserMedia = async () => {
+      const ctx = new AudioContext(); await ctx.resume();
+      const osc = ctx.createOscillator(), gain = ctx.createGain(), dest = ctx.createMediaStreamDestination();
+      osc.frequency.value = 150; gain.gain.value = 0.02; osc.connect(gain); gain.connect(dest); osc.start();
+      const stream = dest.stream, track = stream.getTracks()[0], stop = track.stop.bind(track);
+      track.stop = () => { stop(); osc.stop(); ctx.close().catch(() => {}); track.dispatchEvent(new Event('ended')); };
+      return stream;
+    };
+  });
+  await page.evaluate(() => window.VocalVariety.render());
+  await page.getByRole('button', { name: /All games/ }).first().click().catch(() => {});
+  await page.evaluate(() => document.querySelector('[data-act="back"]')?.click());
+  check(await page.locator('[data-act="tune"]').count() === 0, 'call mode needs no tuning');
+  await page.locator('[data-stage="volume-free"]').click();
+  await page.getByRole('button', { name: /Start preparing/ }).click();
+  await page.waitForFunction(() => document.getElementById('vvMicText')?.textContent.startsWith('Call check'), null, { timeout: 5000 });
+  check(await page.evaluate(() => window.fixture.picks) === 1, 'the call tab should be picked once');
+  await page.getByRole('button', { name: /I’m ready/ }).click();
+  await page.waitForSelector('#vvStageCanvas');
+  await page.waitForTimeout(5000);
+  check(await page.locator('#vvHud2').innerText() !== '—', 'the call audio should be heard live');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: /Start preparing/ }).click();
+  await page.waitForFunction(() => document.getElementById('vvMicText')?.textContent.startsWith('Call check'), null, { timeout: 5000 });
+  check(await page.evaluate(() => window.fixture.picks) === 1, 'a second student must not need a second picker');
+  await page.evaluate(() => window.navigateToPage('main'));
+  await page.waitForTimeout(300);
+  check(await page.evaluate(() => window.fixture.callStreams.every(s => s.getAudioTracks().every(t => t.readyState === 'ended'))), 'call audio still shared after leaving the game');
+  await page.evaluate(() => localStorage.setItem('callAudioMode', 'false'));
+
+  // 9. The preview stays web-only.
   const nativePage = await page.context().newPage();
   await nativePage.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true }; });
   const nativeAssets = [];

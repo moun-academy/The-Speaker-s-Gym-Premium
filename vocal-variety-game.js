@@ -43,6 +43,30 @@ export function normalizeScale(raw = {}) {
   return { floor, soft, natural, power, span: power - soft, widened, pitchCenter, pace };
 }
 
+// ---- Playing over a video call -----------------------------------------------------------
+// Audio that arrives through Google Meet has been through the speaker's own microphone settings and
+// the call's loudness levelling, so a tuned range from one person cannot be reused. Nobody is tuned.
+// Instead the zones hang off one number, the typical speech level of the call (dBFS), which starts
+// at a typical value and is nudged towards what is actually heard: the speaker's few words in the
+// sound check before a round, then the whole answer afterwards. It carries on from student to
+// student. The zones are narrower than a tuned range because call audio is levelled and compressed.
+export const CALL_DEFAULT_NATURAL = -33;
+export const callScale = natural => {
+  const n = clamp(Number.isFinite(natural) ? natural : CALL_DEFAULT_NATURAL, -55, -15);
+  return normalizeScale({ floor: n - 25, soft: n - 13, natural: n, power: n + 10 });
+};
+// `dbs` are loudness readings taken while someone talked. Only readings within 25 dB of the loudest
+// count (the rest is room noise and gaps between words); less than a second of voice changes nothing.
+export function learnCallLevel(previous, dbs, weight = 0.6) {
+  const readings = dbs.filter(Number.isFinite);
+  const loud = quantile(readings, 0.95);
+  if (loud === null || loud < -70) return previous;
+  const voiced = readings.filter(db => db > loud - 25);
+  if (voiced.length < 10) return previous;
+  const before = Number.isFinite(previous) ? previous : CALL_DEFAULT_NATURAL;
+  return clamp(before + (quantile(voiced, 0.5) - before) * weight, -55, -15);
+}
+
 export function levelOf(db, scale) {
   if (!Number.isFinite(db)) return null;
   const level = db <= scale.natural

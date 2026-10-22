@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PaceMeter, PitchSmoother } from '../vocal-variety-core.js';
 import {
-  BADGES, DEFAULT_PACE, DEFAULT_SCALE, DEFAULT_SPEECH, DIM_ORDER, SPEECH_LENGTHS, lengthLabel, scaleStage, FRAME_DT, PREP_PARTS, QUESTIONS, STAGES, EnvelopeTracker, VoiceTracker,
+  BADGES, CALL_DEFAULT_NATURAL, callScale, learnCallLevel, DEFAULT_PACE, DEFAULT_SCALE, DEFAULT_SPEECH, DIM_ORDER, SPEECH_LENGTHS, lengthLabel, scaleStage, FRAME_DT, PREP_PARTS, QUESTIONS, STAGES, EnvelopeTracker, VoiceTracker,
   activeThreshold, applyRound, applyTune, coachingTip, countSwings, emptyProgress, levelOf, normalizeScale, paceLevel,
   phaseAt, pitchLevel, prepBreakdown, questionIndexFor, rankFor, rangeLabel, sanitizeProgress, scaleFromCalibration, scoreRound,
   starsFor, targetAt, zoneLabel, zoneOf
@@ -67,6 +67,40 @@ test('calibration measures volume range, natural pitch and natural pace', () => 
   const missed = scaleFromCalibration({ silence: rep(-70), whisper: rep(-72), normal: rep(-34), power: rep(-16), pitches: [47, 48] });
   assert.equal(missed.heard.whisper, 0, 'a whisper below the room noise is reported as not heard');
   assert.equal(missed.scale.pitchCenter, null, 'too few notes: no pitch centre');
+});
+
+test('call audio needs no tuning: zones hang off the call’s typical level and learn it', () => {
+  const typical = callScale();
+  assert.equal(typical.natural, CALL_DEFAULT_NATURAL);
+  assert.equal(typical.soft, CALL_DEFAULT_NATURAL - 13);
+  assert.equal(typical.power, CALL_DEFAULT_NATURAL + 10);
+  assert.ok(activeThreshold(typical) < typical.soft, 'a soft voice on the call still counts as speech');
+  assert.ok(activeThreshold(typical) > typical.natural - 25, 'quiet background noise from the call is not speech');
+  assert.equal(callScale(NaN).natural, CALL_DEFAULT_NATURAL);
+  assert.equal(callScale(-90).natural, -55, 'the level is kept in a sensible range');
+  assert.ok(callScale(-45).span > 0 && callScale(-45).widened === false);
+
+  // A student who is quieter than the default (-45 dB), with word gaps and room noise:
+  const speech = Array.from({ length: 80 }, (_, i) => i % 5 === 0 ? -78 : -45 + Math.sin(i) * 3);
+  const first = learnCallLevel(CALL_DEFAULT_NATURAL, speech);
+  assert.ok(first < -38 && first > -45, `moved most of the way to the quiet student: ${first}`);
+  const second = learnCallLevel(first, speech);
+  assert.ok(second < first && second > -46, 'and closer again after another answer');
+  assert.equal(learnCallLevel(-33, Array(80).fill(-90)), -33, 'silence teaches nothing');
+  assert.equal(learnCallLevel(-33, [-40, -40, -41, -39, -40]), -33, 'half a second of voice teaches nothing');
+  assert.equal(learnCallLevel(-33, [NaN, undefined, null].concat(Array(5).fill(-40))), -33);
+
+  // The same ribbon take scores the same wherever the call level sits, once the zones follow it.
+  const game = stage('volume-ribbon');
+  for (const natural of [-45, -33, -22]) {
+    const sc = callScale(natural), at = level => level <= 0.5 ? sc.soft + level / 0.5 * (sc.natural - sc.soft) : sc.natural + (level - 0.5) / 0.5 * (sc.power - sc.natural);
+    const frames = Array.from({ length: game.plan.duration / FRAME_DT }, (_, i) => {
+      const t = i * FRAME_DT, level = targetAt(game.plan, t);
+      return { t, db: at(level), active: true, volume: level, midi: null, pitch: null, rate: 3.2, pace: 0.5 };
+    });
+    const result = scoreRound({ frames, stage: game, scale: sc });
+    assert.ok(result.stars === 3, `call level ${natural}: ${result.score}`);
+  }
 });
 
 test('the envelope bridges syllable dips but leaves a gap for a real pause', () => {
