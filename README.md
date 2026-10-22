@@ -20,13 +20,18 @@ game shows the student's voice live.
 | All Three: Full Vocal Variety | Two swings each in volume, pitch and pace in one answer, on three live lanes. |
 
 **A round:**
-1. Read the question (swap it or have it read aloud). Each PREP part shows its vocal cue,
-   such as "Point · Boom" or "Final Point · Low".
+1. Read the question (swap it or have it read aloud) and pick the **speech length: 1 minute,
+   1½ minutes or 2 minutes** (default 2 minutes, remembered). The PREP parts keep their share
+   of the time and the ribbon stretches with them; ramps at a PREP boundary keep their length.
+   Longer speeches expect more swings. Each PREP part shows its vocal cue, such as
+   "Point · Boom" or "Final Point · Low".
 2. **Prepare** for 30 seconds to 2 minutes (default 1 minute, remembered). Optional notes for
    each PREP part; the microphone runs a sound check but records nothing yet. "I'm ready"
    starts early and "+30s" adds time.
-3. Speak for 40 to 50 seconds after a 3-2-1 countdown. The current PREP part, its vocal cue
-   and the student's own note are shown above the live stage.
+3. Speak for the chosen length after a 3-2-1 countdown. The current PREP part, its vocal cue
+   and the student's own note are shown above the live stage, and a **PREP notes panel under
+   the stage** shows all four notes with the part being spoken lit up ("No note" for a part
+   left blank).
 4. Results: stars, XP, a voiceprint ring (three rings for All Three), a map with the PREP
    parts marked, a **part-by-part breakdown** (which zone each part was mostly in, against its
    cue), range in the dimension's own units, playback, and a coaching tip.
@@ -70,4 +75,4 @@ Run `npm test` for the signal and game-rule tests plus the existing app suite. T
 deployment serves the repository root; `www/` remains the Capacitor asset output.
 With a local server on port 8766 and Playwright CLI open on its index page, run
 `playwright-cli run-code --filename scripts/validate-vocal-variety-ui.js` to play the game
-with generated audio (about 90 seconds).
+with generated audio (a few minutes: tuning, preparation, and a full round).

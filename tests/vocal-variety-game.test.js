@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PaceMeter, PitchSmoother } from '../vocal-variety-core.js';
 import {
-  BADGES, DEFAULT_PACE, DEFAULT_SCALE, DIM_ORDER, FRAME_DT, PREP_PARTS, QUESTIONS, STAGES, EnvelopeTracker, VoiceTracker,
+  BADGES, DEFAULT_PACE, DEFAULT_SCALE, DEFAULT_SPEECH, DIM_ORDER, SPEECH_LENGTHS, lengthLabel, scaleStage, FRAME_DT, PREP_PARTS, QUESTIONS, STAGES, EnvelopeTracker, VoiceTracker,
   activeThreshold, applyRound, applyTune, coachingTip, countSwings, emptyProgress, levelOf, normalizeScale, paceLevel,
   phaseAt, pitchLevel, prepBreakdown, questionIndexFor, rankFor, rangeLabel, sanitizeProgress, scaleFromCalibration, scoreRound,
   starsFor, targetAt, zoneLabel, zoneOf
@@ -141,6 +141,51 @@ test('every game is a PREP answer with a clear title, and the question bank suit
   assert.equal(new Set(QUESTIONS).size, QUESTIONS.length);
   assert.ok(QUESTIONS.length >= 20);
   assert.notEqual(questionIndexFor(emptyProgress(), STAGES[0]), questionIndexFor(emptyProgress(), STAGES[1]), 'games start on different questions');
+});
+
+test('every game can be played for 1, 1½ or 2 minutes with the same shape and the same PREP shares', () => {
+  assert.deepEqual(SPEECH_LENGTHS, [60, 90, 120]);
+  assert.equal(DEFAULT_SPEECH, 120);
+  assert.deepEqual(SPEECH_LENGTHS.map(lengthLabel), ['1 min', '1½ min', '2 min']);
+  for (const game of STAGES) {
+    for (const seconds of SPEECH_LENGTHS) {
+      const scaled = scaleStage(game, seconds), { phases, duration, keys } = scaled.plan;
+      assert.equal(duration, seconds);
+      assert.equal(phases[0].from, 0);
+      assert.equal(phases.at(-1).to, seconds, `${game.id} ${seconds}s ends on time`);
+      phases.forEach((p, i) => {
+        if (i) assert.equal(p.from, phases[i - 1].to);
+        assert.ok(Math.abs((p.to - p.from) / seconds - (game.plan.phases[i].to - game.plan.phases[i].from) / game.plan.duration) < 1e-9, 'PREP parts keep their share of the time');
+      });
+      assert.ok(scaled.plan.goalSwings >= game.plan.goalSwings);
+      assert.equal(game.plan.duration === seconds, scaled === game);
+      if (game.kind === 'free') { assert.equal(keys, undefined); continue; }
+      assert.equal(keys[0][0], 0);
+      assert.equal(keys.at(-1)[0], seconds);
+      keys.forEach(([t], i) => i && assert.ok(t > keys[i - 1][0], `${game.id} ${seconds}s keys increase`));
+      // The ribbon still lands on the same level in the middle of each PREP part...
+      phases.forEach((p, i) => {
+        const original = game.plan.phases[i], mid = 0.5, at = (plan, phase) => targetAt(plan, phase.from + (phase.to - phase.from) * mid);
+        assert.ok(Math.abs(at(scaled.plan, p) - at(game.plan, original)) < 0.2, `${game.id} part ${i} at ${seconds}s`);
+      });
+      // ...and a change of voice at a PREP boundary takes as long as before.
+      const boundary = game.plan.phases[0].to, boundaryScaled = phases[0].to;
+      assert.ok(Math.abs((targetAt(scaled.plan, boundaryScaled + 1) - targetAt(scaled.plan, boundaryScaled - 1)) - (targetAt(game.plan, boundary + 1) - targetAt(game.plan, boundary - 1))) < 1e-9);
+    }
+  }
+  const stretched = scaleStage(stage('volume-ribbon'), 120);
+  assert.equal(stretched.plan.phases[1].to, 54, 'the Reason now ends 54 seconds in');
+  assert.ok(stretched.plan.goalSwings > stage('volume-ribbon').plan.goalSwings, 'a longer speech expects more swings');
+});
+
+test('a full two-minute ribbon take scores like the short one', () => {
+  for (const id of ['volume-ribbon', 'pitch-ribbon', 'pace-ribbon']) {
+    const long = scaleStage(stage(id), 120);
+    const perfect = scoreRound({ frames: take(long, follow(long)), stage: long, scale });
+    assert.ok(perfect.stars === 3 && perfect.match > 0.95, `${id} at 2 minutes: ${perfect.score}`);
+    const flat = scoreRound({ frames: take(long, () => ({})), stage: long, scale });
+    assert.equal(flat.stars, 0, `${id} flat at 2 minutes`);
+  }
 });
 
 test('swings count zone changes, ignore short dips and wobble on a border', () => {

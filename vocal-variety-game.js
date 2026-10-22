@@ -211,6 +211,38 @@ export const STAGES = [
 ];
 export const stageById = id => STAGES.find(stage => stage.id === id);
 
+// ---- Speech length -----------------------------------------------------------------------
+// The games are written for about 40 to 50 seconds. A student can pick 1, 1½ or 2 minutes:
+// the PREP parts keep their share of the time and the ribbon stretches with them, but the
+// ramps right at a PREP boundary keep their length, so a change of voice never gets lazy.
+export const SPEECH_LENGTHS = [60, 90, 120];
+export const DEFAULT_SPEECH = 120;
+export const lengthLabel = seconds => seconds === 60 ? '1 min' : seconds === 90 ? '1½ min' : seconds === 120 ? '2 min' : `${seconds}s`;
+
+export function scaleStage(stage, seconds) {
+  const base = stage.plan.duration, k = seconds / base;
+  if (!Number.isFinite(k) || k <= 0 || Math.abs(k - 1) < 1e-9) return stage;
+  const bounds = [0, ...stage.plan.phases.map(phase => phase.to)];
+  const scaled = bounds.map(bound => bound === base ? seconds : bound * k);
+  const mapTime = t => {
+    let nearest = 0;
+    bounds.forEach((bound, i) => { if (Math.abs(t - bounds[i]) < Math.abs(t - bounds[nearest])) nearest = i; });
+    return Math.abs(t - bounds[nearest]) <= 3 ? scaled[nearest] + (t - bounds[nearest]) : t * k;
+  };
+  const phases = stage.plan.phases.map((phase, i) => ({ ...phase, from: scaled[i], to: scaled[i + 1] }));
+  let keys;
+  if (stage.plan.keys) {
+    let previous = -Infinity;
+    keys = stage.plan.keys.map(([t, value]) => {
+      const mapped = Math.max(mapTime(t), previous + 0.05);
+      previous = mapped;
+      return [Math.min(mapped, seconds), value];
+    });
+  }
+  const goalSwings = Math.max(stage.plan.goalSwings, Math.round(stage.plan.goalSwings * (1 + (k - 1) * 0.5)));
+  return { ...stage, plan: { ...stage.plan, duration: seconds, goalSwings, phases, ...(keys ? { keys } : {}) } };
+}
+
 // PREP works best with questions that ask for an opinion you can back up with an example.
 export const QUESTIONS = [
   'Should every student learn public speaking at school?',

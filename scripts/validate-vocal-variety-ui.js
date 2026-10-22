@@ -70,14 +70,19 @@ async (page) => {
   // 5. One guided volume round: prepare with PREP notes, then follow the ribbon.
   await page.locator('[data-stage="volume-ribbon"]').click();
   check((await page.locator('.vv-question').innerText()).length > 10, 'question missing');
-  await page.getByRole('radio', { name: '30s' }).click();
+  check(await page.getByRole('radio', { name: '2 min' }).first().getAttribute('aria-checked') === 'true', 'speech length should default to 2 minutes');
+  await page.locator('[data-act="speech-time"][data-seconds="60"]').click();
+  check((await page.locator('.vv-plan-time').innerText()).startsWith('1 min'), 'choosing 1 minute should update the plan');
+  await page.locator('[data-act="prep-time"][data-seconds="30"]').click();
   await page.getByRole('button', { name: /Start preparing/ }).click();
   for (const key of ['point', 'reason', 'example', 'finalPoint']) await page.locator(`[data-note="${key}"]`).fill(`my ${key}`);
   await page.waitForFunction(() => document.getElementById('vvMicText')?.textContent.startsWith('Mic check'), null, { timeout: 5000 });
   check((await page.locator('#vvPrepClock').innerText()).startsWith('0:'), 'preparation timer missing');
   await page.getByRole('button', { name: /I’m ready/ }).click();
   await page.waitForSelector('#vvStageCanvas');
-  const plan = await page.evaluate(async () => (await import('/vocal-variety-game.js')).stageById('volume-ribbon').plan.keys);
+  const plan = await page.evaluate(async () => { const game = await import('/vocal-variety-game.js'); return game.scaleStage(game.stageById('volume-ribbon'), 60).plan.keys; });
+  check(await page.locator('#vvNotes li').count() === 4, 'PREP notes panel missing under the stage');
+  check((await page.locator('#vvNotes li.now').innerText()).includes('my point'), 'the first PREP note should be lit at the start');
   const goAt = Date.now() + 3050;
   const drive = setInterval(async () => {
     const t = (Date.now() - goAt) / 1000;
@@ -91,7 +96,8 @@ async (page) => {
   check(await page.locator('#vvHud1').innerText() !== '—', 'live ribbon match missing');
   check((await page.locator('#vvCueNote').innerText()).includes('my '), 'the PREP note should show while speaking');
   await page.screenshot({ path: 'output/playwright/vocal-variety-live.png' });
-  await page.waitForFunction(() => document.getElementById('vvView').dataset.view === 'results', null, { timeout: 50000 });
+  await page.waitForFunction(() => document.querySelector('#vvNotes li.now')?.innerText.includes('my reason'), null, { timeout: 30000 });
+  await page.waitForFunction(() => document.getElementById('vvView').dataset.view === 'results', null, { timeout: 70000 });
   clearInterval(drive);
   await page.waitForTimeout(500);
   const result = await page.evaluate(() => ({ score: Number(document.getElementById('vvScore').dataset.score), stars: Number(document.getElementById('vvStarRow').dataset.stars), progress: JSON.parse(localStorage.getItem('sg-vocal-arena-v1')), audio: document.querySelector('#vvAudioSlot audio')?.src || '' }));

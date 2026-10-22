@@ -3,9 +3,9 @@
 // Audio stays in this browser and nothing is uploaded.
 import { detectPitch, rmsOf, midiOf, noteName, PaceMeter } from './vocal-variety-core.js';
 import {
-  BADGES, DEFAULT_SCALE, DIMENSIONS, DIM_ORDER, FRAME_DT, PREP_PARTS, QUESTIONS, SOFT_EDGE, STAGES, STRONG_EDGE, VoiceTracker,
-  applyRound, applyTune, coachingTip, countSwings, normalizeScale, phaseAt, prepBreakdown, questionIndexFor, rangeLabel, rankFor,
-  ribbonCredit, sanitizeProgress, scaleFromCalibration, scoreRound, stageById, targetAt, zoneLabel, zoneOf
+  BADGES, DEFAULT_SCALE, DEFAULT_SPEECH, DIMENSIONS, DIM_ORDER, FRAME_DT, PREP_PARTS, QUESTIONS, SOFT_EDGE, SPEECH_LENGTHS, STAGES, STRONG_EDGE,
+  VoiceTracker, applyRound, applyTune, coachingTip, countSwings, lengthLabel, normalizeScale, phaseAt, prepBreakdown, questionIndexFor,
+  rangeLabel, rankFor, ribbonCredit, sanitizeProgress, scaleFromCalibration, scaleStage, scoreRound, stageById, targetAt, zoneLabel, zoneOf
 } from './vocal-variety-game.js';
 
 const native = window.Capacitor?.isNativePlatform?.() || ['capacitor:', 'ionic:'].includes(location.protocol);
@@ -13,7 +13,7 @@ const native = window.Capacitor?.isNativePlatform?.() || ['capacitor:', 'ionic:'
 // ---------------------------------------------------------------------------------------
 // small helpers
 // ---------------------------------------------------------------------------------------
-const PROGRESS_KEY = 'sg-vocal-arena-v1', SCALE_KEY = 'sg-vocal-arena-scale-v1', MUTE_KEY = 'sg-vocal-arena-muted', PREP_KEY = 'sg-vocal-arena-prep';
+const PROGRESS_KEY = 'sg-vocal-arena-v1', SCALE_KEY = 'sg-vocal-arena-scale-v1', MUTE_KEY = 'sg-vocal-arena-muted', PREP_KEY = 'sg-vocal-arena-prep', SPEECH_KEY = 'sg-vocal-arena-speech';
 const PREP_CHOICES = [30, 60, 90, 120];
 const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -170,6 +170,7 @@ function mount() {
   if (savedScale?.scale && Date.now() - savedScale.at < 12 * 3600e3) scale = normalizeScale(savedScale.scale);
   let muted = read(MUTE_KEY) === true;
   let prepSeconds = PREP_CHOICES.includes(read(PREP_KEY)) ? read(PREP_KEY) : 60;
+  let speechSeconds = SPEECH_LENGTHS.includes(read(SPEECH_KEY)) ? read(SPEECH_KEY) : DEFAULT_SPEECH;
   let view = 'home', stage = null, questionIndex = 0, notice = '';
   let notes = { point: '', reason: '', example: '', finalPoint: '' };
   let tune = null, prep = null, round = null, result = null, award = null, example = false, after = null;
@@ -320,7 +321,7 @@ function mount() {
       <span class="vv-stage-mode">${modeTag(item)}</span>
       <span class="vv-stage-art">${planArt(item, { id: `card-${item.id}` })}</span>
       <span class="vv-stage-title">${esc(item.title)}</span><span class="vv-stage-tag">${esc(item.what)}</span>
-      <span class="vv-stage-foot">${starsHtml(stars)}<small>${item.plan.duration}s answer${best ? ` · Best ${best}` : ''}</small></span></button>`;
+      <span class="vv-stage-foot">${starsHtml(stars)}<small>1 to 2 min answer${best ? ` · Best ${best}` : ''}</small></span></button>`;
   }
 
   // ----- BRIEF (the game and the question) ---------------------------------------------------
@@ -330,8 +331,8 @@ function mount() {
     const rules = stage.kind === 'guided'
       ? `<li><b>Follow the ribbon.</b> Keep your ${DIMENSIONS[stage.dim].name.toLowerCase()} inside the glowing road. It changes for each PREP part.</li><li><b>Make real swings.</b> Aim for ${plan.goalSwings} clear changes between zones.</li><li><b>Keep talking.</b> Pauses are good. Silence for most of the round is not.</li>`
       : stage.dim === 'all'
-        ? `<li><b>Vary all three.</b> At least ${plan.goalSwings} swings in volume, in pitch and in pace.</li><li><b>Use the PREP cues.</b> Each part suggests a different voice.</li><li><b>Keep talking</b> for most of the ${plan.duration} seconds.</li>`
-        : `<li><b>Reach ${zoneLabel(stage.dim, 'soft')}</b> and <b>${zoneLabel(stage.dim, 'strong')}</b>, each for over a second.</li><li><b>Make ${plan.goalSwings} swings</b> between zones.</li><li><b>Keep talking</b> for most of the ${plan.duration} seconds.</li>`;
+        ? `<li><b>Vary all three.</b> At least ${plan.goalSwings} swings in volume, in pitch and in pace.</li><li><b>Use the PREP cues.</b> Each part suggests a different voice.</li><li><b>Keep talking</b> for most of your ${lengthLabel(plan.duration)}.</li>`
+        : `<li><b>Reach ${zoneLabel(stage.dim, 'soft')}</b> and <b>${zoneLabel(stage.dim, 'strong')}</b>, each for over a second.</li><li><b>Make ${plan.goalSwings} swings</b> between zones.</li><li><b>Keep talking</b> for most of your ${lengthLabel(plan.duration)}.</li>`;
     return `
     <div class="vv-brief">
       <div class="vv-brief-main">
@@ -341,7 +342,7 @@ function mount() {
         <div class="vv-qcard"><div class="vv-section-label">YOUR QUESTION</div>
           <p class="vv-question"><span aria-hidden="true">“</span>${esc(question())}<span aria-hidden="true">”</span></p>
           <div class="vv-brief-tools"><button type="button" class="vv-ghost" data-act="swap">↻ Different question</button>${speakable ? '<button type="button" class="vv-ghost" data-act="speak">🔊 Read it to me</button>' : ''}</div></div>
-        <div class="vv-plan"><div class="vv-plan-head"><span class="vv-section-label">${stage.kind === 'guided' ? 'YOUR PREP PLAN AND RIBBON' : 'YOUR PREP PLAN'}</span><span class="vv-plan-time">${plan.duration} seconds of speaking</span></div>
+        <div class="vv-plan"><div class="vv-plan-head"><span class="vv-section-label">${stage.kind === 'guided' ? 'YOUR PREP PLAN AND RIBBON' : 'YOUR PREP PLAN'}</span><span class="vv-plan-time">${lengthLabel(plan.duration)} of speaking</span></div>
           ${stage.dim === 'all' ? '' : `<div class="vv-plan-art">${stage.kind === 'guided' ? planArt(stage, { w: 640, h: 170, labels: true, id: 'brief' }) : zoneLadderHtml()}
             ${zoneNames(stage.dim).map((name, i) => `<span class="vv-axis ${['a-top', 'a-mid', 'a-low'][i]}">${esc(name.toUpperCase())}</span>`).join('')}</div>`}
           <ol class="vv-phases">${plan.phases.map(p => `<li style="flex:${p.to - p.from}"><span class="vv-letter">${p.letter}</span><b>${esc(p.label)}</b><em>${esc(p.zone)}</em><small>${esc(p.cue)}</small><time>${clock(p.from)}–${clock(p.to)}</time></li>`).join('')}</ol>
@@ -350,6 +351,8 @@ function mount() {
       <aside class="vv-brief-side">
         <div class="vv-section-label">HOW TO WIN</div><ul class="vv-rules">${rules}</ul>
         <div class="vv-stars-key"><span>${starsHtml(1, 'small')} ${stage.kind === 'guided' ? '55' : '50'}+</span><span>${starsHtml(2, 'small')} ${stage.kind === 'guided' ? '72' : '68'}+</span><span>${starsHtml(3, 'small')} ${stage.kind === 'guided' ? '88' : '85'}+</span></div>
+        <div class="vv-section-label">SPEECH LENGTH</div>
+        <div class="vv-seg vv-seg-3" role="radiogroup" aria-label="Speech length">${SPEECH_LENGTHS.map(s => `<button type="button" role="radio" aria-checked="${s === speechSeconds}" data-act="speech-time" data-seconds="${s}">${lengthLabel(s)}</button>`).join('')}</div>
         <div class="vv-section-label">PREPARATION TIME</div>
         <div class="vv-seg" role="radiogroup" aria-label="Preparation time">${PREP_CHOICES.map(s => `<button type="button" role="radio" aria-checked="${s === prepSeconds}" data-act="prep-time" data-seconds="${s}">${s < 60 ? `${s}s` : `${s / 60} min`.replace('1.5 min', '1½ min')}</button>`).join('')}</div>
         ${notice ? `<p class="vv-warning" role="alert">${esc(notice)}</p>` : ''}
@@ -560,6 +563,10 @@ function mount() {
         <div class="vv-canvas-wrap"><canvas id="vvStageCanvas" aria-hidden="true"></canvas><div class="vv-countdown" id="vvCountdown" aria-hidden="true"></div></div>
         <div class="vv-timeline" id="vvTimeline" aria-hidden="true">${plan.phases.map(p => `<div style="flex:${p.to - p.from}"><span>${p.letter} · ${esc(p.label)}</span></div>`).join('')}<i id="vvTimeFill"></i></div>
       </div>
+      <section class="vv-notes" id="vvNotes" aria-label="Your PREP notes">
+        <div class="vv-notes-head"><span class="vv-section-label">YOUR PREP NOTES</span><small>The part you are on is lit.</small></div>
+        <ol>${plan.phases.map((p, i) => `<li data-part="${i}" ${i === 0 ? 'class="now" aria-current="step"' : ''}><span class="vv-letter">${p.letter}</span><div><b>${esc(p.label)}</b><p ${notes[p.key].trim() ? '' : 'class="empty"'}>${notes[p.key].trim() ? esc(notes[p.key]) : 'No note'}</p></div></li>`).join('')}</ol>
+      </section>
       ${goals.length ? `<ul class="vv-goals" id="vvGoals">${goals.map(goal => `<li data-goal="${goal.id}"><span aria-hidden="true"></span>${esc(goal.label)}</li>`).join('')}</ul>` : ''}
       <p class="vv-status" id="vvLiveStatus" role="status">Get ready…</p>
     </div>`;
@@ -672,6 +679,7 @@ function mount() {
       r.phaseKey = index; const p = plan.phases[index];
       $('#vvCueLetter').textContent = p.letter; $('#vvCueLabel').textContent = p.label; $('#vvCueZone').textContent = p.zone; $('#vvCueText').textContent = p.cue;
       const note = $('#vvCueNote'); note.hidden = !notes[p.key]; note.innerHTML = `Your note: <b>${esc(notes[p.key])}</b>`;
+      viewEl.querySelectorAll('#vvNotes li').forEach((li, i) => { li.classList.toggle('now', i === index); if (i === index) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current'); });
       const cue = $('#vvCue'); cue.classList.remove('swap'); void cue.offsetWidth; cue.classList.add('swap');
       // No sound here: the microphone is open, and a beep would end up in the measurement.
       if (t > 0.5) announce(`${p.label}: ${p.zone}. ${p.cue}`);
@@ -936,7 +944,7 @@ function mount() {
     const lanes = lanesFor(st, T, ph);
     lanes.forEach(lane => drawLaneBands(ctx, lane, L, pw, compact));
     ctx.fillStyle = 'rgba(190,205,225,.55)'; ctx.font = '10px Inter, system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    for (let sec = 0; sec <= duration; sec += duration > 40 ? 10 : 5) { ctx.fillText(clock(sec), xOf(sec), h - 8); ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.beginPath(); ctx.moveTo(xOf(sec), T + 3); ctx.lineTo(xOf(sec), T + ph - 3); ctx.stroke(); }
+    for (let sec = 0; sec <= duration; sec += duration > 90 ? 20 : duration > 40 ? 10 : 5) { ctx.fillText(clock(sec), xOf(sec), h - 8); ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.beginPath(); ctx.moveTo(xOf(sec), T + 3); ctx.lineTo(xOf(sec), T + ph - 3); ctx.stroke(); }
     // PREP parts across the top
     ctx.textBaseline = 'middle';
     st.plan.phases.forEach((p, i) => {
@@ -1040,8 +1048,8 @@ function mount() {
   // ----- events ----------------------------------------------------------------------------
   const openStage = id => {
     const item = stageById(id); if (!item) return;
-    if (stage !== item) clearNotes();
-    stage = item; questionIndex = questionIndexFor(progress, item); notice = ''; example = false; go('brief');
+    if (stage?.id !== item.id) clearNotes();
+    stage = scaleStage(item, speechSeconds); questionIndex = questionIndexFor(progress, item); notice = ''; example = false; go('brief');
   };
   const continueAfterTune = () => { tune = null; if (after === 'prep' && stage) { after = null; startPrep(); } else { after = null; go('home'); } };
   root.addEventListener('click', event => {
@@ -1058,7 +1066,8 @@ function mount() {
       case 'tune-continue': continueAfterTune(); break;
       case 'swap': questionIndex = (questionIndex + 1) % QUESTIONS.length; clearNotes(); window.speechSynthesis?.cancel(); render(); viewEl.querySelector('[data-focus]')?.focus({ preventScroll: true }); break;
       case 'speak': if ('speechSynthesis' in window) { speechSynthesis.cancel(); speechSynthesis.speak(Object.assign(new SpeechSynthesisUtterance(question()), { rate: 0.95 })); } break;
-      case 'prep-time': prepSeconds = Number(target.dataset.seconds); write(PREP_KEY, prepSeconds); render(); viewEl.querySelector(`[data-seconds="${prepSeconds}"]`)?.focus(); break;
+      case 'speech-time': speechSeconds = Number(target.dataset.seconds); write(SPEECH_KEY, speechSeconds); stage = scaleStage(stageById(stage.id), speechSeconds); render(); viewEl.querySelector(`[data-act="speech-time"][data-seconds="${speechSeconds}"]`)?.focus(); break;
+      case 'prep-time': prepSeconds = Number(target.dataset.seconds); write(PREP_KEY, prepSeconds); render(); viewEl.querySelector(`[data-act="prep-time"][data-seconds="${prepSeconds}"]`)?.focus(); break;
       case 'start-prep': startPrep(); break;
       case 'prep-more': if (prep) { prep.endsAt += 30000; prep.total += 30; } break;
       case 'prep-ready': if (prep?.mic) beginRound(); else $('#vvMicText').textContent = 'Still connecting your microphone…'; break;
