@@ -168,8 +168,8 @@ export const MeetingAudio = {
 // ---------------------------------------------------------------------------------------------
 export class ChunkTranscriber {
   // `getPrompt` may return a few words the speaker is likely to say; the service then spells them right.
-  constructor(stream, { chunkMs = 3000, endpoint = '/api/transcribe', language = 'en', voicedDb = -58, minVoicedMs = 400, getPrompt, onResult, onFail } = {}) {
-    Object.assign(this, { stream, chunkMs, endpoint, language, voicedDb, minVoicedMs, getPrompt, onResult, onFail });
+  constructor(stream, { chunkMs = 3000, endpoint = '/api/transcribe', language = 'en', voicedDb = -58, minVoicedMs = 400, getPrompt, getToken = () => window.getSpeechAuthToken?.(), onResult, onFail } = {}) {
+    Object.assign(this, { stream, chunkMs, endpoint, language, voicedDb, minVoicedMs, getPrompt, getToken, onResult, onFail });
     this.alive = false; this.index = 0; this.pending = 0; this.failures = 0; this.chunk = null; this.recorder = null;
   }
   get supported() { return typeof MediaRecorder !== 'undefined'; }
@@ -216,7 +216,9 @@ export class ChunkTranscriber {
     this.pending++;
     const controller = new AbortController(), abort = setTimeout(() => controller.abort(), 15000);
     try {
-      const response = await fetch(this.endpoint, { method: 'POST', body, signal: controller.signal });
+      let token = null;
+      try { token = await this.getToken?.(); } catch { /* not signed in: the server answers 401 */ }
+      const response = await fetch(this.endpoint, { method: 'POST', body, headers: token ? { Authorization: `Bearer ${token}` } : {}, signal: controller.signal });
       if (!response.ok) throw Object.assign(new Error(`HTTP ${response.status}`), { status: response.status });
       const data = await response.json();
       this.failures = 0;

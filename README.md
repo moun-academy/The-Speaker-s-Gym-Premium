@@ -100,9 +100,10 @@ send nothing. Stars, XP, badges and the learned loudness are saved in this brows
 on Finish, navigation away, backgrounding, Escape, or page close; the meeting connection stays
 open until it is disconnected (the browser shows its sharing indicator while it is).
 
-`api/transcribe.js` has no login check, like `api/feedback.js`, and is limited to short audio
-chunks (1.5 MB) of known audio types. Every chunk with speech costs a little on the OpenAI
-account, so consider adding the same protection you add to the other endpoints.
+`api/transcribe.js` only answers signed-in users: the browser sends its Firebase login token and the
+server checks it (needs `FIREBASE_SERVICE_ACCOUNT_JSON`, the same variable `api/verify-purchase.js` uses;
+without it the endpoint refuses everything). It is also limited to short audio chunks (1.5 MB) of known
+audio types. Every chunk with speech costs a little on the OpenAI account.
 
 **Web only.** The loader and modules guard against native Capacitor, and `build:web` does
 not package them. Do not include them in an Android release until the user has tested and

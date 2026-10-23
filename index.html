@@ -9769,6 +9769,8 @@
         app = firebase.initializeApp(firebaseConfig);
         console.log('[Firebase] Getting auth reference...');
         auth = firebase.auth();
+        // Lets meeting-audio.js prove who is signed in when it sends speech to /api/transcribe.
+        window.getSpeechAuthToken = async () => (auth && auth.currentUser ? auth.currentUser.getIdToken() : null);
         console.log('[Firebase] Getting firestore reference...');
         db = firebase.firestore();
 

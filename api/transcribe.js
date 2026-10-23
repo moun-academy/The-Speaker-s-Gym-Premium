@@ -3,6 +3,7 @@
 // and gets back the words with timestamps. Used by Speak on the Spot (to detect the target words)
 // and by the vocal variety pace games (to count words a minute).
 import OpenAI from "openai";
+import admin from "firebase-admin";
 
 export const config = { api: { bodyParser: false } };
 
@@ -40,18 +41,41 @@ export function parseMultipart(buffer, contentType) {
   return result;
 }
 
-export function createHandler(getClient) {
+// Only signed-in users may spend speech-to-text money. The browser sends its Firebase ID token as
+// "Authorization: Bearer <token>", the same login the rest of the app uses.
+function bearerToken(req) {
+  return String(req.headers?.authorization || "").match(/^Bearer\s+(.+)$/i)?.[1] || "";
+}
+
+export async function verifyFirebaseUser(token) {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!raw) throw Object.assign(new Error("Login check is not configured"), { status: 500 });
+  if (!admin.apps.length) {
+    const text = raw.trim().startsWith("{") ? raw : Buffer.from(raw, "base64").toString("utf8");
+    admin.initializeApp({ credential: admin.credential.cert(JSON.parse(text)) });
+  }
+  try { return (await admin.auth().verifyIdToken(token)).uid; }
+  catch { throw Object.assign(new Error("Invalid login"), { status: 401 }); }
+}
+
+export function createHandler(getClient, verifyUser = verifyFirebaseUser) {
   return async function handler(req, res) {
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     if (req.method === "OPTIONS") return res.status(200).end();
     if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).json({ error: "Method not allowed" }); }
     const client = getClient();
     if (!client) return res.status(500).json({ error: "Speech service is not configured" });
 
     try {
+      const token = bearerToken(req);
+      if (!token) return res.status(401).json({ error: "Please sign in to use speech recognition" });
+      try { await verifyUser(token); }
+      catch (error) {
+        return res.status(error.status === 500 ? 500 : 401).json({ error: error.status === 500 ? "Login check is not configured" : "Please sign in again" });
+      }
       const contentType = req.headers["content-type"] || "";
       if (!contentType.includes("multipart/form-data")) return res.status(400).json({ error: "Send the audio as multipart form data" });
       const { files, fields } = parseMultipart(await readBody(req), contentType);
