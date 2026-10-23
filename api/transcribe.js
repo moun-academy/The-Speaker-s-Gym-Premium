@@ -47,14 +47,14 @@ function bearerToken(req) {
   return String(req.headers?.authorization || "").match(/^Bearer\s+(.+)$/i)?.[1] || "";
 }
 
+// Checking a login token needs no secret: Firebase signs tokens with public keys, so only the project id
+// is required (it must match the app's firebaseConfig).
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "speaker-s-gym-premium";
+
 export async function verifyFirebaseUser(token) {
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (!raw) throw Object.assign(new Error("Login check is not configured"), { status: 500 });
-  if (!admin.apps.length) {
-    const text = raw.trim().startsWith("{") ? raw : Buffer.from(raw, "base64").toString("utf8");
-    admin.initializeApp({ credential: admin.credential.cert(JSON.parse(text)) });
-  }
-  try { return (await admin.auth().verifyIdToken(token)).uid; }
+  const app = admin.apps.find(candidate => candidate?.name === "transcribe-auth")
+    || admin.initializeApp({ projectId: FIREBASE_PROJECT_ID }, "transcribe-auth");
+  try { return (await admin.auth(app).verifyIdToken(token)).uid; }
   catch { throw Object.assign(new Error("Invalid login"), { status: 401 }); }
 }
 
