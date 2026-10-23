@@ -3,7 +3,9 @@
 async (page) => {
   const base = new URL(page.url()).origin;
   const errors = [];
+  await page.evaluate(() => localStorage.clear());
   await page.reload();
+  await page.waitForSelector('#menuVariety');
   page.on('pageerror', error => errors.push(error.message));
   await page.addStyleTag({ content: '#loginGate { display: none !important; }' });
   await page.evaluate(() => {
