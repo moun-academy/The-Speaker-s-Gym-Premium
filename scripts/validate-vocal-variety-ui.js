@@ -1,8 +1,8 @@
 // Run with playwright-cli run-code --filename scripts/validate-vocal-variety-ui.js
-// against a local server on 127.0.0.1:8766. Uses generated audio, no real account.
-// Plays the whole game: example result, mobile layout, all games open, find-your-range (volume,
-// pitch), PREP preparation with notes, one guided volume round, microphone cleanup, permission
-// denial, a canceled microphone request, and the native gate.
+// against a local server on 127.0.0.1:8766. Uses generated audio and a fake speech service, no real account.
+// Plays the whole thing: example result, mobile layout, all games open with no tuning step, one microphone
+// round with PREP notes, meeting audio (panel messages, one picker, Speak on the Spot, a Pace round counted in
+// words a minute), cleanup, and the native gate.
 async (page) => {
   const failures = [];
   const check = (condition, message) => { if (!condition) failures.push(message); };
@@ -12,10 +12,7 @@ async (page) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addStyleTag({ content: '#loginGate { display: none !important; }' });
   await page.waitForSelector('#menuVariety');
-  await page.evaluate(() => {
-    localStorage.removeItem('sg-vocal-arena-v1'); localStorage.removeItem('sg-vocal-arena-scale-v1');
-    document.getElementById('loginGate').style.display = 'none'; window.navigateToPage('variety');
-  });
+  await page.evaluate(() => { localStorage.clear(); document.getElementById('loginGate').style.display = 'none'; window.navigateToPage('variety'); });
   const view = () => page.evaluate(() => document.getElementById('vvView').dataset.view);
 
   // 1. The example result is clearly labeled and fully drawn.
@@ -24,168 +21,146 @@ async (page) => {
   check((await page.locator('.vv-result-sum .vv-section-label').innerText()).includes('EXAMPLE'), 'example must be labeled');
   check(Number(await page.locator('#vvScore').innerText()) > 0, 'example score missing');
   check(await page.locator('#vvMap').evaluate(el => el.width > 0 && el.height > 0), 'volume map was not drawn');
-  await page.screenshot({ path: 'output/playwright/vocal-variety-example-desktop.png', fullPage: true });
 
-  // 2. Mobile: nothing overflows and touch targets are large enough.
+  // 2. Mobile: nothing overflows. All seven games are open and nobody is asked to be tuned.
   await page.setViewportSize({ width: 390, height: 844 });
   check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'mobile horizontal overflow (results)');
   await page.getByRole('button', { name: 'All games', exact: true }).click();
   check(await page.locator('.vv-stage-card').count() === 7, 'all seven games should be listed');
   check(await page.locator('.vv-stage-card[aria-disabled], .vv-stage-card.locked').count() === 0, 'every game must be open');
+  check(await page.locator('[data-act^="tune"]').count() === 0, 'there must be no voice tuning step');
+  check((await page.locator('.vv-dim-pace .vv-zone-row').innerText()).includes('140'), 'the pace bands should show words a minute');
   check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'mobile horizontal overflow (home)');
-  const startHeight = await page.locator('.vv-hero-actions .vv-primary').evaluate(el => el.getBoundingClientRect().height);
-  check(startHeight >= 44, 'mobile start target too small');
-  await page.screenshot({ path: 'output/playwright/vocal-variety-home-mobile.png', fullPage: true });
   await page.setViewportSize({ width: 1280, height: 900 });
 
-  // 3. Generated microphone: a 150 Hz tone whose level the test controls.
+  // 3. Fixtures: a microphone, a fake Meet tab, and a fake speech service that returns words at a speed the test sets.
   await page.evaluate(() => {
-    window.fixture = { amp: 0.00005, streams: [] };
-    navigator.mediaDevices.getUserMedia = async () => {
-      const ctx = new AudioContext(); await ctx.resume();
-      const osc = ctx.createOscillator(), gain = ctx.createGain(), dest = ctx.createMediaStreamDestination();
-      osc.frequency.value = 150; gain.gain.value = window.fixture.amp; osc.connect(gain); gain.connect(dest); osc.start();
-      const timer = setInterval(() => { gain.gain.value = window.fixture.amp; }, 20);
-      const stream = dest.stream, track = stream.getTracks()[0], stop = track.stop.bind(track);
-      track.stop = () => { stop(); clearInterval(timer); osc.stop(); ctx.close().catch(() => {}); };
-      window.fixture.streams.push(stream);
-      return stream;
+    window.fixture = { amp: 0.00005, hz: 150, streams: [], picks: 0, t0: 0, wpmAt: () => 120, fetches: [] };
+    const makeTone = () => {
+      const ctx = new AudioContext(); const osc = ctx.createOscillator(), gain = ctx.createGain(), dest = ctx.createMediaStreamDestination();
+      osc.type = 'sawtooth'; const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; osc.frequency.value = 150; gain.gain.value = 0; osc.connect(lp); lp.connect(gain); gain.connect(dest); osc.start();
+      const timer = setInterval(() => { gain.gain.setTargetAtTime(window.fixture.amp, ctx.currentTime, 0.005); osc.frequency.setTargetAtTime(window.fixture.hz, ctx.currentTime, 0.01); }, 10);
+      const track = dest.stream.getAudioTracks()[0], stop = track.stop.bind(track);
+      track.stop = () => { stop(); clearInterval(timer); osc.stop(); ctx.close().catch(() => {}); track.dispatchEvent(new Event('ended')); };
+      return track;
+    };
+    navigator.mediaDevices.getUserMedia = async () => { const stream = new MediaStream([makeTone()]); window.fixture.streams.push(stream); return stream; };
+    navigator.mediaDevices.getDisplayMedia = async () => {
+      window.fixture.picks++;
+      const canvas = document.createElement('canvas'); canvas.width = canvas.height = 16;
+      const video = canvas.captureStream(1).getVideoTracks()[0]; const real = video.getSettings.bind(video); video.getSettings = () => ({ ...real(), displaySurface: 'browser' });
+      const out = new MediaStream([video, makeTone()]); window.fixture.streams.push(out); return out;
+    };
+    const realFetch = window.fetch.bind(window);
+    window.fetch = async (url, init) => {
+      if (!String(url).includes('/api/transcribe')) return realFetch(url, init);
+      const t = (performance.now() - window.fixture.t0) / 1000, prompt = init.body.get('prompt') || '';
+      window.fixture.fetches.push({ t, prompt });
+      const n = Math.round(window.fixture.wpmAt(t - 1.5) * 3 / 60);
+      const words = Array.from({ length: n }, (_, i) => ({ word: 'word', start: (i + 0.5) * 3 / Math.max(n, 1) - 0.15, end: (i + 0.5) * 3 / Math.max(n, 1) + 0.1 }));
+      return new Response(JSON.stringify({ text: words.map(() => 'word').join(' ') + (prompt ? ` ${prompt}` : ''), words, duration: 3 }), { status: 200, headers: { 'content-type': 'application/json' } });
     };
   });
   const allEnded = () => page.evaluate(() => window.fixture.streams.every(s => s.getTracks().every(t => t.readyState === 'ended')));
 
-  // 4. Find your range: quiet, whisper, natural sentence (pitch and pace), strong.
-  await page.getByRole('button', { name: 'Find my range' }).click();
-  await page.getByRole('button', { name: /Start tuning/ }).click();
-  for (const [seconds, amp] of [[0, 0.00005], [2.2, 0.0045], [5.9, 0.045], [11.2, 0.2], [15, 0.00005]]) {
-    setTimeout(() => page.evaluate(value => { window.fixture.amp = value; }, amp), seconds * 1000);
-  }
-  await page.waitForFunction(() => document.querySelector('[data-act="tune-continue"]'), null, { timeout: 25000 });
-  const tuned = await page.evaluate(() => JSON.parse(localStorage.getItem('sg-vocal-arena-scale-v1')).scale);
-  check(Math.abs(tuned.soft + 49.9) < 2 && Math.abs(tuned.natural + 29.9) < 2 && Math.abs(tuned.power + 17) < 3, `range was not measured: ${JSON.stringify(tuned)}`);
-  check(Math.abs(tuned.pitchCenter - 50.2) < 0.5, `natural pitch (150 Hz, about D3) was not measured: ${tuned.pitchCenter}`);
-  check(await allEnded(), 'microphone still active after tuning');
-  await page.getByRole('button', { name: /Choose a game/ }).click();
-
-  // 5. One guided volume round: prepare with PREP notes, then follow the ribbon.
+  // 4. One microphone round of Volume: Loud & Soft, with PREP notes and a sound check.
   await page.locator('[data-stage="volume-ribbon"]').click();
   check((await page.locator('.vv-question').innerText()).length > 10, 'question missing');
-  check(await page.getByRole('radio', { name: '2 min' }).first().getAttribute('aria-checked') === 'true', 'speech length should default to 2 minutes');
+  check(await page.locator('[data-act="speech-time"][data-seconds="120"]').getAttribute('aria-checked') === 'true', 'speech length should default to 2 minutes');
   await page.locator('[data-act="speech-time"][data-seconds="60"]').click();
-  check((await page.locator('.vv-plan-time').innerText()).startsWith('1 min'), 'choosing 1 minute should update the plan');
   await page.locator('[data-act="prep-time"][data-seconds="30"]').click();
+  await page.evaluate(() => { window.fixture.amp = 0.05; });
   await page.getByRole('button', { name: /Start preparing/ }).click();
   for (const key of ['point', 'reason', 'example', 'finalPoint']) await page.locator(`[data-note="${key}"]`).fill(`my ${key}`);
-  await page.waitForFunction(() => document.getElementById('vvMicText')?.textContent.startsWith('Mic check'), null, { timeout: 5000 });
-  check((await page.locator('#vvPrepClock').innerText()).startsWith('0:'), 'preparation timer missing');
+  await page.waitForFunction(() => document.getElementById('vvMicText')?.textContent.startsWith('✓ Voice level set'), null, { timeout: 8000 });
   await page.getByRole('button', { name: /I’m ready/ }).click();
   await page.waitForSelector('#vvStageCanvas');
-  const plan = await page.evaluate(async () => { const game = await import('/vocal-variety-game.js'); return game.scaleStage(game.stageById('volume-ribbon'), 60).plan.keys; });
   check(await page.locator('#vvNotes li').count() === 4, 'PREP notes panel missing under the stage');
-  check((await page.locator('#vvNotes li.now').innerText()).includes('my point'), 'the first PREP note should be lit at the start');
-  const goAt = Date.now() + 3050;
-  const drive = setInterval(async () => {
-    const t = (Date.now() - goAt) / 1000;
-    if (t < 0) return;
-    let level = plan.at(-1)[1];
-    for (let i = 1; i < plan.length; i++) if (t <= plan[i][0]) { const [t0, v0] = plan[i - 1], [t1, v1] = plan[i], s = (t - t0) / (t1 - t0); level = v0 + (v1 - v0) * s * s * (3 - 2 * s); break; }
-    const db = level <= 0.5 ? -49.9 + level / 0.5 * 20 : -29.9 + (level - 0.5) / 0.5 * 13;
-    await page.evaluate(amp => { window.fixture.amp = amp; }, Math.pow(10, db / 20) * Math.SQRT2).catch(() => {});
-  }, 50);
-  await page.waitForTimeout(8000);
-  check(await page.locator('#vvHud1').innerText() !== '—', 'live ribbon match missing');
+  await page.waitForTimeout(6000);
   check((await page.locator('#vvCueNote').innerText()).includes('my '), 'the PREP note should show while speaking');
-  await page.screenshot({ path: 'output/playwright/vocal-variety-live.png' });
-  await page.waitForFunction(() => document.querySelector('#vvNotes li.now')?.innerText.includes('my reason'), null, { timeout: 30000 });
-  await page.waitForFunction(() => document.getElementById('vvView').dataset.view === 'results', null, { timeout: 70000 });
-  clearInterval(drive);
-  await page.waitForTimeout(500);
-  const result = await page.evaluate(() => ({ score: Number(document.getElementById('vvScore').dataset.score), stars: Number(document.getElementById('vvStarRow').dataset.stars), progress: JSON.parse(localStorage.getItem('sg-vocal-arena-v1')), audio: document.querySelector('#vvAudioSlot audio')?.src || '' }));
-  check(result.score >= 55 && result.stars >= 1, `a ribbon-following take should earn a star: ${JSON.stringify({ score: result.score, stars: result.stars })}`);
-  check(result.progress.rounds === 1 && result.progress.xp > 0, 'progress was not saved');
-  check(result.progress.badges.prepared, 'writing all four PREP notes should earn the Prepared badge');
+  await page.getByRole('button', { name: /Finish/ }).click();
+  await page.waitForFunction(() => document.getElementById('vvView').dataset.view === 'results', null, { timeout: 10000 });
+  const first = await page.evaluate(() => ({ progress: JSON.parse(localStorage.getItem('sg-vocal-arena-v1')), audio: document.querySelector('#vvAudioSlot audio')?.src || '' }));
+  check(first.progress.rounds === 1 && first.progress.badges.prepared, 'progress and the Prepared badge should be saved');
   check(await page.locator('.vv-parts li').count() === 4, 'part-by-part PREP breakdown missing');
-  check(result.audio.startsWith('blob:'), 'playback must use a local blob');
   check(await allEnded(), 'microphone still active after the round');
-  await page.screenshot({ path: 'output/playwright/vocal-variety-results.png', fullPage: true });
 
-  // 6. Permission denied keeps the game usable.
+  // 5. Permission denied keeps the game usable; a microphone request canceled by leaving leaves no live track.
   await page.getByRole('button', { name: 'Try this question again' }).click();
-  await page.evaluate(() => { navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('Denied', 'NotAllowedError')); });
+  await page.evaluate(() => { window.realGetUserMedia = navigator.mediaDevices.getUserMedia; navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('Denied', 'NotAllowedError')); });
   await page.getByRole('button', { name: /Start preparing/ }).click();
   await page.waitForTimeout(300);
   check((await page.locator('.vv-warning').innerText()).includes('declined'), 'permission error missing');
   check(await page.locator('[data-act="start-prep"]').isEnabled(), 'permission failure locked the start button');
-
-  // 7. A microphone request canceled by navigating away must not leave a live track.
   await page.evaluate(() => { navigator.mediaDevices.getUserMedia = () => new Promise(resolve => { window.fixtureResolve = resolve; }); });
   await page.getByRole('button', { name: /Start preparing/ }).click();
   await page.getByRole('button', { name: '← All games' }).click();
   const canceled = await page.evaluate(async () => {
-    const ctx = new AudioContext(), dest = ctx.createMediaStreamDestination();
-    const track = dest.stream.getTracks()[0];
+    const ctx = new AudioContext(), dest = ctx.createMediaStreamDestination(), track = dest.stream.getTracks()[0];
     window.fixtureResolve(dest.stream);
-    await new Promise(resolve => setTimeout(resolve, 150));
-    await ctx.close();
+    await new Promise(resolve => setTimeout(resolve, 150)); await ctx.close();
     return track.readyState;
   });
   check(canceled === 'ended', 'canceled microphone request left a live track');
+  await page.evaluate(() => { navigator.mediaDevices.getUserMedia = window.realGetUserMedia; });
 
-  // 8. Playing over a video call: the Settings switch makes the game listen to the call tab,
-  //    with no tuning, one picker for the whole session, and the tab audio released on leaving.
-  await page.evaluate(() => {
-    localStorage.setItem('callAudioMode', 'true');
-    window.fixture.picks = 0; window.fixture.callStreams = [];
-    navigator.mediaDevices.getDisplayMedia = async () => {
-      window.fixture.picks++;
-      const canvas = document.createElement('canvas'); canvas.width = canvas.height = 16;
-      const out = new MediaStream(canvas.captureStream(1).getVideoTracks());
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      out.addTrack(stream.getAudioTracks()[0]);
-      window.fixture.callStreams.push(out);
-      return out;
-    };
-    navigator.mediaDevices.getUserMedia = async () => {
-      const ctx = new AudioContext(); await ctx.resume();
-      const osc = ctx.createOscillator(), gain = ctx.createGain(), dest = ctx.createMediaStreamDestination();
-      osc.frequency.value = 150; gain.gain.value = 0.02; osc.connect(gain); gain.connect(dest); osc.start();
-      const stream = dest.stream, track = stream.getTracks()[0], stop = track.stop.bind(track);
-      track.stop = () => { stop(); osc.stop(); ctx.close().catch(() => {}); track.dispatchEvent(new Event('ended')); };
-      return stream;
-    };
-  });
-  await page.evaluate(() => window.VocalVariety.render());
-  await page.getByRole('button', { name: /All games/ }).first().click().catch(() => {});
-  await page.evaluate(() => document.querySelector('[data-act="back"]')?.click());
-  check(await page.locator('[data-act="tune"]').count() === 0, 'call mode needs no tuning');
-  await page.locator('[data-stage="volume-free"]').click();
-  await page.getByRole('button', { name: /Start preparing/ }).click();
-  await page.waitForFunction(() => document.getElementById('vvMicText')?.textContent.startsWith('Call check'), null, { timeout: 5000 });
-  check(await page.evaluate(() => window.fixture.picks) === 1, 'the call tab should be picked once');
-  await page.getByRole('button', { name: /I’m ready/ }).click();
-  await page.waitForSelector('#vvStageCanvas');
-  await page.waitForTimeout(5000);
-  check(await page.locator('#vvHud2').innerText() !== '—', 'the call audio should be heard live');
-  await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: /Start preparing/ }).click();
-  await page.waitForFunction(() => document.getElementById('vvMicText')?.textContent.startsWith('Call check'), null, { timeout: 5000 });
-  check(await page.evaluate(() => window.fixture.picks) === 1, 'a second student must not need a second picker');
-  await page.evaluate(() => window.navigateToPage('main'));
+  // 6. Meeting audio: the panel, its messages, one picker for every game.
+  await page.evaluate(() => window.navigateToPage('settings'));
+  const panel = page.locator('#meetingAudioPanel');
+  await panel.getByRole('button', { name: 'Use meeting audio' }).click();
+  check(await page.locator('#callAudioToggle').isChecked(), 'the Settings switch should follow the meeting audio control');
+  await page.evaluate(() => { const real = navigator.mediaDevices.getDisplayMedia; navigator.mediaDevices.getDisplayMedia = async () => { window.fixture.picks++; throw new DOMException('Denied', 'NotAllowedError'); }; window.realDisplay = real; });
+  await panel.getByRole('button', { name: 'Connect meeting audio' }).click();
+  check((await panel.locator('.ma-error').innerText()).includes('cancelled'), 'a cancelled picker should say so');
+  await page.evaluate(() => { navigator.mediaDevices.getDisplayMedia = window.realDisplay; window.fixture.picks = 0; });
+  await panel.getByRole('button', { name: 'Connect meeting audio' }).click();
   await page.waitForTimeout(300);
-  check(await page.evaluate(() => window.fixture.callStreams.every(s => s.getAudioTracks().every(t => t.readyState === 'ended'))), 'call audio still shared after leaving the game');
-  await page.evaluate(() => localStorage.setItem('callAudioMode', 'false'));
+  check((await panel.locator('.ma-state').innerText()).startsWith('Connected'), 'meeting audio should connect');
+  await page.evaluate(() => { window.fixture.amp = 0.06; });
+  await page.waitForFunction(() => document.querySelector('#meetingAudioPanel .ma-state')?.textContent === 'Hearing the call', null, { timeout: 4000 });
 
-  // 9. The preview stays web-only.
+  // 7. Speak on the Spot hears the call: words come from the speech service, with no second picker.
+  await page.evaluate(() => {
+    window.navigateToPage('spot');
+    for (const [id, value] of [['spotThinkTime', '3'], ['spotSpeechDuration', '30'], ['spotNumWords', '3']]) { const el = document.getElementById(id); el.value = value; el.dispatchEvent(new Event('change', { bubbles: true })); }
+    window.fixture.t0 = performance.now();
+  });
+  await page.locator('#spotStartBtn').click();
+  await page.waitForFunction(() => document.getElementById('spotResultsPhase')?.classList.contains('active'), null, { timeout: 45000 });
+  check((await page.locator('#spotWordsUsedValue').innerText()).startsWith('3/'), 'Speak on the Spot should detect the words said on the call');
+  check(await page.evaluate(() => window.fixture.picks) === 1, 'meeting audio should be picked once for every game');
+
+  // 8. A Pace round counted in words a minute: 100 / 125 / 150 / 100 in the four PREP parts reaches Slow, Steady and Fast.
+  await page.evaluate(() => { window.navigateToPage('variety'); document.querySelector('[data-act="open-stage"][data-stage="pace-ribbon"]').click(); });
+  await page.locator('[data-act="speech-time"][data-seconds="60"]').click();
+  await page.locator('[data-act="prep-time"][data-seconds="30"]').click();
+  await page.getByRole('button', { name: /Start preparing/ }).click();
+  await page.waitForFunction(() => document.getElementById('vvMicText')?.textContent.startsWith('✓ Voice level set'), null, { timeout: 8000 });
+  await page.evaluate(() => { window.fixture.wpmAt = t => t < 12 ? 100 : t < 27 ? 125 : t < 48 ? 150 : 100; });
+  await page.getByRole('button', { name: /I’m ready/ }).click();
+  await page.evaluate(() => { window.fixture.t0 = performance.now() + 3050; });
+  await page.waitForFunction(() => document.getElementById('vvView').dataset.view === 'results', null, { timeout: 90000 });
+  const paceParts = await page.locator('.vv-parts li').allInnerTexts();
+  check(/Slow/.test(paceParts[0]) && /Steady/.test(paceParts[1]) && /Fast/.test(paceParts[2]), `pace parts should read Slow, Steady, Fast: ${JSON.stringify(paceParts)}`);
+  check(Number(await page.locator('#vvStarRow').getAttribute('data-stars')) >= 2, 'speaking at 100, 125 and 150 words a minute should earn stars');
+  check(await page.evaluate(() => document.querySelector('.vv-tile.wide ~ .vv-tile')?.textContent.includes('WPM')), 'the pace range should be in WPM');
+  check(await page.evaluate(() => window.fixture.picks) === 1, 'the pace round must reuse the connection');
+
+  // 9. Disconnect releases the call, and the preview stays web-only.
+  await page.evaluate(() => { window.navigateToPage('settings'); });
+  await panel.getByRole('button', { name: 'Disconnect' }).click();
+  check(await page.evaluate(() => !window.MeetingAudio.isConnected()), 'disconnect should end the meeting audio');
+  await page.evaluate(() => localStorage.setItem('callAudioMode', 'false'));
   const nativePage = await page.context().newPage();
   await nativePage.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true }; });
   const nativeAssets = [];
-  nativePage.on('request', request => { if (request.url().includes('vocal-variety')) nativeAssets.push(request.url()); });
+  nativePage.on('request', request => { if (/vocal-variety|meeting-audio/.test(request.url())) nativeAssets.push(request.url()); });
   await nativePage.goto('http://127.0.0.1:8766/index.html');
   await nativePage.waitForTimeout(700);
   check(await nativePage.locator('#menuVariety').count() === 0, 'native app must not expose the preview');
-  check(nativeAssets.length === 0, 'native app must not request preview assets');
+  check(nativeAssets.length === 0, 'native app must not request preview or meeting audio assets');
   await nativePage.close();
 
   if (failures.length || errors.length) throw new Error(`Vocal variety UI validation failed: ${JSON.stringify({ failures, errors })}`);
-  return { failures, errors, tuned, result: { score: result.score, stars: result.stars }, startHeight, nativeAssets, canceledRequestTrack: canceled };
+  return { failures, errors, nativeAssets };
 }

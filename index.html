@@ -4550,6 +4550,10 @@
         <div class="spot-controls">
           <button class="spot-btn primary" id="spotStartBtn">▶ Start Challenge</button>
         </div>
+        <details class="spot-meeting" id="spotMeetingBox" style="margin-top: 16px; text-align: left;">
+          <summary style="cursor: pointer; color: #9ca3af; font-size: 13px; padding: 8px 0;">📞 Playing in a video call? Let the game hear your students</summary>
+          <div id="spotMeetingPanel" style="margin-top: 8px;"></div>
+        </details>
       </div>
 
       <div class="spot-phase" id="spotThinkPhase">
@@ -5497,9 +5501,9 @@
         </label>
       </div>
       <div class="call-audio-note">
-        Note: Only works with browser-based calls (not desktop apps). You'll select the call tab when you start recording.
-        <br>Compatible: Google Meet, Zoom web, Teams web, Discord web.
+        Works with browser-based calls (Google Meet, Zoom web, Teams web, Discord web). Connect once below and every game listens to the call: Speak on the Spot, the home-page recorder and the vocal variety games.
       </div>
+      <div id="meetingAudioPanel" style="margin-top: 12px;"></div>
     </div>
 
     <!-- Call Audio Info Modal -->
@@ -8174,6 +8178,25 @@
     }
 
     async function captureCallAudio() {
+      if (window.MeetingAudio) {
+        try {
+          if (!window.MeetingAudio.isConnected()) await window.MeetingAudio.connect();
+          const shared = window.MeetingAudio.clone();           // a copy: stopping it leaves the call connected
+          if (!shared) throw Object.assign(new Error('no audio'), { name: 'NoCallAudio' });
+          shared.getAudioTracks()[0].addEventListener('ended', () => {
+            showAchievement("📞 Call audio stopped. The tab may have been closed.");
+            if (isRunning) {
+              if (currentMode === 'audio') stopAudioRecording();
+              else if (currentMode === 'video') stopVideoRecording();
+            }
+          });
+          callAudioStream = shared;
+          return callAudioStream;
+        } catch (error) {
+          showAchievement(window.MeetingAudio.describeError(error));
+          return null;
+        }
+      }
       try {
         // getDisplayMedia requires video: true in most browsers, we'll discard the video track
         const displayStream = await navigator.mediaDevices.getDisplayMedia({
@@ -9192,12 +9215,41 @@
     const callAudioInfoModal = document.getElementById('callAudioInfoModal');
     const callAudioInfoGotIt = document.getElementById('callAudioInfoGotIt');
 
+    const applyCallAudioMode = () => {
+      // Reinitialize stream if in audio/video mode and not recording
+      if ((currentMode === 'audio' || currentMode === 'video') && !isRunning) {
+        stopMedia();
+        if (currentMode === 'audio') initAudio();
+        else initCamera();
+      }
+    };
+    // The meeting audio control (Settings and the vocal variety home) can switch this too.
+    window.addEventListener('meetingaudio:enabled', event => {
+      const spotBox = document.getElementById('spotMeetingBox');
+      if (spotBox) spotBox.open = event.detail;
+      if (callAudioMode === event.detail) return;
+      callAudioMode = event.detail;
+      if (callAudioToggle) callAudioToggle.checked = callAudioMode;
+      applyCallAudioMode();
+    });
+    const mountMeetingAudioPanel = () => {
+      for (const id of ['meetingAudioPanel', 'spotMeetingPanel']) {
+        const panel = document.getElementById(id);
+        if (panel && window.MeetingAudio && !panel.dataset.mounted) { panel.dataset.mounted = '1'; window.MeetingAudio.mountPanel(panel, { compact: id === 'spotMeetingPanel' }); }
+      }
+      const spotBox = document.getElementById('spotMeetingBox');
+      if (spotBox && window.MeetingAudio) spotBox.open = window.MeetingAudio.enabled();
+    };
+    window.addEventListener('meetingaudio:ready', mountMeetingAudioPanel);
+    mountMeetingAudioPanel();
+
     if (callAudioToggle) {
       callAudioToggle.checked = callAudioMode;
 
       callAudioToggle.addEventListener('change', () => {
         callAudioMode = callAudioToggle.checked;
         localStorage.setItem('callAudioMode', callAudioMode ? 'true' : 'false');
+        window.MeetingAudio?.setEnabled(callAudioMode);
 
         if (callAudioMode) {
           // Show info modal on first enable
@@ -9210,12 +9262,7 @@
           showAchievement("🎙️ Switched back to microphone");
         }
 
-        // Reinitialize stream if in audio/video mode and not recording
-        if ((currentMode === 'audio' || currentMode === 'video') && !isRunning) {
-          stopMedia();
-          if (currentMode === 'audio') initAudio();
-          else initCamera();
-        }
+        applyCallAudioMode();
       });
     }
 
@@ -12475,7 +12522,58 @@
       };
     }
 
+    // ----- meeting mode: hear the call --------------------------------------------------------
+    // The browser's built-in speech recognition can only listen to this computer's microphone, so when
+    // Meeting audio is on, a few seconds of the call's audio at a time go to the app's speech service
+    // (api/transcribe.js) and the words that come back feed the same word detection.
+    const spotCall = () => Boolean(callAudioMode && window.MeetingAudio && window.ChunkTranscriber);
+    let spotCallActive = null, spotCallStream = null;
+    function startSpotCallTranscription() {
+      spotRecognitionShouldRun = true;
+      spotTranscript = ''; spotPriorFinal = ''; spotCurrentSessionFinal = '';
+      spotMatchTranscript = ''; spotPriorMatchFinal = ''; spotCurrentSessionMatchFinal = '';
+      resetSpotRecogDiag();
+      const live = document.getElementById('spotLiveTranscript');
+      if (live) live.textContent = 'Listening to the call...';
+      spotCallStream = window.MeetingAudio.clone();
+      if (!spotCallStream) { if (live) live.textContent = 'ℹ️ The call audio is not connected. Open Settings, then Video Call Audio, and connect it.'; return; }
+      const transcriber = new window.ChunkTranscriber(spotCallStream, {
+        chunkMs: 3000,
+        getPrompt: () => (spotSession?.words || []).map(item => item.word).join(', '),   // helps the service spell the target words
+        onResult: result => {
+          if (spotCallActive !== transcriber || !result.text) return;
+          if (transcriber.goAt !== undefined && result.end <= transcriber.goAt) return;    // chatter from the thinking time
+          spotRecogDiag.resultCount += 1; spotRecogDiag.finalResultCount += 1;
+          spotPriorFinal = (spotPriorFinal + ' ' + result.text).replace(/\s+/g, ' ').trim() + ' ';
+          spotPriorMatchFinal = spotPriorFinal;
+          spotTranscript = spotPriorFinal.trim(); spotMatchTranscript = spotPriorMatchFinal;
+          const liveEl = document.getElementById('spotLiveTranscript');
+          if (liveEl) liveEl.textContent = spotTranscript || 'Listening to the call...';
+          detectSpotCurrentWord();
+        },
+        onFail: failure => {
+          spotRecogDiag.errorCount += 1; spotRecogDiag.lastError = failure.status ? 'http-' + failure.status : 'network';
+          const liveEl = document.getElementById('spotLiveTranscript');
+          if (failure.failures >= 2 && liveEl && !spotTranscript) liveEl.textContent = '⚠️ Could not reach the speech service, so words in the call cannot be detected right now.';
+        }
+      });
+      spotCallActive = transcriber;
+      spotRecogDiag.startedCount += 1; spotRecogDiag.apiSupported = true;
+      if (!transcriber.start()) { spotCallActive = null; if (live) live.textContent = 'ℹ️ This browser cannot record the call audio for word detection.'; }
+    }
+    function spotCallMarkGo() {
+      if (spotCallActive) spotCallActive.goAt = (performance.now() - spotCallActive.t0) / 1000;
+    }
+    async function stopSpotCallTranscription(waitMs = 0) {
+      const transcriber = spotCallActive;
+      if (!transcriber) return;
+      await transcriber.stop(waitMs);       // the last chunks are still counted while we wait
+      if (spotCallActive === transcriber) spotCallActive = null;
+      spotCallStream?.getTracks().forEach(track => track.stop()); spotCallStream = null;
+    }
+
     function startSpotRecognition() {
+      if (spotCall()) { startSpotCallTranscription(); return; }
       if (!spotRecognitionSupported || !spotRecognition) {
         const el = document.getElementById('spotLiveTranscript');
         if (el) el.textContent = isCapacitorNative()
@@ -12506,6 +12604,7 @@
 
     function stopSpotRecognition() {
       spotRecognitionShouldRun = false;
+      stopSpotCallTranscription(0);
       if (spotRecognition && spotRecognitionActive) {
         try { spotRecognition.stop(); } catch (err) { /* ignore */ }
       }
@@ -12522,7 +12621,8 @@
       // there is no conflict — record normally.
       if (SPOT_IS_MOBILE && !isCapacitorNative()) return;
       try {
-        spotMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        spotMediaStream = spotCall() ? window.MeetingAudio.clone() : await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (!spotMediaStream) return;
         spotRecordingChunks = [];
         spotMediaRecorder = new MediaRecorder(spotMediaStream);
         spotMediaRecorder.ondataavailable = (e) => { if (e.data?.size) spotRecordingChunks.push(e.data); };
@@ -12705,9 +12805,13 @@
     async function startSpotChallenge() {
       try {
         hardResetSpotRuntime();
+        if (spotCall()) {
+          // The share picker only opens from a click, so connect before anything else is awaited.
+          try { await window.MeetingAudio.ensure(); } catch (error) { showAchievement(window.MeetingAudio.describeError(error)); setSpotPhase('spotSetupPhase'); return; }
+        }
         await stopSpotRecording();
         spotSession = null;
-        await primeSpotMicPermission();
+        if (!spotCall()) await primeSpotMicPermission();
         const settings = getSpotSettings();
       const question = SPOT_CHALLENGE_QUESTIONS[Math.floor(Math.random() * SPOT_CHALLENGE_QUESTIONS.length)];
       spotSession = {
@@ -12754,7 +12858,8 @@
           spotPriorMatchFinal = '';
           spotCurrentSessionMatchFinal = '';
           const liveEl = document.getElementById('spotLiveTranscript');
-          if (liveEl) liveEl.textContent = 'Listening...';
+          if (liveEl) liveEl.textContent = spotCall() ? 'Listening to the call...' : 'Listening...';
+          spotCallMarkGo();
           showSpotWord(0);
           await startSpotRecording();
           spotMainInterval = setInterval(() => {
@@ -12800,6 +12905,7 @@
       clearInterval(spotMainInterval);
       clearInterval(spotWordInterval);
       clearInterval(spotThinkInterval);
+      await stopSpotCallTranscription(4000);      // let the last few seconds of the call be counted
       stopSpotRecognition();
       await stopSpotRecording();
 
@@ -13549,6 +13655,7 @@
   <script>
     // This preview is online-only. Do not load its assets in the native app.
     if (!window.Capacitor?.isNativePlatform?.() && !['capacitor:', 'ionic:'].includes(location.protocol)) {
+      import('./meeting-audio.js').catch(error => console.warn('Meeting audio could not load:', error));
       import('./vocal-variety.js').catch(error => console.warn('Vocal variety preview could not load:', error));
     }
   </script>

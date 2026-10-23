@@ -65,3 +65,26 @@ test('estimated rhythm distinguishes slow and fast syllable pulses and rejects s
   for (let i = 0; i < 500; i++) assert.equal(tracker.push(i * 0.02, 0), null);
   assert.equal(rhythmAt(0), null); // sustained hum has no syllable peaks
 });
+
+function sine(hz, rate = 48000, amplitude = 0.2, length = 2048) {
+  return Float32Array.from({ length }, (_, i) => amplitude * Math.sin(2 * Math.PI * hz * i / rate));
+}
+
+test('the vowel filter passes voice-range sound and removes hiss and consonant bursts', async () => {
+  const { lowPassRms } = await import('../vocal-variety-core.js');
+  const low = lowPassRms(sine(150), 48000, 500), high = lowPassRms(sine(6000), 48000, 500);
+  assert.ok(Math.abs(low - 0.2 / Math.SQRT2) < 0.01, `150 Hz passes: ${low}`);
+  assert.ok(20 * Math.log10(low / high) > 30, `6 kHz is at least 30 dB quieter: ${20 * Math.log10(low / high)}`);
+  assert.equal(lowPassRms(new Float32Array(2048), 48000), 0);
+});
+
+test('sound-only pace estimates follow measured recordings and rise with speed', async () => {
+  const { wpmFromSound } = await import('../vocal-variety-core.js');
+  assert.equal(wpmFromSound(NaN), null);
+  assert.equal(wpmFromSound(null), null);
+  let last = -Infinity;
+  for (let peaks = 0.5; peaks <= 5; peaks += 0.1) { const wpm = wpmFromSound(peaks); assert.ok(wpm >= last, `${peaks}/s`); last = wpm; }
+  assert.ok(wpmFromSound(1.6) < 110 && wpmFromSound(2.0) < 110, 'a slow rhythm reads as Slow');
+  assert.ok(wpmFromSound(2.4) >= 110 && wpmFromSound(2.4) < 140, 'a middle rhythm reads as Steady');
+  assert.ok(wpmFromSound(2.8) >= 140 && wpmFromSound(3.2) >= 140, 'a quick rhythm reads as Fast');
+});

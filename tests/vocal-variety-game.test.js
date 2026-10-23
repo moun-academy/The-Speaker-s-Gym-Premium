@@ -2,18 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PaceMeter, PitchSmoother } from '../vocal-variety-core.js';
 import {
-  BADGES, CALL_DEFAULT_NATURAL, callScale, learnCallLevel, DEFAULT_PACE, DEFAULT_SCALE, DEFAULT_SPEECH, DIM_ORDER, SPEECH_LENGTHS, lengthLabel, scaleStage, FRAME_DT, PREP_PARTS, QUESTIONS, STAGES, EnvelopeTracker, VoiceTracker,
-  activeThreshold, applyRound, applyTune, coachingTip, countSwings, emptyProgress, levelOf, normalizeScale, paceLevel,
-  phaseAt, pitchLevel, prepBreakdown, questionIndexFor, rankFor, rangeLabel, sanitizeProgress, scaleFromCalibration, scoreRound,
-  starsFor, targetAt, zoneLabel, zoneOf
+  BADGES, DEFAULT_NATURAL, DEFAULT_SCALE, DEFAULT_SPEECH, DIM_ORDER, SPEECH_LENGTHS, lengthLabel, scaleStage, FRAME_DT, PREP_PARTS, QUESTIONS, STAGES,
+  EnvelopeTracker, VoiceTracker, WPM_FAST_FROM, WPM_SLOW_BELOW, activeThreshold, applyRound, coachingTip, countSwings, emptyProgress, learnPitchCenter,
+  learnVoiceLevel, levelOf, normalizeScale, paceLevel, paceZoneOfWpm, phaseAt, pitchLevel, prepBreakdown, questionIndexFor, rankFor, rangeLabel,
+  sanitizeProgress, scoreRound, starsFor, targetAt, voiceScale, wpmOfLevel, zoneHint, zoneLabel, zoneOf
 } from '../vocal-variety-game.js';
 
-const scale = normalizeScale({ ...DEFAULT_SCALE, pitchCenter: 50, pace: 3.2 });
+const scale = normalizeScale({ ...DEFAULT_SCALE, pitchCenter: 50 });
 const dbAt = level => level <= 0.5 ? scale.soft + level / 0.5 * (scale.natural - scale.soft) : scale.natural + (level - 0.5) / 0.5 * (scale.power - scale.natural);
 const stage = id => STAGES.find(item => item.id === id);
 
 // Builds frames the way the app stores them: one every 50 ms. `levels(t)` returns
-// { volume, pitch, pace } levels; null volume means silence.
+// { volume, pitch, pace } levels; null volume means silence. Pace is stored as words a minute too.
 function take(game, levels, seconds = game.plan.duration) {
   const frames = [];
   for (let i = 0; i < seconds / FRAME_DT; i++) {
@@ -22,14 +22,14 @@ function take(game, levels, seconds = game.plan.duration) {
     frames.push({
       t, db: talking ? dbAt(volume) : -80, active: talking, volume,
       midi: talking ? 50 + (pitch - 0.5) * 12 : null, pitch: talking ? pitch : null,
-      rate: 3.2 * Math.pow(2, (pace - 0.5) * 2), pace
+      wpm: talking ? wpmOfLevel(pace) : null, pace: talking ? pace : null
     });
   }
   return frames;
 }
-const follow = game => t => ({ [game.dim]: targetAt(game.plan, Math.max(0, t - ({ volume: 0, pitch: 0.3, pace: 1.2 })[game.dim])) });
+const follow = game => t => ({ [game.dim]: targetAt(game.plan, Math.max(0, t - ({ volume: 0, pitch: 0.3, pace: 0 })[game.dim])) });
 
-test('every dimension maps to the same 0..1 scale around the speaker’s natural voice', () => {
+test('every dimension maps to the same 0..1 scale', () => {
   assert.ok(Math.abs(levelOf(scale.soft, scale)) < 1e-9);
   assert.ok(Math.abs(levelOf(scale.natural, scale) - 0.5) < 1e-9);
   assert.ok(Math.abs(levelOf(scale.power, scale) - 1) < 1e-9);
@@ -37,69 +37,66 @@ test('every dimension maps to the same 0..1 scale around the speaker’s natural
   assert.equal(pitchLevel(56, 50), 1);
   assert.equal(pitchLevel(44, 50), 0);
   assert.equal(pitchLevel(null, 50), null);
-  assert.ok(Math.abs(paceLevel(3.2, 3.2) - 0.5) < 1e-9);
-  assert.ok(Math.abs(paceLevel(6.4, 3.2) - 1) < 1e-9);
-  assert.ok(Math.abs(paceLevel(1.6, 3.2)) < 1e-9);
-  assert.equal(paceLevel(0, 3.2), -0.3, 'a long pause is as slow as it gets');
+  assert.equal(paceLevel(null), null);
+  assert.equal(paceLevel(0), -0.3, 'a long pause is as slow as it gets');
   assert.deepEqual(['soft', 'natural', 'strong'], [0.1, 0.5, 0.9].map(zoneOf));
   assert.deepEqual(['Whisper', 'Low', 'Fast'], [['volume', 'soft'], ['pitch', 'soft'], ['pace', 'strong']].map(([d, z]) => zoneLabel(d, z)));
 });
 
-test('a scale where the player barely changed volume is widened; bad pitch or pace values are dropped', () => {
-  const flat = normalizeScale({ floor: -60, soft: -34, natural: -33, power: -32, pitchCenter: 200, pace: 40 });
+test('pace zones are exactly Slow under 110, Steady 110 to 139 and Fast 140 or more words a minute', () => {
+  const zone = wpm => zoneOf(paceLevel(wpm));
+  assert.equal(WPM_SLOW_BELOW, 110);
+  assert.equal(WPM_FAST_FROM, 140);
+  for (const wpm of [0, 40, 80, 100, 109, 109.4]) assert.equal(zone(wpm), 'soft', `${wpm} WPM is Slow`);
+  for (const wpm of [110, 125, 139, 139.4]) assert.equal(zone(wpm), 'natural', `${wpm} WPM is Steady`);
+  for (const wpm of [140, 150, 180, 250]) assert.equal(zone(wpm), 'strong', `${wpm} WPM is Fast`);
+  for (let wpm = 60; wpm <= 220; wpm++) assert.equal(zone(wpm), paceZoneOfWpm(wpm), `${wpm} WPM agrees`);
+  assert.ok(paceLevel(100) < paceLevel(125) && paceLevel(125) < paceLevel(150), 'faster is higher');
+  assert.deepEqual([0.14, 0.5, 0.87].map(level => Math.round(wpmOfLevel(level))), [100, 125, 150], 'the ribbon targets are 100, 125 and 150 WPM');
+  assert.equal(zoneHint('pace', 'soft'), 'under 110 words a minute');
+  assert.equal(zoneHint('pace', 'strong'), '140 words a minute or more');
+  assert.equal(zoneHint('volume', 'soft'), '');
+});
+
+test('nobody is tuned: zones follow the speaker, start typical, and learn from the sound check', () => {
+  const typical = voiceScale();
+  assert.equal(typical.natural, DEFAULT_NATURAL);
+  assert.equal(typical.soft, DEFAULT_NATURAL - 14);
+  assert.equal(typical.power, DEFAULT_NATURAL + 11);
+  assert.ok(activeThreshold(typical) < typical.soft, 'a soft voice still counts as speech');
+  assert.ok(activeThreshold(typical) > typical.natural - 25, 'quiet background noise is not speech');
+  assert.equal(voiceScale(NaN).natural, DEFAULT_NATURAL);
+  assert.equal(voiceScale(-90).natural, -55, 'the level is kept in a sensible range');
+  assert.equal(voiceScale(-30, 48).pitchCenter, 48);
+  assert.equal(voiceScale(-30, 200).pitchCenter, null, 'an impossible note is dropped');
+  const flat = normalizeScale({ floor: -60, soft: -34, natural: -33, power: -32 });
   assert.ok(flat.soft <= flat.natural - 6 && flat.power >= flat.natural + 6 && flat.floor <= flat.soft - 6);
   assert.equal(flat.widened, true);
-  assert.equal(flat.pitchCenter, null);
-  assert.equal(flat.pace, null);
-  assert.equal(normalizeScale({}).widened, false);
-  assert.ok(activeThreshold(scale) < scale.soft, 'a whisper must count as speech');
-});
 
-test('calibration measures volume range, natural pitch and natural pace', () => {
-  const rep = (value, n = 40) => Array(n).fill(value);
-  const result = scaleFromCalibration({ silence: rep(-70), whisper: rep(-52), normal: rep(-34), power: rep(-16), pitches: rep(47, 30), paceRate: 3.6 });
-  assert.deepEqual(result.heard, { whisper: 40, normal: 40, power: 40, pitch: 30 });
-  assert.equal(result.scale.soft, -52);
-  assert.equal(result.scale.natural, -34);
-  assert.equal(result.scale.power, -16);
-  assert.equal(result.scale.pitchCenter, 47);
-  assert.equal(result.scale.pace, 3.6);
-  const missed = scaleFromCalibration({ silence: rep(-70), whisper: rep(-72), normal: rep(-34), power: rep(-16), pitches: [47, 48] });
-  assert.equal(missed.heard.whisper, 0, 'a whisper below the room noise is reported as not heard');
-  assert.equal(missed.scale.pitchCenter, null, 'too few notes: no pitch centre');
-});
+  // A quiet speaker (-45 dB) with word gaps and room noise, then a loud one (-24 dB):
+  const quiet = Array.from({ length: 80 }, (_, i) => i % 5 === 0 ? -78 : -45 + Math.sin(i) * 3);
+  const first = learnVoiceLevel(DEFAULT_NATURAL, quiet, 0.9);
+  assert.ok(first < -43 && first > -45.5, `moved nearly all the way to the quiet speaker: ${first}`);
+  const loud = Array.from({ length: 80 }, (_, i) => i % 5 === 0 ? -60 : -24 + Math.sin(i) * 3);
+  assert.ok(learnVoiceLevel(first, loud, 0.9) > -27, 'and straight to the next, louder, speaker');
+  assert.equal(learnVoiceLevel(-33, Array(80).fill(-90)), -33, 'silence teaches nothing');
+  assert.equal(learnVoiceLevel(-33, [-40, -40, -41, -39, -40]), -33, 'half a second of voice teaches nothing');
+  assert.equal(learnVoiceLevel(-33, [NaN, undefined, null].concat(Array(5).fill(-40))), -33);
 
-test('call audio needs no tuning: zones hang off the call’s typical level and learn it', () => {
-  const typical = callScale();
-  assert.equal(typical.natural, CALL_DEFAULT_NATURAL);
-  assert.equal(typical.soft, CALL_DEFAULT_NATURAL - 13);
-  assert.equal(typical.power, CALL_DEFAULT_NATURAL + 10);
-  assert.ok(activeThreshold(typical) < typical.soft, 'a soft voice on the call still counts as speech');
-  assert.ok(activeThreshold(typical) > typical.natural - 25, 'quiet background noise from the call is not speech');
-  assert.equal(callScale(NaN).natural, CALL_DEFAULT_NATURAL);
-  assert.equal(callScale(-90).natural, -55, 'the level is kept in a sensible range');
-  assert.ok(callScale(-45).span > 0 && callScale(-45).widened === false);
+  // Pitch: this speaker's own median note, never carried to the next speaker.
+  assert.equal(learnPitchCenter(Array(30).fill(47)), 47);
+  assert.equal(learnPitchCenter([47, 48, null, NaN]), null, 'too few notes: the take decides');
+  assert.equal(learnPitchCenter([]), null);
 
-  // A student who is quieter than the default (-45 dB), with word gaps and room noise:
-  const speech = Array.from({ length: 80 }, (_, i) => i % 5 === 0 ? -78 : -45 + Math.sin(i) * 3);
-  const first = learnCallLevel(CALL_DEFAULT_NATURAL, speech);
-  assert.ok(first < -38 && first > -45, `moved most of the way to the quiet student: ${first}`);
-  const second = learnCallLevel(first, speech);
-  assert.ok(second < first && second > -46, 'and closer again after another answer');
-  assert.equal(learnCallLevel(-33, Array(80).fill(-90)), -33, 'silence teaches nothing');
-  assert.equal(learnCallLevel(-33, [-40, -40, -41, -39, -40]), -33, 'half a second of voice teaches nothing');
-  assert.equal(learnCallLevel(-33, [NaN, undefined, null].concat(Array(5).fill(-40))), -33);
-
-  // The same ribbon take scores the same wherever the call level sits, once the zones follow it.
+  // The same ribbon take earns the same stars wherever the speaker's level sits, once the zones follow it.
   const game = stage('volume-ribbon');
   for (const natural of [-45, -33, -22]) {
-    const sc = callScale(natural), at = level => level <= 0.5 ? sc.soft + level / 0.5 * (sc.natural - sc.soft) : sc.natural + (level - 0.5) / 0.5 * (sc.power - sc.natural);
+    const sc = voiceScale(natural), at = level => level <= 0.5 ? sc.soft + level / 0.5 * (sc.natural - sc.soft) : sc.natural + (level - 0.5) / 0.5 * (sc.power - sc.natural);
     const frames = Array.from({ length: game.plan.duration / FRAME_DT }, (_, i) => {
       const t = i * FRAME_DT, level = targetAt(game.plan, t);
-      return { t, db: at(level), active: true, volume: level, midi: null, pitch: null, rate: 3.2, pace: 0.5 };
+      return { t, db: at(level), active: true, volume: level, midi: null, pitch: null, wpm: null, pace: null };
     });
-    const result = scoreRound({ frames, stage: game, scale: sc });
-    assert.ok(result.stars === 3, `call level ${natural}: ${result.score}`);
+    assert.ok(scoreRound({ frames, stage: game, scale: sc }).stars === 3, `speaker level ${natural}`);
   }
 });
 
@@ -123,10 +120,9 @@ function paceAt(rate, seconds = 6, meter = new PaceMeter({ window: 2.5, gateDb: 
   }
   return value;
 }
-test('the pace meter tells slow, natural and fast speech apart and counts pauses as slow', () => {
+test('the sound-only pace meter (the fallback) counts peaks and treats pauses as slow', () => {
   assert.ok(Math.abs(paceAt(2) - 2) < 0.5, `2/s measured ${paceAt(2)}`);
   assert.ok(Math.abs(paceAt(4) - 4) < 0.5, `4/s measured ${paceAt(4)}`);
-  assert.ok(Math.abs(paceAt(6) - 6) < 0.7, `6/s measured ${paceAt(6)}`);
   const meter = new PaceMeter({ window: 2.5, gateDb: -60 });
   paceAt(4, 4, meter);
   let duringPause;
@@ -145,18 +141,17 @@ test('the pitch smoother follows the median and holds briefly over unvoiced soun
   assert.equal(smoother.push(1.2, null), null, 'released after a real pause');
 });
 
-test('the voice tracker turns the microphone into volume, pitch and pace levels', () => {
+test('the voice tracker turns the sound into volume and pitch levels (and a pace estimate for the fallback)', () => {
   const tracker = new VoiceTracker(scale);
   let frame;
-  for (let i = 0; i < 200; i++) {
-    const t = i * 0.02, rms = Math.pow(10, scale.natural / 20) * (0.6 + 0.4 * Math.cos(2 * Math.PI * 3.2 * t));
+  for (let i = 0; i < 250; i++) {
+    const t = i * 0.02, rms = Math.pow(10, scale.natural / 20) * (0.6 + 0.4 * Math.cos(2 * Math.PI * 3 * t));
     frame = tracker.push(t, rms, 50);
   }
   assert.ok(frame.volume > 0.25 && frame.volume < 0.75, `volume ${frame.volume}`);
   assert.equal(frame.pitch, 0.5);
-  assert.ok(Math.abs(frame.pace - 0.5) < 0.15, `pace ${frame.pace} from rate ${frame.rate}`);
-  assert.equal(new VoiceTracker(normalizeScale({})).push(0, 0.03, 50).pitch, null, 'no tuned pitch: wait for enough notes');
-  assert.equal(DEFAULT_PACE, 3.2);
+  assert.ok(frame.soundWpm > 100 && frame.soundWpm < 190, `3 syllable-like peaks a second is about 130 to 160 WPM, got ${frame.soundWpm}`);
+  assert.equal(new VoiceTracker(normalizeScale({})).push(0, 0.03, 50).pitch, null, 'no pitch centre yet: wait for enough notes');
 });
 
 test('every game is a PREP answer with a clear title, and the question bank suits PREP', () => {
@@ -175,6 +170,9 @@ test('every game is a PREP answer with a clear title, and the question bank suit
   assert.equal(new Set(QUESTIONS).size, QUESTIONS.length);
   assert.ok(QUESTIONS.length >= 20);
   assert.notEqual(questionIndexFor(emptyProgress(), STAGES[0]), questionIndexFor(emptyProgress(), STAGES[1]), 'games start on different questions');
+  const paceCues = stage('pace-ribbon').plan.phases.map(p => p.cue).join(' ');
+  assert.match(paceCues, /110/);
+  assert.match(paceCues, /140/);
 });
 
 test('every game can be played for 1, 1½ or 2 minutes with the same shape and the same PREP shares', () => {
@@ -248,6 +246,25 @@ test('following each ribbon earns three stars; silence, a flat voice and a quick
   assert.ok(early.score < 40, `a take that stops at 20% cannot score like a full one: ${early.score}`);
 });
 
+test('the pace game is won by speaking at 100, 125 and 150 words a minute, and reads in words a minute', () => {
+  const game = stage('pace-ribbon');
+  // A normal speaker who simply talks at about 125 WPM all the way is Steady, and can reach neither end.
+  const steady = scoreRound({ frames: take(game, () => ({ pace: paceLevel(125) })), stage: game, scale });
+  assert.equal(steady.stars, 0);
+  assert.ok(steady.main.seconds.strong === 0 && steady.main.seconds.soft === 0);
+  // Speaking at 100 / 125 / 150 WPM in the right parts earns all three stars.
+  const wpmFor = t => { const phase = phaseAt(game.plan, t).key; return phase === 'reason' ? 125 : phase === 'example' ? 150 : 100; };
+  const good = scoreRound({ frames: take(game, t => ({ pace: paceLevel(wpmFor(t)) })), stage: game, scale });
+  assert.equal(good.stars, 3, `100/125/150 WPM scored ${good.score}`);
+  assert.ok(good.main.seconds.strong > 5 && good.main.seconds.soft > 5);
+  // Ordinary quick speech, 145 WPM, is Fast. Ordinary slow speech, 105, is Slow.
+  assert.equal(zoneOf(paceLevel(145)), 'strong');
+  assert.equal(zoneOf(paceLevel(105)), 'soft');
+  assert.match(good.main.range.text, /words a minute/);
+  assert.match(good.main.peak.text, /words a minute/);
+  assert.match(coachingTip(scoreRound({ frames: take(stage('pace-free'), () => ({ pace: paceLevel(125) })), stage: stage('pace-free'), scale })), /Fast \(140 words a minute or more\)/);
+});
+
 test('the pitch game is scored on pitch, not on volume', () => {
   const game = stage('pitch-ribbon');
   const loudButMonotone = scoreRound({ frames: take(game, t => ({ volume: targetAt(stage('volume-ribbon').plan, t), pitch: 0.5 })), stage: game, scale });
@@ -267,14 +284,13 @@ test('talking through only half the round still counts, but little talking does 
 
 test('freestyle rewards range, balance and swings and names goals in the game’s own zones', () => {
   const game = stage('pace-free');
-  const pattern = t => ({ pace: [0.12, 0.5, 0.88, 0.5, 0.15, 0.85, 0.5, 0.1, 0.9][Math.floor(t / 5) % 9] });
+  const pattern = t => ({ pace: paceLevel([95, 125, 155, 125, 100, 160, 125, 90, 165][Math.floor(t / 5) % 9]) });
   const rich = scoreRound({ frames: take(game, pattern), stage: game, scale });
   assert.equal(rich.match, null);
   assert.deepEqual(rich.goals.map(goal => goal.label), ['Reach Slow', 'Reach Fast', '4 swings', 'Keep talking']);
   assert.ok(rich.stars === 3 && rich.goals.every(goal => goal.done), JSON.stringify(rich.goals));
   const monotone = scoreRound({ frames: take(game, () => ({})), stage: game, scale });
   assert.equal(monotone.stars, 0);
-  assert.match(coachingTip(monotone), /never sped up/);
   assert.equal(starsFor(50, 'free'), 1);
   assert.equal(starsFor(50, 'guided'), 0);
 });
@@ -306,12 +322,11 @@ test('ranges read in each dimension’s own units', () => {
   assert.equal(rangeLabel('volume', 4), 'Flat');
   assert.equal(rangeLabel('volume', 24), 'Electric');
   assert.equal(rangeLabel('pitch', 5), 'Dynamic');
-  assert.equal(rangeLabel('pace', 1.5), 'Gentle');
+  assert.equal(rangeLabel('pace', 45), 'Dynamic');
   const game = stage('pitch-ribbon');
   const r = scoreRound({ frames: take(game, follow(game)), stage: game, scale });
   assert.match(r.main.range.text, /semitones/);
-  assert.match(r.main.peak.text, /semitones vs your natural note/);
-  assert.match(r.dims.pace.range.text, /syllables\/s/);
+  assert.match(r.main.peak.text, /semitones vs the usual note/);
   // A steady voice whose raw level dips between syllables still has almost no volume range.
   const steady = take(game, () => ({})).map((frame, i) => ({ ...frame, db: frame.db - (i % 4 === 0 ? 12 : 0) }));
   assert.ok(scoreRound({ frames: steady, stage: game, scale }).dims.volume.range.value < 1, 'syllable dips are not range');
@@ -336,6 +351,7 @@ test('finishing a round awards XP, stars, badges, preparation and a day streak',
   assert.equal(first.progress.seen['volume-ribbon'], 1);
   assert.equal(first.progress.streak.count, 1);
   for (const id of ['prepared', 'whisper', 'boom', 'ribbon', 'trio']) assert.ok(first.progress.badges[id], `${id} badge`);
+  assert.ok(!first.progress.badges.tuned, 'there is no tuning step any more, so no Tuned In badge');
   const unprepared = applyRound(emptyProgress(), game, result, monday, 0);
   assert.equal(first.xpGained - unprepared.xpGained, 5, 'writing PREP notes earns a small bonus');
   assert.ok(!unprepared.progress.badges.prepared);
@@ -350,24 +366,15 @@ test('finishing a round awards XP, stars, badges, preparation and a day streak',
   assert.equal(last.progress.seen['volume-ribbon'], 0, 'questions cycle');
 });
 
-test('tuning gives a small bonus and a badge once', () => {
-  const first = applyTune(emptyProgress(), new Date(2026, 9, 19));
-  assert.equal(first.xpGained, 20);
-  assert.equal(first.newBadges[0].id, 'tuned');
-  const second = applyTune(first.progress, new Date(2026, 9, 19));
-  assert.equal(second.xpGained, 5);
-  assert.equal(second.newBadges.length, 0);
-});
-
 test('saved progress is sanitized so a damaged save cannot break the game', () => {
   assert.deepEqual(sanitizeProgress(null), emptyProgress());
-  const cleaned = sanitizeProgress({ xp: -5, rounds: 'x', stars: { a: 4, b: 2, c: -1 }, best: { a: 101, b: 50 }, badges: { x: 1, y: '2026-10-19' }, streak: { count: 'z', last: 7 }, seen: { a: 999, b: 3 }, tuned: 'yes' });
+  const cleaned = sanitizeProgress({ xp: -5, rounds: 'x', stars: { a: 4, b: 2, c: -1 }, best: { a: 101, b: 50 }, badges: { x: 1, y: '2026-10-19' }, streak: { count: 'z', last: 7 }, seen: { a: 999, b: 3 }, tuned: true });
   assert.equal(cleaned.xp, 0);
   assert.deepEqual(cleaned.stars, { b: 2 });
   assert.deepEqual(cleaned.best, { b: 50 });
   assert.deepEqual(cleaned.badges, { y: '2026-10-19' });
   assert.deepEqual(cleaned.seen, { b: 3 });
   assert.deepEqual(cleaned.streak, { count: 0, last: null });
-  assert.equal(cleaned.tuned, false);
+  assert.ok(!('tuned' in cleaned), 'the old tuning flag is dropped from saved progress');
   assert.equal(new Set(BADGES.map(badge => badge.id)).size, BADGES.length);
 });

@@ -72,11 +72,46 @@ export class RhythmTracker {
   }
 }
 
-// Speaking rate for the pace game: syllable-like energy peaks per second over a short
-// window, pauses included (a pause is part of slowing down). A peak must stand 3 dB above
-// the valley before it, and be louder than `gateDb`, so room noise does not count.
+// Loudness of the vowels only: a 2nd-order low-pass filter (default 500 Hz) before taking the
+// level. Counting bumps in this signal follows syllables far better than counting bumps in the
+// full signal, where consonant bursts add extra peaks to slow speech. The first part of the
+// buffer is skipped while the filter settles.
+export function lowPassRms(samples, sampleRate, cutoff = 500) {
+  const w0 = 2 * Math.PI * cutoff / sampleRate, alpha = Math.sin(w0) / Math.SQRT2, cos = Math.cos(w0);
+  const b0 = (1 - cos) / 2, b1 = 1 - cos, a0 = 1 + alpha, a1 = -2 * cos, a2 = 1 - alpha;
+  const skip = Math.min(Math.floor(samples.length / 4), 512);
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0, energy = 0, count = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const x = samples[i], y = (b0 * x + b1 * x1 + b0 * x2 - a1 * y1 - a2 * y2) / a0;
+    x2 = x1; x1 = x; y2 = y1; y1 = y;
+    if (i >= skip) { energy += y * y; count++; }
+  }
+  return Math.sqrt(energy / Math.max(1, count)) || 0;
+}
+
+// Words per minute estimated from the sound alone, used only when the speech service is not
+// available. Syllable-like peaks per second were measured against recordings of known speed
+// (about 60 to 320 WPM) and these knots follow that measurement. It is an estimate: expect it to
+// be right about which of Slow, Steady and Fast you are in most of the time, not to the exact WPM.
+const SOUND_TO_WPM = [[1.2, 40], [1.6, 60], [2.0, 95], [2.4, 128], [2.8, 158], [3.2, 200], [3.6, 280], [4.4, 340]];
+export function wpmFromSound(peaksPerSecond) {
+  if (!Number.isFinite(peaksPerSecond)) return null;
+  const knots = SOUND_TO_WPM;
+  if (peaksPerSecond <= knots[0][0]) return knots[0][1];
+  for (let i = 1; i < knots.length; i++) {
+    if (peaksPerSecond <= knots[i][0]) {
+      const [x0, y0] = knots[i - 1], [x1, y1] = knots[i];
+      return y0 + (y1 - y0) * (peaksPerSecond - x0) / (x1 - x0);
+    }
+  }
+  return knots.at(-1)[1];
+}
+
+// Syllable-like energy peaks per second over a short window, pauses included (a pause is part of
+// slowing down). A peak must stand 3 dB above the valley before it, and be louder than `gateDb`,
+// so room noise does not count. Feed it the low-passed level (see lowPassRms).
 export class PaceMeter {
-  constructor({ window = 2.5, gateDb = -55 } = {}) { this.window = window; this.gateDb = gateDb; this.reset(); }
+  constructor({ window = 3.5, gateDb = -55 } = {}) { this.window = window; this.gateDb = gateDb; this.reset(); }
   reset() { this.peaks = []; this.heard = []; this.smooth = null; this.rising = true; this.max = -Infinity; this.maxT = 0; this.min = Infinity; this.lastPeak = -1; this.start = null; }
   push(t, rms) {
     if (this.start === null) this.start = t;

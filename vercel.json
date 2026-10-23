@@ -4,6 +4,10 @@
       "maxDuration": 60,
       "memory": 1024
     },
+    "api/transcribe.js": {
+      "maxDuration": 20,
+      "memory": 512
+    },
     "api/verify-purchase.js": {
       "maxDuration": 15,
       "memory": 512

@@ -1,11 +1,13 @@
 // Vocal Variety Arena: a web-only practice game. Answer a question with PREP (Point, Reason,
 // Example, Final Point) and vary your volume, pitch or pace while you speak.
 // Audio stays in this browser and nothing is uploaded.
-import { detectPitch, rmsOf, midiOf, noteName, PaceMeter } from './vocal-variety-core.js';
+import { detectPitch, lowPassRms, rmsOf, midiOf, noteName } from './vocal-variety-core.js';
+import { ChunkTranscriber, MeetingAudio, wpmFromWords } from './meeting-audio.js';
 import {
-  BADGES, CALL_DEFAULT_NATURAL, DEFAULT_SCALE, DEFAULT_SPEECH, DIMENSIONS, DIM_ORDER, FRAME_DT, PREP_PARTS, QUESTIONS, SOFT_EDGE, SPEECH_LENGTHS, STAGES, STRONG_EDGE,
-  VoiceTracker, applyRound, applyTune, callScale, coachingTip, learnCallLevel, countSwings, lengthLabel, normalizeScale, phaseAt, prepBreakdown, questionIndexFor,
-  rangeLabel, rankFor, ribbonCredit, sanitizeProgress, scaleFromCalibration, scaleStage, scoreRound, stageById, targetAt, zoneLabel, zoneOf
+  BADGES, DEFAULT_NATURAL, DEFAULT_SPEECH, DIMENSIONS, DIM_ORDER, FRAME_DT, PREP_PARTS, QUESTIONS, SOFT_EDGE, SPEECH_LENGTHS, STAGES, STRONG_EDGE,
+  VoiceTracker, applyRound, coachingTip, countSwings, learnPitchCenter, learnVoiceLevel, lengthLabel, paceLevel, phaseAt, prepBreakdown,
+  questionIndexFor, rangeLabel, rankFor, ribbonCredit, sanitizeProgress, scaleStage, scoreRound, stageById, targetAt, voiceScale, zoneHint,
+  zoneLabel, zoneOf
 } from './vocal-variety-game.js';
 
 const native = window.Capacitor?.isNativePlatform?.() || ['capacitor:', 'ionic:'].includes(location.protocol);
@@ -13,7 +15,7 @@ const native = window.Capacitor?.isNativePlatform?.() || ['capacitor:', 'ionic:'
 // ---------------------------------------------------------------------------------------
 // small helpers
 // ---------------------------------------------------------------------------------------
-const PROGRESS_KEY = 'sg-vocal-arena-v1', SCALE_KEY = 'sg-vocal-arena-scale-v1', MUTE_KEY = 'sg-vocal-arena-muted', PREP_KEY = 'sg-vocal-arena-prep', SPEECH_KEY = 'sg-vocal-arena-speech', CALL_KEY = 'sg-vocal-arena-call-v1';
+const PROGRESS_KEY = 'sg-vocal-arena-v1', MUTE_KEY = 'sg-vocal-arena-muted', PREP_KEY = 'sg-vocal-arena-prep', SPEECH_KEY = 'sg-vocal-arena-speech', VOICE_KEY = 'sg-vocal-arena-voice-v1';
 const PREP_CHOICES = [30, 60, 90, 120];
 const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -29,6 +31,10 @@ const DIM_INFO = {
 };
 const dimsOf = stage => stage.dim === 'all' ? DIM_ORDER : [stage.dim];
 const zoneNames = dim => [zoneLabel(dim, 'strong'), zoneLabel(dim, 'natural'), zoneLabel(dim, 'soft')];
+// Short word-count labels that go with the Pace zones, so students see what Slow, Steady and Fast mean.
+const PACE_SHORT = { soft: 'under 110', natural: '110 to 139', strong: '140 or more' };
+const zoneWithHint = (dim, zone) => dim === 'pace' ? `${zoneLabel(dim, zone)} (${PACE_SHORT[zone]} WPM)` : zoneLabel(dim, zone);
+const axisLabels = dim => dim === 'pace' ? ['FAST 140+', 'STEADY 110–139', 'SLOW <110'] : zoneNames(dim).map(name => name.toUpperCase());
 
 // Colour follows the level everywhere: violet (low zone) → teal (middle) → amber (high zone) → coral (peak).
 const STOPS = [[-0.1, [139, 124, 246]], [0.12, [167, 139, 250]], [0.5, [45, 212, 191]], [0.78, [251, 191, 36]], [1.05, [251, 113, 133]]];
@@ -165,15 +171,12 @@ function mount() {
 
   // ----- state ---------------------------------------------------------------------------
   let progress = sanitizeProgress(read(PROGRESS_KEY));
-  let scale = null, scaleIsDefault = false;
-  const savedScale = read(SCALE_KEY);
-  if (savedScale?.scale && Date.now() - savedScale.at < 12 * 3600e3) scale = normalizeScale(savedScale.scale);
   let muted = read(MUTE_KEY) === true;
   let prepSeconds = PREP_CHOICES.includes(read(PREP_KEY)) ? read(PREP_KEY) : 60;
   let speechSeconds = SPEECH_LENGTHS.includes(read(SPEECH_KEY)) ? read(SPEECH_KEY) : DEFAULT_SPEECH;
   let view = 'home', stage = null, questionIndex = 0, notice = '';
   let notes = { point: '', reason: '', example: '', finalPoint: '' };
-  let tune = null, prep = null, round = null, result = null, award = null, example = false, after = null;
+  let prep = null, round = null, result = null, award = null, example = false, unmountSource = null;
   let micToken = 0, sfx = null, confettiFrame = null, printFrame = null, playbackFrame = null, cursor = null;
   const audioEl = new Audio(); audioEl.controls = true; audioEl.preload = 'metadata'; audioEl.setAttribute('aria-label', 'Playback of your answer');
   let audioUrl = null;
@@ -182,71 +185,46 @@ function mount() {
   const prepared = () => PREP_PARTS.every(part => notes[part.key].trim().length > 0);
 
   // ----- audio helpers ---------------------------------------------------------------------
-  // The audio source is the microphone, or, when "Capture Audio from Video Calls" is on in Settings
-  // (the same switch the home-page recorder uses), the audio of a call tab such as Google Meet.
-  const callOn = () => { try { return localStorage.getItem('callAudioMode') === 'true'; } catch { return false; } };
-  let callNatural = CALL_DEFAULT_NATURAL;
-  const savedCall = read(CALL_KEY);
-  if (Number.isFinite(savedCall?.natural) && Date.now() - savedCall.at < 12 * 3600e3) callNatural = savedCall.natural;
-  const learnCall = (dbs, weight) => { callNatural = learnCallLevel(callNatural, dbs, weight); write(CALL_KEY, { natural: callNatural, at: Date.now() }); };
-  // The tuned range for a microphone; zones that follow the call's typical level for a call tab.
-  const activeScale = () => callOn() ? callScale(callNatural) : scale;
-  let callStream = null;   // the shared call-tab audio, kept for the session so the picker shows once
+  // The audio comes from the microphone, or, when "Meeting audio" is on (Settings > Video Call Audio,
+  // the same switch the rest of the app uses), from the call the coach shared: see meeting-audio.js.
+  const callOn = () => MeetingAudio.enabled();
+
+  // Nobody is tuned. The zones follow this speaker's typical loudness, learned from the sound check
+  // before each round and carried on to the next speaker (kept for 12 hours on this device).
+  let voiceNatural = DEFAULT_NATURAL;
+  const savedVoice = read(VOICE_KEY);
+  if (Number.isFinite(savedVoice?.natural) && Date.now() - savedVoice.at < 12 * 3600e3) voiceNatural = savedVoice.natural;
+  const learnVoice = (dbs, weight) => { voiceNatural = learnVoiceLevel(voiceNatural, dbs, weight); write(VOICE_KEY, { natural: voiceNatural, at: Date.now() }); };
+  const zonesNow = (pitchCenter = null) => voiceScale(voiceNatural, pitchCenter);
 
   async function openMic(token) {
-    return callOn() ? openCall(token) : openMicrophone(token);
-  }
-  async function openMicrophone(token) {
     const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!navigator.mediaDevices?.getUserMedia || !Ctx) throw Object.assign(new Error('unsupported'), { name: 'Unsupported' });
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    let stream;
+    if (callOn()) {
+      if (!MeetingAudio.supported() || !Ctx) throw Object.assign(new Error('unsupported'), { name: 'UnsupportedCall' });
+      if (!MeetingAudio.isConnected()) await MeetingAudio.connect();      // opens the share picker (needs the click that started this)
+      stream = MeetingAudio.clone();                                       // a copy: stopping it leaves the call connected
+      if (!stream) throw Object.assign(new Error('no audio'), { name: 'NoCallAudio' });
+    } else {
+      if (!navigator.mediaDevices?.getUserMedia || !Ctx) throw Object.assign(new Error('unsupported'), { name: 'Unsupported' });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    }
     if (token !== micToken) { stream.getTracks().forEach(track => track.stop()); return null; }
     const context = new Ctx(); await context.resume();
     if (token !== micToken) { stream.getTracks().forEach(track => track.stop()); context.close().catch(() => {}); return null; }
     const analyser = context.createAnalyser(); analyser.fftSize = 2048;
     const source = context.createMediaStreamSource(stream); source.connect(analyser);
-    return { stream, context, analyser, source, buffer: new Float32Array(analyser.fftSize) };
-  }
-  async function openCall(token) {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!navigator.mediaDevices?.getDisplayMedia || !Ctx) throw Object.assign(new Error('unsupported'), { name: 'UnsupportedCall' });
-    if (!callStream || callStream.getAudioTracks().every(track => track.readyState !== 'live')) {
-      // getDisplayMedia needs a video track in most browsers; only the audio is kept.
-      const display = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
-      display.getVideoTracks().forEach(track => track.stop());
-      const tracks = display.getAudioTracks();
-      if (!tracks.length) throw Object.assign(new Error('no audio'), { name: 'NoCallAudio' });
-      if (token !== micToken) { tracks.forEach(track => track.stop()); return null; }
-      callStream = new MediaStream(tracks);
-      tracks[0].addEventListener('ended', () => {
-        if (!callStream || callStream.getAudioTracks()[0] !== tracks[0]) return;
-        callStream = null;
-        toast('Call audio stopped. The tab may have been closed.', '📞');
-        if (round || prep || tune) { notice = 'The call audio stopped. Press Start preparing and choose your Meet tab again.'; if (tune) { tune = null; go('home', { quiet: true }); } else go('brief', { quiet: true }); }
-        else render();
-      });
-    }
-    const context = new Ctx(); await context.resume();
-    if (token !== micToken) { context.close().catch(() => {}); return null; }
-    const analyser = context.createAnalyser(); analyser.fftSize = 2048;
-    const source = context.createMediaStreamSource(callStream); source.connect(analyser);
-    return { stream: callStream, context, analyser, source, buffer: new Float32Array(analyser.fftSize), shared: true };
-  }
-  function disconnectCall() {
-    callStream?.getTracks().forEach(track => track.stop());
-    callStream = null;
+    return { stream, context, analyser, source, buffer: new Float32Array(analyser.fftSize), call: callOn() };
   }
   function closeMic(mic) {
     if (!mic) return;
-    if (!mic.shared) mic.stream.getTracks().forEach(track => track.stop());   // the call tab stays connected between rounds
+    mic.stream.getTracks().forEach(track => track.stop());
     try { mic.source.disconnect(); } catch { /* already disconnected */ }
     if (mic.context.state !== 'closed') mic.context.close().catch(() => {});
   }
   const dbOf = rms => 20 * Math.log10(Math.max(rms, 1e-5));
-  const micMessage = error => error?.name === 'NotAllowedError'
-    ? (callOn() ? 'The call tab was not shared. Press Start preparing again and choose your Google Meet tab.' : 'Microphone access was declined. Allow it in your browser’s site settings, then try again.')
-    : error?.name === 'NoCallAudio' ? 'No audio was shared. Choose your Google Meet tab and tick “Also share tab audio”, then try again.'
-    : error?.name === 'UnsupportedCall' ? 'Call audio needs Chrome or Edge on a computer. Turn off “Capture Audio from Video Calls” in Settings to use the microphone.'
+  const micMessage = error => callOn() ? MeetingAudio.describeError(error)
+    : error?.name === 'NotAllowedError' ? 'Microphone access was declined. Allow it in your browser’s site settings, then try again.'
     : error?.name === 'Unsupported' ? 'Live practice needs a browser with microphone support. Try Chrome, Edge, or Safari over HTTPS.'
     : 'Could not start the microphone. Check that it is connected and not used by another app, then try again.';
 
@@ -280,8 +258,7 @@ function mount() {
   // ----- navigation ------------------------------------------------------------------------
   function teardown({ keepMic = false } = {}) {
     micToken++;
-    if (round) { clearInterval(round.interval); cancelAnimationFrame(round.raf); round.timers.forEach(clearTimeout); if (round.recorder?.state === 'recording') { round.recorder.onstop = null; round.recorder.stop(); } closeMic(round.mic); round = null; }
-    if (tune) { clearInterval(tune.interval); closeMic(tune.mic); tune = null; }
+    if (round) { clearInterval(round.interval); cancelAnimationFrame(round.raf); round.timers.forEach(clearTimeout); round.speech?.transcriber.stop(0); if (round.recorder?.state === 'recording') { round.recorder.onstop = null; round.recorder.stop(); } closeMic(round.mic); round = null; }
     if (prep) { clearInterval(prep.interval); if (!keepMic) closeMic(prep.mic); prep = null; }
     cancelAnimationFrame(printFrame); cancelAnimationFrame(confettiFrame);
     confettiCanvas.getContext('2d').clearRect(0, 0, 9999, 9999);
@@ -302,7 +279,9 @@ function mount() {
     $('#vvSound').firstElementChild.textContent = muted ? '♪̸' : '♪';
     $('#vvBack').textContent = view === 'home' ? '← Home' : '← All games';
     viewEl.dataset.view = view;
-    viewEl.innerHTML = { home: homeHtml, tune: tuneHtml, brief: briefHtml, prep: prepHtml, live: liveHtml, results: resultsHtml }[view]();
+    unmountSource?.(); unmountSource = null;
+    viewEl.innerHTML = { home: homeHtml, brief: briefHtml, prep: prepHtml, live: liveHtml, results: resultsHtml }[view]();
+    if (view === 'home' || view === 'brief') unmountSource = MeetingAudio.mountPanel($('#vvSource'), { compact: true });
     if (view === 'live') drawStageFrame();
     if (view === 'results') afterResults();
   }
@@ -318,7 +297,7 @@ function mount() {
       const games = STAGES.filter(item => item.dim === dim);
       return `<section class="vv-dim vv-dim-${dim}" aria-labelledby="vvDim-${dim}">
         <div class="vv-dim-head"><span class="vv-dim-icon" aria-hidden="true">${DIM_INFO[dim].icon}</span><div><h3 id="vvDim-${dim}">${dim === 'all' ? 'All three together' : DIMENSIONS[dim].name}</h3>
-          <p>${esc(DIM_INFO[dim].blurb)} ${dim === 'all' ? '' : `<span class="vv-zone-row">${zoneNames(dim).reverse().map((name, i) => `<b class="${['z-soft', 'z-natural', 'z-strong'][i]}">${esc(name)}</b>`).join('')}</span>`}</p></div></div>
+          <p>${esc(DIM_INFO[dim].blurb)} ${dim === 'all' ? '' : `<span class="vv-zone-row">${zoneNames(dim).reverse().map((name, i) => `<b class="${['z-soft', 'z-natural', 'z-strong'][i]}">${esc(name)}${dim === 'pace' ? ` · ${PACE_SHORT[['soft', 'natural', 'strong'][i]]} WPM` : ''}</b>`).join('')}</span>`}</p></div></div>
         <div class="vv-games">${games.map(gameCard).join('')}</div></section>`;
     };
     return `
@@ -349,11 +328,7 @@ function mount() {
       <div class="vv-stat"><strong>${totalStars()}<span aria-hidden="true">★</span></strong><small>of ${STAGES.length * 3} stars</small></div>
       <div class="vv-stat"><strong>${Object.keys(progress.badges).filter(id => BADGES.some(b => b.id === id)).length}<span aria-hidden="true">🏅</span></strong><small>of ${BADGES.length} badges</small></div>
     </section>
-    <section class="vv-tunebar ${callOn() ? 'call' : ''}" aria-label="Audio source">${callOn()
-      ? `<div><strong>📞 Listening to your video call</strong><small>${callStream ? 'The call tab is connected. Students can take turns: no tuning needed, the zones adjust to the call as you play.' : 'Press Start on any game, then choose your Google Meet tab and tick “Also share tab audio”. No tuning needed: the zones adjust to the call as you play.'}</small></div>${callStream ? '<button type="button" class="vv-ghost" data-act="disconnect-call">Disconnect call</button>' : '<button type="button" class="vv-ghost" data-act="open-settings">Call audio settings</button>'}`
-      : scale
-      ? `<div><strong>Your voice is tuned</strong><small>${scaleIsDefault ? 'Using a typical range. Tune it so the zones fit your voice and microphone.' : `Volume range about ${scale.span.toFixed(0)} dB${scale.pitchCenter ? ` · natural note ${noteName(scale.pitchCenter)}` : ''}${scale.pace ? ` · natural pace ${scale.pace.toFixed(1)} syllables/s` : ''}.`}</small></div><button type="button" class="vv-ghost" data-act="tune">Retune ↻</button>`
-      : `<div><strong>Tune your voice first (15 seconds)</strong><small>We learn your whisper, natural and strong voice, your natural pitch and your natural pace, so every zone fits you.</small></div><button type="button" class="vv-ghost" data-act="tune">Find my range</button>`}</section>
+    <section class="vv-source" id="vvSource" aria-label="Where the games listen"></section>
     <section aria-labelledby="vvGamesTitle"><div class="vv-section-head"><div class="vv-section-label">ALL GAMES · ALL OPEN</div><h2 id="vvGamesTitle">Choose what to train.</h2></div>
       ${['volume', 'pitch', 'pace', 'all'].map(group).join('')}</section>
     <section aria-labelledby="vvBadgesTitle"><div class="vv-section-head"><div class="vv-section-label">COLLECTION</div><h2 id="vvBadgesTitle">Badges</h2></div>
@@ -376,11 +351,12 @@ function mount() {
   function briefHtml() {
     const plan = stage.plan, stars = progress.stars[stage.id] || 0, speakable = 'speechSynthesis' in window;
     const dims = dimsOf(stage);
-    const rules = stage.kind === 'guided'
+    const paceRule = dims.includes('pace') ? '<li><b>Pace is words a minute.</b> Slow is under 110, Steady is 110 to 139, Fast is 140 or more.</li>' : '';
+    const rules = paceRule + (stage.kind === 'guided'
       ? `<li><b>Follow the ribbon.</b> Keep your ${DIMENSIONS[stage.dim].name.toLowerCase()} inside the glowing road. It changes for each PREP part.</li><li><b>Make real swings.</b> Aim for ${plan.goalSwings} clear changes between zones.</li><li><b>Keep talking.</b> Pauses are good. Silence for most of the round is not.</li>`
       : stage.dim === 'all'
         ? `<li><b>Vary all three.</b> At least ${plan.goalSwings} swings in volume, in pitch and in pace.</li><li><b>Use the PREP cues.</b> Each part suggests a different voice.</li><li><b>Keep talking</b> for most of your ${lengthLabel(plan.duration)}.</li>`
-        : `<li><b>Reach ${zoneLabel(stage.dim, 'soft')}</b> and <b>${zoneLabel(stage.dim, 'strong')}</b>, each for over a second.</li><li><b>Make ${plan.goalSwings} swings</b> between zones.</li><li><b>Keep talking</b> for most of your ${lengthLabel(plan.duration)}.</li>`;
+        : `<li><b>Reach ${zoneLabel(stage.dim, 'soft')}</b> and <b>${zoneLabel(stage.dim, 'strong')}</b>, each for over a second.</li><li><b>Make ${plan.goalSwings} swings</b> between zones.</li><li><b>Keep talking</b> for most of your ${lengthLabel(plan.duration)}.</li>`);
     return `
     <div class="vv-brief">
       <div class="vv-brief-main">
@@ -392,7 +368,7 @@ function mount() {
           <div class="vv-brief-tools"><button type="button" class="vv-ghost" data-act="swap">↻ Different question</button>${speakable ? '<button type="button" class="vv-ghost" data-act="speak">🔊 Read it to me</button>' : ''}</div></div>
         <div class="vv-plan"><div class="vv-plan-head"><span class="vv-section-label">${stage.kind === 'guided' ? 'YOUR PREP PLAN AND RIBBON' : 'YOUR PREP PLAN'}</span><span class="vv-plan-time">${lengthLabel(plan.duration)} of speaking</span></div>
           ${stage.dim === 'all' ? '' : `<div class="vv-plan-art">${stage.kind === 'guided' ? planArt(stage, { w: 640, h: 170, labels: true, id: 'brief' }) : zoneLadderHtml()}
-            ${zoneNames(stage.dim).map((name, i) => `<span class="vv-axis ${['a-top', 'a-mid', 'a-low'][i]}">${esc(name.toUpperCase())}</span>`).join('')}</div>`}
+            ${axisLabels(stage.dim).map((name, i) => `<span class="vv-axis ${['a-top', 'a-mid', 'a-low'][i]}">${esc(name)}</span>`).join('')}</div>`}
           <ol class="vv-phases">${plan.phases.map(p => `<li style="flex:${p.to - p.from}"><span class="vv-letter">${p.letter}</span><b>${esc(p.label)}</b><em>${esc(p.zone)}</em><small>${esc(p.cue)}</small><time>${clock(p.from)}–${clock(p.to)}</time></li>`).join('')}</ol>
           ${dims.length > 1 ? '<p class="vv-fine">Three lanes will show your volume, pitch and pace at the same time.</p>' : ''}</div>
       </div>
@@ -404,9 +380,10 @@ function mount() {
         <div class="vv-section-label">PREPARATION TIME</div>
         <div class="vv-seg" role="radiogroup" aria-label="Preparation time">${PREP_CHOICES.map(s => `<button type="button" role="radio" aria-checked="${s === prepSeconds}" data-act="prep-time" data-seconds="${s}">${s < 60 ? `${s}s` : `${s / 60} min`.replace('1.5 min', '1½ min')}</button>`).join('')}</div>
         ${notice ? `<p class="vv-warning" role="alert">${esc(notice)}</p>` : ''}
-        <button type="button" class="vv-primary vv-big" data-act="start-prep"><span aria-hidden="true">✎</span> ${callOn() || scale ? `Start preparing (${prepSeconds}s)` : 'Tune my voice, then prepare'}</button>
+        <div class="vv-source-slot" id="vvSource"></div>
+        <button type="button" class="vv-primary vv-big" data-act="start-prep"><span aria-hidden="true">✎</span> Start preparing (${prepSeconds}s)</button>
         <p class="vv-fine">${callOn()
-          ? '📞 Call audio is on. Your browser will ask you to choose the call tab once (tick “Also share tab audio”). Stay on this tab so the class sees the game. Nothing is recorded until the student starts speaking.'
+          ? '📞 Meeting audio is on, so the game listens to the students in your call. Stay on this tab so the class sees the game. Nothing is recorded until the student starts speaking.'
           : 'You will plan your PREP answer first. The microphone turns on for a sound check, and nothing is recorded until you start speaking. Strong means energetic, never strained.'}</p>
       </aside>
     </div>`;
@@ -431,22 +408,26 @@ function mount() {
           <textarea id="vvNote-${p.key}" data-note="${p.key}" rows="2" maxlength="160" placeholder="Your ${esc(p.label.toLowerCase())} in a few words">${esc(notes[p.key])}</textarea>
         </label>`).join('')}</div>
       <div class="vv-prep-bottom">
-        <div class="vv-miccheck" id="vvMicCheck" aria-live="polite"><span class="vv-mic-dot" aria-hidden="true"></span><span id="vvMicText">Connecting your microphone…</span><span class="vv-mic-meter" aria-hidden="true"><i id="vvMicLevel"></i></span></div>
-        <div class="vv-prep-actions"><button type="button" class="vv-ghost" data-act="prep-more" aria-label="Add 30 seconds">+30s</button><button type="button" class="vv-primary" data-act="prep-ready" id="vvReady">I’m ready: start speaking →</button></div>
+        <div class="vv-miccheck" id="vvMicCheck" aria-live="polite"><span class="vv-mic-dot" aria-hidden="true"></span><span id="vvMicText">${callOn() ? 'Connecting the meeting audio…' : 'Connecting your microphone…'}</span><span class="vv-mic-meter" aria-hidden="true"><i id="vvMicLevel"></i></span></div>
+        <div class="vv-prep-actions">${callOn() ? '<button type="button" class="vv-ghost" data-act="reconnect-call" id="vvReconnect" hidden>Reconnect call</button>' : ''}<button type="button" class="vv-ghost" data-act="prep-more" aria-label="Add 30 seconds">+30s</button><button type="button" class="vv-primary" data-act="prep-ready" id="vvReady">I’m ready: start speaking →</button></div>
       </div>
     </div>`;
   }
+  const SOUND_CHECK = {
+    mic: 'Sound check: say a few words in your normal voice so the zones fit you. Nothing is recorded yet.',
+    call: 'Sound check: ask the student to say a few words in their normal voice so the zones fit them. Nothing is recorded yet.',
+    done: '✓ Voice level set. Keep planning, or press ready when you are.'
+  };
   async function startPrep() {
-    if (!callOn() && !scale) { after = 'prep'; startTune(); return; }
     teardown(); releaseAudio(); notice = '';
     view = 'prep'; render();
     root.scrollIntoView({ block: 'start', behavior: 'instant' });
     viewEl.querySelector('[data-focus]')?.focus({ preventScroll: true });
     announce(`Prepare your answer. You have ${prepSeconds} seconds.`);
     const token = micToken;
-    prep = { mic: null, endsAt: performance.now() + prepSeconds * 1000, total: prepSeconds, call: callOn(), dbs: [] };
+    prep = { mic: null, endsAt: performance.now() + prepSeconds * 1000, total: prepSeconds, call: callOn(), dbs: [], midis: [], captured: false, ticks: 0, openedAt: performance.now() };
     const state = prep;
-    if (state.call) $('#vvMicText').textContent = callStream ? 'Connecting the call audio…' : 'Choose your Google Meet tab and tick “Also share tab audio”…';
+    if (state.call && !MeetingAudio.isConnected()) $('#vvMicText').textContent = 'Choose your Google Meet tab (or Entire Screen with system audio) in the box your browser shows…';
     state.interval = setInterval(() => tickPrep(state), 100);
     let mic;
     try { mic = await openMic(token); } catch (error) {
@@ -454,10 +435,8 @@ function mount() {
       notice = micMessage(error); go('brief', { quiet: true }); return;
     }
     if (!mic || token !== micToken) return;
-    state.mic = mic;
-    $('#vvMicText').textContent = state.call
-      ? 'Call check: ask the student to say a few words in their normal voice. The zones adjust to them. Nothing is recorded yet.'
-      : 'Mic check: say a few words. Nothing is recorded yet.';
+    state.mic = mic; state.openedAt = performance.now();
+    $('#vvMicText').textContent = state.call ? SOUND_CHECK.call : SOUND_CHECK.mic;
   }
   function tickPrep(state) {
     if (prep !== state) return;
@@ -469,133 +448,45 @@ function mount() {
     if (state.mic) {
       state.mic.analyser.getFloatTimeDomainData(state.mic.buffer);
       const db = dbOf(rmsOf(state.mic.buffer));
-      if (state.call && state.dbs.length < 3000) state.dbs.push(db);   // the sound check teaches the zones this speaker's level
+      // The sound check: the loudness and the natural note of whoever speaks now set the zones for the round.
+      if (state.dbs.length < 3000) state.dbs.push(db);
+      if (db > voiceNatural - 22 && state.midis.length < 600) state.midis.push(midiOf(detectPitch(state.mic.buffer, state.mic.context.sampleRate)));
       const level = clamp((db + 70) / 50, 0, 1);
       $('#vvMicLevel').style.width = `${(level * 100).toFixed(0)}%`;
       $('#vvMicCheck').classList.toggle('hearing', level > 0.35);
+      if (!state.captured && state.dbs.length % 5 === 0 && learnVoiceLevel(voiceNatural, state.dbs, 1) !== voiceNatural) {
+        state.captured = true; $('#vvMicText').textContent = SOUND_CHECK.done; $('#vvMicCheck').classList.add('set');
+      }
+      // Nothing heard for a while: say what to try.
+      const quiet = (performance.now() - state.openedAt) / 1000;
+      if (state.call && !state.captured && quiet > 8) {
+        $('#vvMicText').textContent = MeetingAudio.status().hearing ? SOUND_CHECK.call : 'We cannot hear the call yet. Ask a student to say hello. If the bar stays flat, press Reconnect call and pick your Google Meet tab (or Entire Screen with system audio).';
+        $('#vvReconnect')?.removeAttribute('hidden');
+      }
     }
     if (left <= 0 && state.mic) beginRound();
   }
   function beginRound() {
     const state = prep; if (!state?.mic) return;
     const mic = state.mic;
-    if (state.call) learnCall(state.dbs, 0.85);   // the sound check is this very student, so trust it most
+    // The speaker's own level and natural note, from the sound check (the last speaker's level is the fallback).
+    if (state.captured) learnVoice(state.dbs, 0.9);
+    const pitchCenter = learnPitchCenter(state.midis);
     teardown({ keepMic: true });
     view = 'live'; render();
     root.scrollIntoView({ block: 'start', behavior: 'instant' });
-    startRound(mic);
+    startRound(mic, pitchCenter);
   }
-
-  // ----- TUNE (find your range) ------------------------------------------------------------
-  const TUNE_STEPS = [
-    { id: 'silence', word: 'Shhh…', say: 'Stay quiet for a moment so we can hear your room.', lead: 0.4, dur: 1.6 },
-    { id: 'whisper', word: 'Whisper', say: '“I’m about to tell you a secret.”', lead: 1.1, dur: 2.6 },
-    { id: 'normal', word: 'Natural voice', say: '“Hi, I’m here to practise my voice, and today I want to speak clearly and with confidence.”', lead: 1.1, dur: 4.2 },
-    { id: 'power', word: 'Strong voice', say: '“Everyone, listen up! Let’s go!”', lead: 1.1, dur: 2.6 }
-  ];
-  function tuneHtml() {
-    const state = tune?.state || 'intro';
-    if (state === 'done') return tuneDoneHtml();
-    const running = state === 'running' || state === 'waiting';
-    return `
-    <div class="vv-tune">
-      <div class="vv-section-label">FIND YOUR RANGE</div>
-      <h2 id="vvTitle" tabindex="-1" data-focus>${running ? 'Show us your voice.' : 'Let’s tune the game to your voice.'}</h2>
-      <p class="vv-lede">In about 15 seconds you will whisper, read one sentence in your natural voice, and call out strongly. We learn your volume range, your natural pitch and your natural pace, so every zone fits you.</p>
-      <div class="vv-tune-stage" id="vvTuneStage" data-state="${state}">
-        <div class="vv-tune-orb" id="vvTuneOrb"><i></i></div>
-        <div class="vv-tune-copy"><div class="vv-tune-count" id="vvTuneCount">${running ? '' : '4 quick steps'}</div><strong id="vvTuneWord">${running ? 'Getting ready…' : 'Ready when you are'}</strong><span id="vvTuneSay">${running ? 'Waiting for your microphone…' : 'Find a quiet spot and hold your device at the distance you will normally use.'}</span></div>
-        <ol class="vv-tune-steps" aria-hidden="true">${TUNE_STEPS.map((s, i) => `<li data-i="${i}"><i></i><span>${['Quiet', 'Whisper', 'Natural', 'Strong'][i]}</span></li>`).join('')}</ol>
-      </div>
-      ${notice ? `<p class="vv-warning" role="alert">${esc(notice)}</p>` : ''}
-      <div class="vv-tune-actions">${running ? '<button type="button" class="vv-ghost" data-act="tune-cancel">Cancel</button>'
-        : '<button type="button" class="vv-primary vv-big" data-act="tune-start"><span aria-hidden="true">●</span> Start tuning</button><button type="button" class="vv-ghost" data-act="tune-skip">Use a typical range</button>'}</div>
-    </div>`;
-  }
-  function tuneDoneHtml() {
-    const s = tune.cal.scale, missing = ['whisper', 'normal', 'power'].filter(k => tune.cal.heard[k] < 25);
-    const ok = !missing.length;
-    const marks = [['Whisper', s.soft, 0.0], ['Natural', s.natural, 0.5], ['Power', s.power, 1.0]];
-    return `
-    <div class="vv-tune">
-      <div class="vv-section-label">${ok ? 'VOICE TUNED' : 'ALMOST THERE'}</div>
-      <h2 id="vvTitle" tabindex="-1" data-focus>${ok ? `You have a ${s.span.toFixed(0)} dB volume range to play with.` : 'We missed a part of your voice.'}</h2>
-      <p class="vv-lede">${ok ? (s.widened ? 'Your whisper, natural and strong voice were close together, so we stretched your zones. Push the difference a little more next time.' : 'These are your personal markers. Every zone in every game is measured against them.')
-        : `We could not hear your ${missing.map(k => k === 'normal' ? 'natural voice' : k).join(' or ')}. Move a little closer to the microphone, then try again.`}</p>
-      <div class="vv-scale" role="img" aria-label="Your volume range: whisper ${s.soft.toFixed(0)} dB, natural ${s.natural.toFixed(0)} dB, power ${s.power.toFixed(0)} dB">
-        <div class="vv-scale-bar"></div>${marks.map(([name, db, pos]) => `<div class="vv-scale-mark" style="left:${pos * 100}%"><i></i><b>${name}</b><small>${db.toFixed(0)} dBFS</small></div>`).join('')}</div>
-      ${ok ? `<div class="vv-tune-facts"><div><span>🎵</span><b>${s.pitchCenter ? `${noteName(s.pitchCenter)} · ${(440 * Math.pow(2, (s.pitchCenter - 69) / 12)).toFixed(0)} Hz` : 'Not clear yet'}</b><small>${s.pitchCenter ? 'your natural speaking note' : 'pitch games will learn your note as you speak'}</small></div>
-        <div><span>⏱️</span><b>${s.pace ? `${s.pace.toFixed(1)} syllables/s` : 'Typical'}</b><small>${s.pace ? 'your natural pace' : 'we will use a typical pace'}</small></div></div>` : ''}
-      <div class="vv-tune-actions">${ok ? `<button type="button" class="vv-primary vv-big" data-act="tune-continue">${after === 'prep' ? 'Continue to preparation →' : 'Choose a game →'}</button><button type="button" class="vv-ghost" data-act="tune-retry">Retune</button>`
-        : '<button type="button" class="vv-primary vv-big" data-act="tune-retry">Try again</button><button type="button" class="vv-ghost" data-act="tune-skip">Use a typical range</button>'}</div>
-    </div>`;
-  }
-  async function startTune() {
-    teardown();
-    tune = { state: 'waiting', data: { silence: [], whisper: [], normal: [], power: [] }, pitches: [], mic: null };
-    notice = ''; view = 'tune'; render();
-    root.scrollIntoView({ block: 'start', behavior: 'instant' });
+  // After a wrong pick: connect again from this click, then carry on with a fresh microphone for the check.
+  async function reconnectCall() {
+    const state = prep; if (!state) return;
+    try { MeetingAudio.disconnect(true); await MeetingAudio.connect(); } catch (error) { notice = micMessage(error); go('brief', { quiet: true }); return; }
+    if (prep !== state) return;
+    closeMic(state.mic); state.mic = null; state.captured = false; state.dbs = []; state.midis = [];
     const token = micToken;
-    let mic;
-    try { mic = await openMic(token); } catch (error) {
-      if (token !== micToken) return;
-      tune = null; notice = micMessage(error); render(); return;
-    }
-    if (!mic || token !== micToken) return;
-    tune.mic = mic; tune.state = 'running';
-    const stageEl = $('#vvTuneStage'), word = $('#vvTuneWord'), say = $('#vvTuneSay'), count = $('#vvTuneCount'), orb = $('#vvTuneOrb');
-    stageEl.dataset.state = 'running';
-    const total = TUNE_STEPS.reduce((sum, s) => sum + s.lead + s.dur, 0), begin = performance.now();
-    let lastIndex = -1, tick = 0;
-    tune.interval = setInterval(() => {
-      const elapsed = (performance.now() - begin) / 1000;
-      mic.analyser.getFloatTimeDomainData(mic.buffer);
-      const rms = rmsOf(mic.buffer), db = dbOf(rms);
-      orb.style.setProperty('--lvl', clamp((db + 68) / 52, 0, 1).toFixed(3));
-      let start = 0, index = TUNE_STEPS.length;
-      for (let i = 0; i < TUNE_STEPS.length; i++) {
-        const len = TUNE_STEPS[i].lead + TUNE_STEPS[i].dur;
-        if (elapsed < start + len) { index = i; break; }
-        start += len;
-      }
-      if (index >= TUNE_STEPS.length) { finishTune(); return; }
-      const step = TUNE_STEPS[index], local = elapsed - start, listening = local >= step.lead;
-      if (index !== lastIndex) {
-        lastIndex = index; word.textContent = step.word; say.textContent = step.say;
-        stageEl.querySelectorAll('.vv-tune-steps li').forEach((li, i) => { li.classList.toggle('now', i === index); li.classList.toggle('done', i < index); });
-        announce(`${step.word}. ${step.say}`);
-        if (step.id === 'normal') {
-          const floor = tune.data.silence.length ? tune.data.silence.slice().sort((a, b) => a - b)[Math.floor(tune.data.silence.length * 0.9)] : -66;
-          tune.meter = new PaceMeter({ window: 99, gateDb: floor + 8 });
-        }
-      }
-      stageEl.dataset.listening = String(listening);
-      count.textContent = listening ? 'Listening…' : 'Get ready…';
-      stageEl.style.setProperty('--p', clamp((local - step.lead) / step.dur, 0, 1).toFixed(3));
-      if (listening) {
-        tune.data[step.id].push(db);
-        if (step.id === 'normal') {
-          tune.meter.push(local, rms); tune.normalSeconds = local - step.lead;
-          if (tick++ % 2 === 0) tune.pitches.push(midiOf(detectPitch(mic.buffer, mic.context.sampleRate)));
-        }
-      }
-      stageEl.style.setProperty('--total', (elapsed / total).toFixed(3));
-    }, 20);
-  }
-  function finishTune() {
-    const finished = tune; clearInterval(finished.interval); closeMic(finished.mic); finished.mic = null;
-    const paceRate = finished.meter && finished.normalSeconds > 2 ? finished.meter.peaks.length / finished.normalSeconds : null;
-    finished.cal = scaleFromCalibration({ ...finished.data, pitches: finished.pitches, paceRate: paceRate && paceRate >= 1 ? paceRate : null });
-    finished.state = 'done';
-    const ok = ['whisper', 'normal', 'power'].every(k => finished.cal.heard[k] >= 25);
-    if (ok) {
-      scale = finished.cal.scale; scaleIsDefault = false; write(SCALE_KEY, { scale, at: Date.now() });
-      const outcome = applyTune(progress, new Date()); progress = outcome.progress; save();
-      outcome.newBadges.forEach(badge => toast(`Badge unlocked: ${badge.name}`, badge.icon));
-      chime([523.25, 783.99, 1046.5]);
-    }
-    render(); viewEl.querySelector('[data-focus]')?.focus({ preventScroll: true });
-    announce(ok ? 'Your voice is tuned.' : 'We missed part of your voice. Try again.');
+    const mic = await openMic(token).catch(() => null);
+    if (!mic || token !== micToken || prep !== state) return;
+    state.mic = mic; state.openedAt = performance.now(); $('#vvMicText').textContent = SOUND_CHECK.call; $('#vvReconnect')?.setAttribute('hidden', '');
   }
 
   // ----- LIVE ------------------------------------------------------------------------------
@@ -604,7 +495,7 @@ function mount() {
     const hud = stage.dim === 'all'
       ? DIM_ORDER.map((dim, i) => `<div><small>${DIMENSIONS[dim].name.toUpperCase()} SWINGS</small><strong id="vvHud${i + 1}">0</strong></div>`).join('')
       : `<div><small>${guided ? 'ON THE RIBBON' : 'ZONES HIT'}</small><strong id="vvHud1">${guided ? '—' : '0 / 3'}</strong></div><div><small>${guided ? 'STREAK' : 'RIGHT NOW'}</small><strong id="vvHud2">${guided ? '0.0s' : '—'}</strong></div><div><small>SWINGS</small><strong id="vvHud3">0</strong></div>`;
-    const goals = stage.kind === 'free' ? scoreRound({ frames: [], stage, scale: activeScale() || normalizeScale(DEFAULT_SCALE) }).goals : [];
+    const goals = stage.kind === 'free' ? scoreRound({ frames: [], stage, scale: zonesNow() }).goals : [];
     return `
     <div class="vv-live" data-kind="${stage.kind}" data-dim="${stage.dim}">
       <div class="vv-live-top">
@@ -627,12 +518,13 @@ function mount() {
       <p class="vv-status" id="vvLiveStatus" role="status">Get ready…</p>
     </div>`;
   }
-  function startRound(mic) {
-    const plan = stage.plan, roundScale = activeScale();
+  function startRound(mic, pitchCenter = null) {
+    const plan = stage.plan, roundScale = zonesNow(pitchCenter);
     round = {
       mic, plan, guided: stage.kind === 'guided', mode: 'countdown', t0: 0, frames: [], scale: roundScale, call: callOn(), tracker: new VoiceTracker(roundScale), tick: 0, lastMidi: null,
-      live: { t: 0, volume: null, pitch: null, pace: null, active: false, db: -90 }, display: { volume: -0.1, pitch: -0.1, pace: -0.1 },
-      particles: [], timers: [], recorder: null, chunks: [], credit: 0, creditN: 0, streak: 0, miss: 0, lastHud: 0, lastScore: 0, phaseKey: -1, unlocked: new Set()
+      wantsPace: stage.dim === 'pace' || stage.dim === 'all', paceSource: 'speech', speech: null, soundFrames: 0, finishing: false,
+      live: { t: 0, volume: null, pitch: null, pace: null, wpm: null, active: false, db: -90 }, display: { volume: -0.1, pitch: -0.1, pace: -0.1 },
+      particles: [], timers: [], recorder: null, chunks: [], lastHud: 0, lastScore: 0, phaseKey: -1
     };
     const r = round;
     r.interval = setInterval(analyse, 20);
@@ -661,40 +553,100 @@ function mount() {
         r.recorder.start();
       } catch { r.recorder = null; }
     }
+    if (r.wantsPace) startSpeech(r);
     $('#vvLiveStatus').textContent = 'Listening. Answer with PREP and follow the vocal cue for each part.';
     announce(`Go. ${r.plan.phases[0].label}: ${r.plan.phases[0].zone}. ${r.plan.phases[0].cue}`);
   }
+
+  // ----- pace: count the words ---------------------------------------------------------------
+  // Words a minute needs real words, so for the Pace games (and All Three) a few seconds of the audio at a
+  // time go to the app's speech service, which returns the words with their times. Each reading is filed at the
+  // moment the words were spoken, so it shows up a few seconds late on screen but is exact in the score. If the
+  // service cannot be reached, the pace falls back to an estimate from the sound alone (see wpmFromSound).
+  function startSpeech(r) {
+    const transcriber = new ChunkTranscriber(r.mic.stream, { chunkMs: 3000, onResult: res => paceResult(r, res), onFail: fail => paceFailed(r, fail) });
+    if (!transcriber.start()) { r.paceSource = 'sound'; return; }
+    transcriber.t0 = r.t0;
+    r.speech = { transcriber, words: [], coveredTo: 0, liveWpm: null };
+  }
+  // Words a minute around moment t: the words that started within 3 seconds either side (only the part of
+  // that window already transcribed), pauses included. Null if nobody was speaking there.
+  function windowWpm(r, t) {
+    const from = Math.max(0, t - 3), to = Math.min(t + 3, r.speech.coveredTo);
+    if (to - from < 2.5) return null;
+    const first = Math.floor(from / FRAME_DT), last = Math.min(r.frames.length - 1, Math.floor(to / FRAME_DT));
+    let voiced = false;
+    for (let i = first; i <= last; i++) if (Number.isFinite(r.frames[i]?.volume)) { voiced = true; break; }
+    if (!voiced) return null;
+    return r.speech.words.filter(word => word.start >= from && word.start < to).length / (to - from) * 60;
+  }
+  function backfillPace(r, from, to) {
+    const first = Math.max(0, Math.floor(from / FRAME_DT)), last = Math.min(r.frames.length - 1, Math.floor(to / FRAME_DT));
+    for (let i = first; i <= last; i++) {
+      const frame = r.frames[i], wpm = windowWpm(r, frame.t);
+      frame.wpm = wpm; frame.pace = paceLevel(wpm);
+    }
+  }
+  function paceResult(r, res) {
+    if (!r.speech) return;
+    r.speech.words.push(...res.words);
+    r.speech.coveredTo = Math.max(r.speech.coveredTo, res.end);
+    r.speech.failures = 0;
+    backfillPace(r, res.start - 3, res.end);
+    r.speech.liveWpm = windowWpm(r, r.speech.coveredTo - 3);
+  }
+  function paceFailed(r, fail) {
+    // The chunk that could not be counted gets the sound-based estimate; after two in a row, or if the
+    // service is simply not there, the rest of the round uses the sound estimate too.
+    const first = Math.floor(fail.start / FRAME_DT), last = Math.min(r.frames.length - 1, Math.floor(fail.end / FRAME_DT));
+    for (let i = Math.max(0, first); i <= last; i++) {
+      const frame = r.frames[i];
+      if (frame.pace === null && Number.isFinite(frame.soundWpm)) { frame.wpm = frame.soundWpm; frame.pace = paceLevel(frame.soundWpm); r.soundFrames++; }
+    }
+    if (fail.failures >= 2 || [401, 403, 404, 405, 500, 501].includes(fail.status)) {
+      r.paceSource = 'sound';
+      $('#vvLiveStatus').textContent = 'The speech service is not reachable, so pace is estimated from the sound.';
+    }
+  }
+
   function analyse() {
     const r = round; if (!r) return;
     r.mic.analyser.getFloatTimeDomainData(r.mic.buffer);
-    const rms = rmsOf(r.mic.buffer);
+    const rms = rmsOf(r.mic.buffer), lowRms = lowPassRms(r.mic.buffer, r.mic.context.sampleRate, 500);
     if (r.tick++ % 2 === 0) r.lastMidi = midiOf(detectPitch(r.mic.buffer, r.mic.context.sampleRate));
     const live = r.mode === 'live';
     const t = live ? (performance.now() - r.t0) / 1000 : 0;
-    const out = r.tracker.push(live ? t : performance.now() / 1000, rms, r.tick % 2 === 1 ? r.lastMidi : null);
-    r.live = { ...out, t };
+    const out = r.tracker.push(live ? t : performance.now() / 1000, rms, r.tick % 2 === 1 ? r.lastMidi : null, lowRms);
+    let wpm = null;
+    if (r.wantsPace) wpm = r.paceSource === 'sound' ? out.soundWpm : (r.speech?.liveWpm ?? null);
+    r.live = { ...out, t, wpm, pace: paceLevel(wpm) };
     if (!live) return;
     if (t >= r.plan.duration) { finishRound(); return; }
     while (r.frames.length * FRAME_DT <= t) {
       const ft = r.frames.length * FRAME_DT;
-      r.frames.push({ t: ft, db: out.db, active: out.active, volume: out.volume, midi: out.midi, pitch: out.pitch, rate: out.rate, pace: out.pace });
-      if (r.guided && Number.isFinite(out[stage.dim])) {
-        const credit = ribbonCredit(stage.dim, out[stage.dim], r.plan, ft);
-        r.credit += credit; r.creditN++;
-        if (credit === 1) { r.streak += FRAME_DT; r.miss = 0; } else if (++r.miss > 10) r.streak = 0;
-      }
-      if (stage.dim !== 'all' && Number.isFinite(out[stage.dim])) r.unlocked.add(zoneOf(out[stage.dim]));
+      const frame = { t: ft, db: out.db, active: out.active, volume: out.volume, midi: out.midi, pitch: out.pitch, soundWpm: out.soundWpm, wpm: null, pace: null };
+      if (r.wantsPace && r.paceSource === 'sound' && Number.isFinite(out.soundWpm)) { frame.wpm = out.soundWpm; frame.pace = paceLevel(out.soundWpm); r.soundFrames++; }
+      r.frames.push(frame);
     }
   }
-  function finishRound() {
-    const r = round; if (!r) return;
+  async function finishRound() {
+    const r = round; if (!r || r.finishing) return;
+    r.finishing = true;
     clearInterval(r.interval); cancelAnimationFrame(r.raf); r.timers.forEach(clearTimeout);
-    const frames = r.frames, played = r.mode === 'live';
+    const played = r.mode === 'live';
     if (r.recorder?.state === 'recording') r.recorder.stop();
+    if (r.speech && played) {
+      $('#vvLiveStatus').textContent = 'Counting your words…';
+      await r.speech.transcriber.stop(6000);
+      if (round !== r) return;                                   // the student left while we waited
+      if (r.paceSource === 'speech') backfillPace(r, 0, r.plan.duration);
+    }
+    const frames = r.frames;
     closeMic(r.mic); round = null; micToken++;
     if (!played || frames.length < 20) { notice = 'That round ended before we heard enough. Try again when you are ready.'; go('brief', { quiet: true }); return; }
     result = scoreRound({ frames, stage, scale: r.scale }); result.frames = frames; result.notes = { ...notes };
-    if (r.call) learnCall(frames.filter(frame => frame.active).map(frame => frame.db), 0.5);   // the next student starts from what this call sounded like
+    result.paceSource = !r.wantsPace ? null : r.soundFrames > 0 ? 'sound' : 'speech';
+    learnVoice(frames.filter(frame => frame.active).map(frame => frame.db), 0.5);   // the next speaker starts from what this call or microphone sounded like
     award = applyRound(progress, stage, result, new Date(), questionIndex, { prepared: prepared() });
     progress = award.progress; save(); example = false;
     go('results');
@@ -717,14 +669,23 @@ function mount() {
       DIM_ORDER.forEach((dim, i) => { $(`#vvHud${i + 1}`).textContent = String(countSwings(r.frames.map(f => ({ t: f.t, level: f[dim] }))).swings); });
     } else {
       $('#vvHud3').textContent = String(countSwings(r.frames.map(f => ({ t: f.t, level: f[stage.dim] }))).swings);
+      // Worked out from the stored frames, so pace readings that arrive late are counted where they belong.
       if (r.guided) {
-        $('#vvHud1').textContent = r.creditN ? `${Math.round(r.credit / r.creditN * 100)}%` : '—';
-        $('#vvHud2').textContent = `${r.streak.toFixed(1)}s`;
-        $('#vvStage').classList.toggle('hot', r.streak >= 2);
+        let credit = 0, count = 0, streak = 0, misses = 0;
+        for (const frame of r.frames) {
+          if (!Number.isFinite(frame[stage.dim])) continue;
+          const value = ribbonCredit(stage.dim, frame[stage.dim], r.plan, frame.t);
+          credit += value; count++;
+          if (value === 1) { streak += FRAME_DT; misses = 0; } else if (++misses > 10) streak = 0;
+        }
+        $('#vvHud1').textContent = count ? `${Math.round(credit / count * 100)}%` : '—';
+        $('#vvHud2').textContent = `${streak.toFixed(1)}s`;
+        $('#vvStage').classList.toggle('hot', streak >= 2);
       } else {
-        $('#vvHud1').textContent = `${r.unlocked.size} / 3`;
+        const hit = new Set(r.frames.filter(f => Number.isFinite(f[stage.dim])).map(f => zoneOf(f[stage.dim])));
+        $('#vvHud1').textContent = `${hit.size} / 3`;
         const level = r.live[stage.dim];
-        $('#vvHud2').textContent = Number.isFinite(level) ? zoneLabel(stage.dim, zoneOf(level)) : '—';
+        $('#vvHud2').textContent = Number.isFinite(level) ? (stage.dim === 'pace' ? `${Math.round(r.live.wpm)} WPM` : zoneLabel(stage.dim, zoneOf(level))) : '—';
       }
     }
     if (stage.kind === 'free' && now - r.lastScore > 500 && r.frames.length >= 10) {
@@ -860,7 +821,7 @@ function mount() {
     };
     const rangeTile = (dim, label = `${DIMENSIONS[dim].name.toUpperCase()} RANGE`) => {
       const d = r.dims[dim], v = d.range.value;
-      const big = dim === 'volume' ? `${v ? v.toFixed(0) : '—'}<small> dB</small>` : dim === 'pitch' ? `${v ? v.toFixed(1) : '—'}<small> semitones</small>` : `${d.range.text === '—' ? '—' : `${d.range.low.toFixed(1)}–${d.range.high.toFixed(1)}`}<small> syl/s</small>`;
+      const big = dim === 'volume' ? `${v ? v.toFixed(0) : '—'}<small> dB</small>` : dim === 'pitch' ? `${v ? v.toFixed(1) : '—'}<small> semitones</small>` : `${d.range.text === '—' ? '—' : `${Math.round(d.range.low)}–${Math.round(d.range.high)}`}<small> WPM</small>`;
       return `<div class="vv-tile"><span class="vv-tile-k">${label}</span><strong>${big}</strong><em>${v ? rangeLabel(dim, v) : 'Speak more to measure'}</em></div>`;
     };
     const extremes = { volume: ['LOUDEST MOMENT', 'SOFTEST MOMENT'], pitch: ['HIGHEST NOTE', 'LOWEST NOTE'], pace: ['FASTEST MOMENT', 'SLOWEST MOMENT'] };
@@ -877,7 +838,7 @@ function mount() {
          <div class="vv-tile"><span class="vv-tile-k">TALKING TIME</span><strong>${Math.round(r.activeFraction * 100)}<small>%</small></strong><em>of the round (pauses are fine)</em></div>
          <div class="vv-tile"><span class="vv-tile-k">${extremes[st.dim][0]}</span><strong>${main.peak ? clock(main.peak.t) : '—'}</strong><em>${main.peak ? esc(main.peak.text) : ''}</em></div>
          <div class="vv-tile"><span class="vv-tile-k">${extremes[st.dim][1]}</span><strong>${main.low ? clock(main.low.t) : '—'}</strong><em>${main.low ? esc(main.low.text) : ''}</em></div>
-         ${DIM_ORDER.filter(dim => dim !== st.dim).map(dim => rangeTile(dim, `${DIMENSIONS[dim].name.toUpperCase()} · ALSO MEASURED`)).join('')}`;
+         ${DIM_ORDER.filter(dim => dim !== st.dim && dim !== 'pace').map(dim => rangeTile(dim, `${DIMENSIONS[dim].name.toUpperCase()} · ALSO MEASURED`)).join('')}`;
     return `
     <div class="vv-result" data-example="${example}" data-dim="${st.dim}">
       <div class="vv-result-top">
@@ -888,6 +849,7 @@ function mount() {
           <h2 id="vvTitle" tabindex="-1" data-focus>${esc(headline)}</h2>
           <div class="vv-star-row" id="vvStarRow" data-stars="${r.stars}" role="img" aria-label="${r.stars} of 3 stars">${[0, 1, 2].map(i => `<i data-i="${i}">★</i>`).join('')}</div>
           <p class="vv-tip">${esc(coachingTip(r))}</p>
+          ${r.paceSource === 'sound' ? '<p class="vv-warning">Pace was estimated from the sound alone because the speech service could not be reached, so treat the words-a-minute numbers as approximate.</p>' : ''}
           ${award && !example ? `<div class="vv-xp"><div class="vv-xp-row"><strong>+${award.xpGained} XP</strong><span>${esc(rank.name)}${rank.nextName ? ` · ${rank.toNext} to ${esc(rank.nextName)}` : ' · top rank'}</span></div><div class="vv-bar"><i style="width:${(rank.pct * 100).toFixed(0)}%"></i></div>${lvlUp ? `<p class="vv-levelup">Rank up! You have reached ${esc(rank.name)}.</p>` : ''}${award.personalBest ? '<p class="vv-levelup">New personal best</p>' : ''}</div>` : ''}
           <ul class="vv-goal-chips">${r.goals.map(g => `<li class="${g.done ? 'done' : ''}"><span aria-hidden="true">${g.done ? '✓' : '○'}</span><b>${esc(g.label)}</b><small>${esc(g.detail)}</small></li>`).join('')}</ul>
           ${award?.newBadges.length && !example ? `<div class="vv-new-badges">${award.newBadges.map(b => `<span><i aria-hidden="true">${esc(b.icon)}</i> Badge: <b>${esc(b.name)}</b></span>`).join('')}</div>` : ''}
@@ -925,9 +887,9 @@ function mount() {
         <button type="button" class="vv-ghost" data-act="home">All games</button>
       </div>
       <details class="vv-method"><summary>How these numbers work</summary>
-        <p><b>Zones.</b> “Find your range” sets your personal scale. Volume: your whisper is 0, natural voice 0.5, power voice 1. Pitch: your natural note is the middle; six semitones up or down reaches the edges. Pace: your natural speed is the middle; twice as fast or half as fast reaches the edges, and pauses count as slowing down. The low zone is below 0.28, the high zone above 0.72.</p>
+        <p><b>Zones.</b> Nobody is tuned: the zones follow whoever is speaking. During the sound check before a round, the speaker’s normal loudness and natural note become the middle. Volume: Whisper is more than about 6 dB under that level, Boom more than about 5 dB over it. Pitch: six semitones up or down from the natural note reaches the edges. Pace is the same for everyone and is counted in words a minute: Slow is under 110, Steady is 110 to 139, Fast is 140 or more (pauses count as slowing down).</p>
         <p><b>Variety score.</b> Range between your lowest and highest moments (45%), swings between zones (35%) and balance across all three zones (20%). Guided games blend in how closely you followed the ribbon (70% ribbon, 30% variety). All Three averages volume, pitch and pace. Talking for less than half the round lowers the score; pauses are never penalised.</p>
-        <p><b>Accuracy.</b> Volume is relative microphone level, not calibrated sound pressure, so keep the microphone at one distance. Pitch is detected from voiced sound and needs a fairly quiet room. Pace counts energy peaks as syllables over the last 2.5 seconds: it is an estimate, not a transcript or words per minute, and it shows changes about a second late.</p>
+        <p><b>Accuracy.</b> Volume is relative microphone level, not calibrated sound pressure, so keep the microphone at one distance. Pitch is detected from voiced sound and needs a fairly quiet room. Pace counts the words you actually say: a few seconds of audio at a time go to the app’s speech service, which returns the words with their times, so a reading appears on screen a few seconds late but is filed at the moment you spoke. If that service cannot be reached, pace is estimated from the sound alone, which is only approximate.</p>
         <p>Your PREP notes never leave this screen. Nothing here changes your Speaker’s Gym coaching scores or history.</p></details>
     </div>`;
   }
@@ -1037,7 +999,7 @@ function mount() {
           ctx.fillStyle = 'rgba(8,13,28,.88)'; roundedRect(ctx, bx, by, tw, 20, 10); ctx.fill();
           ctx.fillStyle = '#f3f6fc'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, bx + tw / 2, by + 10);
         };
-        const short = point => dim === 'volume' ? `${point.rel >= 0 ? '+' : '−'}${Math.abs(point.rel).toFixed(0)} dB` : dim === 'pitch' ? `${noteName(r.frames[Math.round(point.t / FRAME_DT)]?.midi)}` : `${point.rel.toFixed(1)} syl/s`;
+        const short = point => dim === 'volume' ? `${point.rel >= 0 ? '+' : '−'}${Math.abs(point.rel).toFixed(0)} dB` : dim === 'pitch' ? `${noteName(r.frames[Math.round(point.t / FRAME_DT)]?.midi)}` : `${Math.round(point.rel)} WPM`;
         const main = r.dims[dim];
         marker(main.peak, main.peak ? `▲ ${short(main.peak)}` : '', true);
         if (main.low && main.peak && Math.abs(main.low.t - main.peak.t) > 1) marker(main.low, `▼ ${short(main.low)}`, false);
@@ -1054,7 +1016,7 @@ function mount() {
     if (frame) {
       const part = phaseAt(stage.plan, frame.t);
       const bits = dimsOf(stage).map(dim => Number.isFinite(frame[dim]) ? `${DIMENSIONS[dim].name} ${zoneLabel(dim, zoneOf(frame[dim]))}` : `${DIMENSIONS[dim].name}: —`);
-      $('#vvMoment').textContent = `${clock(frame.t)} · ${part.label} · ${frame.volume === null ? 'a pause' : bits.join(' · ')}${frame.midi ? ` · note ${noteName(frame.midi)}` : ''}${Number.isFinite(frame.rate) ? ` · ${frame.rate.toFixed(1)} syllables/s` : ''}`;
+      $('#vvMoment').textContent = `${clock(frame.t)} · ${part.label} · ${frame.volume === null ? 'a pause' : bits.join(' · ')}${frame.midi ? ` · note ${noteName(frame.midi)}` : ''}${Number.isFinite(frame.wpm) ? ` · about ${Math.round(frame.wpm)} words a minute` : ''}`;
     }
     if (seek && audioUrl) audioEl.currentTime = cursor;
     drawMap();
@@ -1085,7 +1047,7 @@ function mount() {
   // ----- example (illustrative data, never saved) --------------------------------------------
   function showExample() {
     teardown(); releaseAudio();
-    stage = stageById('volume-ribbon'); scale = scale || normalizeScale(DEFAULT_SCALE); scaleIsDefault = scaleIsDefault || !savedScale;
+    stage = stageById('volume-ribbon'); const scale = voiceScale(DEFAULT_NATURAL);
     let seed = 7;
     const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     const frames = [];
@@ -1094,8 +1056,8 @@ function mount() {
       const t = i * FRAME_DT, pause = (t > 8.2 && t < 8.8) || (t > 17.8 && t < 18.5) || (t > 31.6 && t < 32.4);
       const level = targetAt(stage.plan, t - 0.45) + Math.sin(t * 2.3) * 0.05 + (rand() - 0.5) * 0.06 + (t > 26 && t < 27.5 ? -0.24 : 0);
       if (!pause) { held = level; lastVoice = t; } else if (t - lastVoice > 0.35) held = null;
-      const talking = held !== null, midi = talking ? 50 + Math.sin(t * 1.1) * 2.5 + (t > 20 && t < 30 ? 3 : 0) : null, rate = 2.6 + (t > 18 && t < 31 ? 1.4 : 0) + Math.sin(t) * 0.3;
-      frames.push({ t, db: pause ? -80 : scale.soft + clamp(level, 0, 1) * (scale.power - scale.soft), active: !pause, volume: held, midi, pitch: talking ? 0.5 + (midi - 50) / 12 : null, rate, pace: 0.5 + 0.5 * Math.log2(rate / 3.2) });
+      const talking = held !== null, midi = talking ? 50 + Math.sin(t * 1.1) * 2.5 + (t > 20 && t < 30 ? 3 : 0) : null, wpm = pause ? null : 100 + (t > 8 && t < 18 ? 25 : 0) + (t > 18 && t < 31 ? 50 : 0) + Math.sin(t) * 6;
+      frames.push({ t, db: pause ? -80 : scale.soft + clamp(level, 0, 1) * (scale.power - scale.soft), active: !pause, volume: held, midi, pitch: talking ? 0.5 + (midi - 50) / 12 : null, wpm, pace: paceLevel(wpm) });
     }
     result = scoreRound({ frames, stage, scale }); result.frames = frames;
     result.notes = { point: 'Yes: every student should learn it', reason: 'Confidence opens doors', example: 'My first class presentation', finalPoint: 'Speaking is a life skill' };
@@ -1108,7 +1070,6 @@ function mount() {
     if (stage?.id !== item.id) clearNotes();
     stage = scaleStage(item, speechSeconds); questionIndex = questionIndexFor(progress, item); notice = ''; example = false; go('brief');
   };
-  const continueAfterTune = () => { tune = null; if (after === 'prep' && stage) { after = null; startPrep(); } else { after = null; go('home'); } };
   root.addEventListener('click', event => {
     const target = event.target.closest('[data-act]'); if (!target) return;
     switch (target.dataset.act) {
@@ -1116,20 +1077,14 @@ function mount() {
       case 'sound': muted = !muted; write(MUTE_KEY, muted); render(); if (!muted) chime([660], 0.1, 0.08); break;
       case 'open-stage': openStage(target.dataset.stage); break;
       case 'example': showExample(); break;
-      case 'tune': after = null; notice = ''; tune = null; go('tune'); break;
-      case 'tune-start': case 'tune-retry': startTune(); break;
-      case 'tune-cancel': after = null; go('home'); break;
-      case 'disconnect-call': disconnectCall(); toast('Call tab disconnected.', '📞'); render(); break;
-      case 'open-settings': window.navigateToPage('settings'); break;
-      case 'tune-skip': scale = normalizeScale(DEFAULT_SCALE); scaleIsDefault = true; continueAfterTune(); break;
-      case 'tune-continue': continueAfterTune(); break;
+      case 'reconnect-call': reconnectCall(); break;
       case 'swap': questionIndex = (questionIndex + 1) % QUESTIONS.length; clearNotes(); window.speechSynthesis?.cancel(); render(); viewEl.querySelector('[data-focus]')?.focus({ preventScroll: true }); break;
       case 'speak': if ('speechSynthesis' in window) { speechSynthesis.cancel(); speechSynthesis.speak(Object.assign(new SpeechSynthesisUtterance(question()), { rate: 0.95 })); } break;
       case 'speech-time': speechSeconds = Number(target.dataset.seconds); write(SPEECH_KEY, speechSeconds); stage = scaleStage(stageById(stage.id), speechSeconds); render(); viewEl.querySelector(`[data-act="speech-time"][data-seconds="${speechSeconds}"]`)?.focus(); break;
       case 'prep-time': prepSeconds = Number(target.dataset.seconds); write(PREP_KEY, prepSeconds); render(); viewEl.querySelector(`[data-act="prep-time"][data-seconds="${prepSeconds}"]`)?.focus(); break;
       case 'start-prep': startPrep(); break;
       case 'prep-more': if (prep) { prep.endsAt += 30000; prep.total += 30; } break;
-      case 'prep-ready': if (prep?.mic) beginRound(); else $('#vvMicText').textContent = 'Still connecting your microphone…'; break;
+      case 'prep-ready': if (prep?.mic) beginRound(); else $('#vvMicText').textContent = 'Still connecting…'; break;
       case 'finish': finishRound(); break;
       case 'next-question': questionIndex = questionIndexFor(progress, stage); clearNotes(); notice = ''; go('brief'); break;
       case 'again': notice = ''; go('brief'); break;
@@ -1147,23 +1102,23 @@ function mount() {
     tick();
   });
   root.addEventListener('keydown', event => {
-    if (event.key !== 'Escape' || !(round || tune || prep)) return;
-    event.preventDefault(); notice = 'Stopped. Your microphone is off.';
-    if (tune) go('home'); else go('brief', { quiet: true });
+    if (event.key !== 'Escape' || !(round || prep)) return;
+    event.preventDefault(); notice = 'Stopped. The game is no longer listening.';
+    go('brief', { quiet: true });
   });
   menu.addEventListener('click', () => { window.navigateToPage('variety'); });
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden || !(round || tune || prep)) return;
-    notice = 'We paused because the page was hidden. Your microphone is off. Start again when you are ready.';
-    if (tune) { tune = null; go('tune', { quiet: true }); } else go('brief', { quiet: true });
+    if (!document.hidden || !(round || prep)) return;
+    notice = 'We paused because the game tab was hidden. Stay on this tab while students play. Start again when you are ready.';
+    go('brief', { quiet: true });
   });
-  window.addEventListener('pagehide', () => { teardown(); disconnectCall(); releaseAudio(); try { sfx?.close(); } catch { /* ignore */ } });
+  window.addEventListener('pagehide', () => { teardown(); releaseAudio(); try { sfx?.close(); } catch { /* ignore */ } });
   new ResizeObserver(() => { if (view === 'results') drawMap(); if (view === 'live') drawStageFrame(); }).observe(root);
 
   // Used by the app's navigation (see index.html).
   window.VocalVariety = {
-    stop() { audioEl.pause(); if (round || tune || prep) { notice = ''; go('home', { quiet: true }); } disconnectCall(); },
-    render() { if (view === 'live' || view === 'tune' || view === 'prep') return; render(); }
+    stop() { audioEl.pause(); if (round || prep) { notice = ''; go('home', { quiet: true }); } },
+    render() { if (view === 'live' || view === 'prep') return; render(); }
   };
   render();
   if (location.hash === '#vocal-variety') window.navigateToPage('variety');

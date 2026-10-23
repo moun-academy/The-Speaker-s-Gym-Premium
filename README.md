@@ -5,7 +5,7 @@
 Open the online app and choose **Expand Your Vocal Variety** from the menu, or use
 `/#vocal-variety`. It trains **vocal variety plus structure**: every round is a spoken
 answer to a real question using **PREP** (Point, Reason, Example, Final Point), while the
-game shows the student's voice live.
+game shows the speaker's voice live.
 
 **Seven games, all open from the start**, grouped by what they train:
 
@@ -15,9 +15,22 @@ game shows the student's voice live.
 | Volume: Freestyle | Reach Whisper and Boom and swing between zones, your own way. |
 | Pitch: High & Low | Guided ribbon. Lift the Point, paint the Example low then high, let the Final Point fall. |
 | Pitch: Freestyle | Reach Low and High and swing between them. |
-| Pace: Fast, Slow & Pause | Guided ribbon. Slow Point, faster Example, pause and slow down to finish. |
+| Pace: Fast, Slow & Pause | Guided ribbon in words a minute: Slow for the Point, Fast for the Example, then pause and slow down. |
 | Pace: Freestyle | Reach Slow and Fast and swing between them. |
-| All Three: Full Vocal Variety | Two swings each in volume, pitch and pace in one answer, on three live lanes. |
+| All Three: Full Vocal Variety | Swings in volume, pitch and pace in one answer, on three live lanes. |
+
+**Pace is counted in words a minute, the same for every speaker:** **Slow is under 110,
+Steady is 110 to 139, Fast is 140 or more** (pauses count as slowing down; the ribbon aims at
+100, 125 and 150). Common published figures put conversation at roughly 120 to 150 and
+presentations at roughly 100 to 160, so 140 is an ordinary quick pace, not a strain.
+Words are counted from the speech itself: a few seconds of audio at a time go to
+`/api/transcribe` (Whisper, the same service the AI feedback uses), which returns the words
+with their times. Readings appear a few seconds late on screen but are filed at the moment
+the words were spoken, so scoring is exact. If the service cannot be reached, pace falls back
+to an estimate from the sound alone (peaks in the vowel energy, `wpmFromSound`, fitted to
+recordings of known speed) and the results say so. Measured against recordings from 60 to
+320 WPM, the sound-only estimate separates Slow, Steady and Fast only roughly, which is why
+words are counted whenever the service is available.
 
 **A round:**
 1. Read the question (swap it or have it read aloud) and pick the **speech length: 1 minute,
@@ -26,8 +39,8 @@ game shows the student's voice live.
    Longer speeches expect more swings. Each PREP part shows its vocal cue, such as
    "Point · Boom" or "Final Point · Low".
 2. **Prepare** for 30 seconds to 2 minutes (default 1 minute, remembered). Optional notes for
-   each PREP part; the microphone runs a sound check but records nothing yet. "I'm ready"
-   starts early and "+30s" adds time.
+   each PREP part. A **sound check** runs at the same time: whoever speaks now ("say a few
+   words in your normal voice") sets the zones. "I'm ready" starts early and "+30s" adds time.
 3. Speak for the chosen length after a 3-2-1 countdown. The current PREP part, its vocal cue
    and the student's own note are shown above the live stage, and a **PREP notes panel under
    the stage** shows all four notes with the part being spoken lit up ("No note" for a part
@@ -36,60 +49,67 @@ game shows the student's voice live.
    parts marked, a **part-by-part breakdown** (which zone each part was mostly in, against its
    cue), range in the dimension's own units, playback, and a coaching tip.
 
-**Find your range** (about 15 seconds) learns the whisper, natural and power volume, the
-natural speaking note, and the natural pace, so every zone fits the student's own voice and
-microphone. It is remembered for 12 hours on this device.
+**Nobody is tuned.** There is no "whisper, then shout" step. The zones follow whoever is
+speaking: the sound check sets the speaker's typical loudness (Whisper is more than about
+6 dB under it, Boom more than about 5 dB over it) and natural note (six semitones either way
+reaches High and Low), the loudness carries on from one student to the next, and pace is
+absolute words a minute. This also covers microphones that are louder or quieter than usual
+and the levelling a video call applies.
 
-**Playing over a video call.** Turn on **Settings → Video Call Audio → Capture Audio from
-Video Calls** (the same switch the home-page recorder uses). The games then listen to the
-audio of a call tab (Google Meet, Zoom web, Teams web) instead of the microphone, so a coach
-can share one screen while students take turns speaking from their own laptops.
-- Chrome or Edge on a computer only. The browser asks for the call tab once, with "Also share
-  tab audio" ticked, and the tab stays connected for every round and every student until the
-  coach presses "Disconnect call", closes the tab, or leaves the game. Stay on the game tab:
-  the round stops if the game tab is hidden.
-- **No tuning.** The zones follow the call's typical speech level (`callScale`). It starts at a
-  typical value, adjusts to each student from the sound check before the round ("ask the
-  student to say a few words"), and keeps learning across students (`learnCallLevel`, kept
-  12 hours). Pitch and pace adapt to each speaker automatically; call-mode volume zones are a
-  little narrower because the call levels and compresses the voice.
-- Expect pitch and pace to track well and volume to be the roughest of the three, because the
-  call's own loudness levelling and each student's microphone settings happen before the game
-  hears the audio. Only the students are heard: the coach's own voice is not in the tab audio.
+## Playing over a video call (every game)
 
-Game rules live in `vocal-variety-game.js` (pure functions, covered by
-`tests/vocal-variety-game.test.js`). Signal processing is in `vocal-variety-core.js`
-(pitch detection, the pace meter, pitch smoothing), the interface in `vocal-variety.js` and
-`vocal-variety.css`.
+The coach shares their screen in a Google Meet and students speak from their own laptops. The
+games listen to the call instead of the microphone:
 
-**Scoring.** Each dimension maps to a 0 to 1 level around the student's natural voice:
-volume (whisper 0, natural 0.5, power 1), pitch (natural note in the middle, six semitones to
-either edge), pace (natural rate in the middle, twice or half as fast at the edges; pauses
-count as slowing down). Variety = range (45%) + swings between zones (35%) + use of all
-three zones (20%). Guided games are 70% ribbon match and 30% variety; All Three averages the
-three dimensions. Talking for under half a round lowers the score; pauses are never
-penalised.
+1. Turn on **Meeting audio** (Settings → Video Call Audio, on the Speak on the Spot page, or on
+   the vocal variety home screen). It is the same switch as "Capture Audio from Video Calls".
+2. Press **Connect meeting audio** once. In the box the browser shows, choose your **Google Meet
+   tab** and tick **Also share tab audio**, or (Windows) choose **Entire Screen** and tick
+   **Also share system audio**, which also works when the call is in another window or app.
+3. A live meter says **Hearing the call** when a student speaks. If it stays flat, the panel
+   says what to try (picked the wrong tab, shared without sound, a window, and so on).
+4. Every game now uses that one connection until it is disconnected or the share stops:
+   - **Speak on the Spot** sends a few seconds of the call's audio at a time to `/api/transcribe`
+     (with the target words as a spelling hint) and runs its existing word detection on the text.
+   - **Home-page recorder** records the call without asking for the tab each time.
+   - **Vocal variety** reads loudness and pitch from the call audio and counts words a minute
+     for the pace games.
+   - **Think Fast** and **Warm Up** do not listen to anyone, so they need nothing.
 
-**Accuracy.** Volume is relative microphone level (measured on the smoothed loudness line,
-so syllable dips are not counted as range), not calibrated sound pressure. Pitch comes from
-voiced sound and needs a fairly quiet room. Pace counts energy peaks as syllables over 2.5
-seconds; it is an estimate, not words per minute, and shows changes about a second late
-(the pace ribbon allows for that). Strong means energetic, never strained.
+Chrome or Edge on a computer only. The coach stays on the game tab (a round stops if the tab is
+hidden). Only the students are heard: the coach's own voice is not in the shared audio. Pitch
+and pace track well over a call; volume is the roughest, because the call levels and compresses
+voices before the game hears them, and each student's microphone settings apply as well.
 
-**Privacy.** Audio stays in browser memory and is replaced by the next take. PREP notes stay
-on the screen. Nothing is uploaded. Stars, XP, badges and the tuned voice are saved in this
-browser's `localStorage` only and never change the coaching scores, progress, or history.
-Microphone tracks stop on Finish, navigation away, backgrounding, Escape, or page close.
+Files: `meeting-audio.js` (connection, panel, `ChunkTranscriber`), `api/transcribe.js` (short
+speech to text), `vocal-variety-game.js` (rules, pure functions, covered by
+`tests/vocal-variety-game.test.js`), `vocal-variety-core.js` (pitch, vowel filter, sound-only
+pace estimate), `vocal-variety.js` and `vocal-variety.css` (interface).
 
-The pitch reference is Ashwin Lecture 5 (`week5.js`): normalized autocorrelation detects
-voice pitch.
+**Scoring.** Each dimension maps to a 0 to 1 level. Variety = range (45%) + swings between
+zones (35%) + use of all three zones (20%). Guided games are 70% ribbon match and 30% variety;
+All Three averages the three dimensions. Talking for under half a round lowers the score;
+pauses are never penalised. Volume is relative level, not calibrated sound pressure. Strong
+means energetic, never strained.
 
-**Web only.** The loader and module guard against native Capacitor, and `build:web` does
-not package the preview modules. Do not include it in an Android release until the user
-has tested and approved it.
+**Privacy.** Audio and PREP notes stay in the browser. In meeting mode, and in the Pace games,
+a few seconds of speech at a time are sent to the app's speech service to be turned into words
+(nothing is stored by the app); the other games and the microphone-only Volume and Pitch games
+send nothing. Stars, XP, badges and the learned loudness are saved in this browser's
+`localStorage` only and never change the coaching scores, progress, or history. Capture stops
+on Finish, navigation away, backgrounding, Escape, or page close; the meeting connection stays
+open until it is disconnected (the browser shows its sharing indicator while it is).
 
-Run `npm test` for the signal and game-rule tests plus the existing app suite. The web
+`api/transcribe.js` has no login check, like `api/feedback.js`, and is limited to short audio
+chunks (1.5 MB) of known audio types. Every chunk with speech costs a little on the OpenAI
+account, so consider adding the same protection you add to the other endpoints.
+
+**Web only.** The loader and modules guard against native Capacitor, and `build:web` does
+not package them. Do not include them in an Android release until the user has tested and
+approved them.
+
+Run `npm test` for the signal, rules and endpoint tests plus the existing app suite. The web
 deployment serves the repository root; `www/` remains the Capacitor asset output.
 With a local server on port 8766 and Playwright CLI open on its index page, run
 `playwright-cli run-code --filename scripts/validate-vocal-variety-ui.js` to play the game
-with generated audio (a few minutes: tuning, preparation, and a full round).
+with generated audio.

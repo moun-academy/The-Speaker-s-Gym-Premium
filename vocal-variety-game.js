@@ -2,7 +2,7 @@
 // Every round is a PREP answer (Point, Reason, Example, Final Point) spoken with vocal variety
 // in one of three dimensions: volume, pitch or pace (or all three together).
 // Everything here is browser-only practice. It never feeds the app's AI coaching scores.
-import { quantile, PaceMeter, PitchSmoother, noteName } from './vocal-variety-core.js';
+import { quantile, PaceMeter, PitchSmoother, noteName, wpmFromSound } from './vocal-variety-core.js';
 
 export const FRAME_DT = 0.05;       // one stored frame every 50 ms
 export const SOFT_EDGE = 0.28;      // below this level: the low zone (whisper / low / slow)
@@ -11,24 +11,31 @@ const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 const mean = values => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 
 // Each dimension maps its measurement to the same 0..1 "level", so one engine scores them all.
-// `band` is how far from the ribbon still counts as a hit; `lag` allows for measurement delay
-// (pace is measured over a 2.5 s window, so it shows a change about a second late).
+// `band` is how far from the ribbon still counts as a hit. `lag` is kept at 0: pace readings arrive
+// a few seconds late while speech is being transcribed, but each reading is filed under the moment
+// the words were spoken, so scoring needs no allowance.
 export const DIMENSIONS = {
-  volume: { id: 'volume', name: 'Volume', zones: { soft: 'Whisper', natural: 'Steady', strong: 'Boom' }, band: 0.2, lag: 0 },
-  pitch: { id: 'pitch', name: 'Pitch', zones: { soft: 'Low', natural: 'Mid', strong: 'High' }, band: 0.22, lag: 0.3 },
-  pace: { id: 'pace', name: 'Pace', zones: { soft: 'Slow', natural: 'Steady', strong: 'Fast' }, band: 0.24, lag: 1.2 }
+  volume: { id: 'volume', name: 'Volume', zones: { soft: 'Whisper', natural: 'Steady', strong: 'Boom' }, hints: null, band: 0.2, lag: 0 },
+  pitch: { id: 'pitch', name: 'Pitch', zones: { soft: 'Low', natural: 'Mid', strong: 'High' }, hints: null, band: 0.22, lag: 0.3 },
+  pace: { id: 'pace', name: 'Pace', zones: { soft: 'Slow', natural: 'Steady', strong: 'Fast' }, hints: { soft: 'under 110 words a minute', natural: '110 to 139 words a minute', strong: '140 words a minute or more' }, band: 0.2, lag: 0 }
 };
 export const DIM_ORDER = ['volume', 'pitch', 'pace'];
 export const ZONE_ORDER = ['soft', 'natural', 'strong'];
 export const zoneOf = level => level < SOFT_EDGE ? 'soft' : level > STRONG_EDGE ? 'strong' : 'natural';
 export const zoneLabel = (dim, zone) => DIMENSIONS[dim].zones[zone];
+export const zoneHint = (dim, zone) => DIMENSIONS[dim].hints?.[zone] || '';
 
-// ---- The personal scale ------------------------------------------------------------
-// Volume: whisper = 0, natural = 0.5, power = 1 (dB measured in "Find your range").
-// Pitch: the natural speaking note is 0.5; six semitones up is 1, six down is 0.
-// Pace: the natural speaking rate is 0.5; twice as fast is 1, half as fast is 0.
-export const DEFAULT_SCALE = Object.freeze({ floor: -66, soft: -50, natural: -33, power: -19, pitchCenter: null, pace: null });
-export const DEFAULT_PACE = 3.2;
+// ---- Zones that fit every voice, with no tuning -------------------------------------------
+// Nobody is asked to whisper or shout. Zones hang off one number per speaker, their typical speech
+// level (dBFS): it starts at a typical value, moves to this speaker during the sound check before a
+// round ("say a few words"), and carries on from student to student, which also covers a microphone
+// that is louder or quieter than usual and the levelling a video call applies. Whisper is more than
+// about 6 dB under that level and Boom more than about 5 dB over it.
+//   Volume: whisper-ish = 0, typical = 0.5, loud = 1.
+//   Pitch:  the speaker's own median note is 0.5; six semitones up is 1, six down is 0.
+//   Pace:   absolute words per minute (see paceLevel), the same for every speaker.
+export const DEFAULT_NATURAL = -33;
+export const DEFAULT_SCALE = Object.freeze({ floor: -59, soft: -47, natural: -33, power: -22 });
 
 export function normalizeScale(raw = {}) {
   const pick = (value, fallback) => Number.isFinite(value) ? value : fallback;
@@ -39,32 +46,28 @@ export function normalizeScale(raw = {}) {
   if (power - natural < 6) { power = natural + 10; widened = true; }
   if (soft - floor < 6) floor = soft - 6;
   const pitchCenter = Number.isFinite(raw.pitchCenter) && raw.pitchCenter >= 30 && raw.pitchCenter <= 90 ? raw.pitchCenter : null;
-  const pace = Number.isFinite(raw.pace) && raw.pace >= 1 && raw.pace <= 9 ? raw.pace : null;
-  return { floor, soft, natural, power, span: power - soft, widened, pitchCenter, pace };
+  return { floor, soft, natural, power, span: power - soft, widened, pitchCenter };
 }
-
-// ---- Playing over a video call -----------------------------------------------------------
-// Audio that arrives through Google Meet has been through the speaker's own microphone settings and
-// the call's loudness levelling, so a tuned range from one person cannot be reused. Nobody is tuned.
-// Instead the zones hang off one number, the typical speech level of the call (dBFS), which starts
-// at a typical value and is nudged towards what is actually heard: the speaker's few words in the
-// sound check before a round, then the whole answer afterwards. It carries on from student to
-// student. The zones are narrower than a tuned range because call audio is levelled and compressed.
-export const CALL_DEFAULT_NATURAL = -33;
-export const callScale = natural => {
-  const n = clamp(Number.isFinite(natural) ? natural : CALL_DEFAULT_NATURAL, -55, -15);
-  return normalizeScale({ floor: n - 25, soft: n - 13, natural: n, power: n + 10 });
+export const voiceScale = (natural, pitchCenter = null) => {
+  const n = clamp(Number.isFinite(natural) ? natural : DEFAULT_NATURAL, -55, -15);
+  return normalizeScale({ floor: n - 26, soft: n - 14, natural: n, power: n + 11, pitchCenter });
 };
 // `dbs` are loudness readings taken while someone talked. Only readings within 25 dB of the loudest
-// count (the rest is room noise and gaps between words); less than a second of voice changes nothing.
-export function learnCallLevel(previous, dbs, weight = 0.6) {
+// count (the rest is room noise and gaps between words); under a second of voice changes nothing.
+export function learnVoiceLevel(previous, dbs, weight = 0.6) {
   const readings = dbs.filter(Number.isFinite);
   const loud = quantile(readings, 0.95);
   if (loud === null || loud < -70) return previous;
   const voiced = readings.filter(db => db > loud - 25);
   if (voiced.length < 10) return previous;
-  const before = Number.isFinite(previous) ? previous : CALL_DEFAULT_NATURAL;
+  const before = Number.isFinite(previous) ? previous : DEFAULT_NATURAL;
   return clamp(before + (quantile(voiced, 0.5) - before) * weight, -55, -15);
+}
+// The speaker's own natural note from the sound check (median of the notes heard, MIDI number). It is
+// never carried from one student to the next: another voice sits somewhere else.
+export function learnPitchCenter(midis) {
+  const voiced = midis.filter(Number.isFinite);
+  return voiced.length >= 15 ? quantile(voiced, 0.5) : null;
 }
 
 export function levelOf(db, scale) {
@@ -78,27 +81,19 @@ export function levelOf(db, scale) {
 export const dbOfLevel = (level, scale) => level <= 0.5
   ? scale.soft + level / 0.5 * (scale.natural - scale.soft)
   : scale.natural + (level - 0.5) / 0.5 * (scale.power - scale.natural);
-export const pitchLevel =(midi, center) => Number.isFinite(midi) && Number.isFinite(center) ? clamp(0.5 + (midi - center) / 12, -0.3, 1.3) : null;
-export const paceLevel = (rate, natural) => Number.isFinite(rate) && rate >= 0 ? clamp(0.5 + 0.5 * Math.log2(Math.max(rate, 0.25) / natural), -0.3, 1.3) : null;
+export const pitchLevel = (midi, center) => Number.isFinite(midi) && Number.isFinite(center) ? clamp(0.5 + (midi - center) / 12, -0.3, 1.3) : null;
+
+// Pace is absolute words per minute: Slow is under 110, Steady is 110 to 139, Fast is 140 or more.
+// The level line is centred on 124.5 (the middle of 110..139) so those whole numbers land exactly
+// in the right zones: 109 is Slow, 110 and 139 are Steady, 140 is Fast.
+export const WPM_SLOW_BELOW = 110;
+export const WPM_FAST_FROM = 140;
+const WPM_CENTER = 124.5, WPM_SLOPE = 0.0147;
+export const paceLevel = wpm => Number.isFinite(wpm) && wpm >= 0 ? clamp(0.5 + (Math.round(wpm) - WPM_CENTER) * WPM_SLOPE, -0.3, 1.3) : null;
+export const wpmOfLevel = level => WPM_CENTER + (level - 0.5) / WPM_SLOPE;
+export const paceZoneOfWpm = wpm => wpm < WPM_SLOW_BELOW ? 'soft' : wpm >= WPM_FAST_FROM ? 'strong' : 'natural';
 export const activeThreshold = scale => scale.floor + Math.max(4, (scale.soft - scale.floor) * 0.4);
 export const relativeDb = (db, scale) => db - scale.natural;
-
-// Frames are dB readings captured during the "Find your range" steps. `pitches` are note
-// estimates (MIDI numbers) from the natural-voice sentence; `paceRate` is its syllables per second.
-export function scaleFromCalibration({ silence = [], whisper = [], normal = [], power = [], pitches = [], paceRate = null }) {
-  const floor = quantile(silence, 0.9);
-  const gate = (Number.isFinite(floor) ? floor : DEFAULT_SCALE.floor) + 5;
-  const heard = frames => frames.filter(db => Number.isFinite(db) && db > gate);
-  const soft = heard(whisper), natural = heard(normal), strong = heard(power);
-  const voiced = pitches.filter(Number.isFinite);
-  return {
-    heard: { whisper: soft.length, normal: natural.length, power: strong.length, pitch: voiced.length },
-    scale: normalizeScale({
-      floor: floor ?? undefined, soft: quantile(soft, 0.5) ?? undefined, natural: quantile(natural, 0.5) ?? undefined,
-      power: quantile(strong, 0.8) ?? undefined, pitchCenter: voiced.length >= 10 ? quantile(voiced, 0.5) : undefined, pace: paceRate ?? undefined
-    })
-  };
-}
 
 // Peak-hold envelope. Syllable dips inside a word should not look like a drop in energy,
 // but a real pause should leave a gap.
@@ -119,26 +114,28 @@ export class EnvelopeTracker {
   }
 }
 
-// Turns one microphone reading into the three levels. Without a tuned pitch the centre is the
-// median of this take so far; without a tuned pace a typical rate is used.
+// Turns one microphone reading into volume and pitch levels, plus a sound-only pace estimate that is
+// used only if the speech service is not available (see wpmFromSound). Without a pitch centre from
+// the sound check, the centre is the median note of this take so far. `lowRms` is the level of the
+// low-passed signal (vowels), which the pace estimate counts.
 export class VoiceTracker {
   constructor(scale) { this.scale = scale; this.reset(); }
   reset() {
     this.envelope = new EnvelopeTracker(this.scale); this.smoother = new PitchSmoother();
-    this.meter = new PaceMeter({ window: 2.5, gateDb: activeThreshold(this.scale) }); this.history = [];
+    this.meter = new PaceMeter({ window: 3.5, gateDb: activeThreshold(this.scale) - 8 }); this.history = [];
   }
-  push(t, rms, midi) {
+  push(t, rms, midi, lowRms = rms) {
     const db = 20 * Math.log10(Math.max(rms, 1e-5));
     const env = this.envelope.push(t, db);
     const talking = env.level !== null;
     if (Number.isFinite(midi) && env.active) { this.history.push(midi); if (this.history.length > 600) this.history.shift(); }
     const smooth = this.smoother.push(t, env.active ? midi : null);
     const center = this.scale.pitchCenter ?? (this.history.length >= 15 ? quantile(this.history, 0.5) : null);
-    const rate = this.meter.push(t, rms);
+    const peaks = this.meter.push(t, lowRms);
     return {
       t, db, active: env.active, volume: env.level,
-      midi: talking ? smooth : null, pitch: talking ? pitchLevel(smooth, center) : null,
-      rate, pace: paceLevel(rate, this.scale.pace ?? DEFAULT_PACE), center
+      midi: talking ? smooth : null, pitch: talking ? pitchLevel(smooth, center) : null, center,
+      soundWpm: talking && peaks !== null ? wpmFromSound(peaks) : null
     };
   }
 }
@@ -209,11 +206,12 @@ export const STAGES = [
   },
   {
     id: 'pace-ribbon', dim: 'pace', kind: 'guided', title: 'Pace: Fast, Slow & Pause',
-    what: 'Follow the ribbon. Slow for your Point, faster for your Example, then pause and slow right down to finish.',
+    what: 'Follow the ribbon. Slow for your Point (under 110 words a minute), faster for your Example (140 or more), then pause and slow right down to finish.',
     plan: {
       duration: 40, goalSwings: 3,
-      keys: [[0, 0.22], [7, 0.22], [8.5, 0.5], [17, 0.5], [18.5, 0.8], [30, 0.8], [32, 0.2], [40, 0.18]],
-      phases: prepPhases([8, 10, 14, 8], [['Slow', 'Slow and clear. Let each word count.'], ['Steady', 'Explain why at your natural speed.'], ['Fast', 'Speed up. The story has energy.'], ['Slow + Pause', 'Pause, then slow right down for the takeaway.']])
+      // Levels 0.14, 0.5 and 0.87 are about 100, 125 and 150 words a minute.
+      keys: [[0, 0.14], [7, 0.14], [8.5, 0.5], [17, 0.5], [18.5, 0.87], [30, 0.87], [32, 0.14], [40, 0.12]],
+      phases: prepPhases([8, 10, 14, 8], [['Slow', 'Under 110 words a minute. Slow and clear, let each word count.'], ['Steady', '110 to 139 words a minute. Explain why at an easy pace.'], ['Fast', '140 words a minute or more. Speed up, the story has energy.'], ['Slow + Pause', 'Pause, then slow right down (under 110) for the takeaway.']])
     }
   },
   {
@@ -221,7 +219,7 @@ export const STAGES = [
     what: 'No ribbon. Change speed and use pauses your own way across your PREP answer.',
     plan: {
       duration: 45, goalSwings: 4,
-      phases: prepPhases([9, 11, 15, 10], [['Slow', 'Open slowly. Let it land.'], ['Steady', 'Natural speed for the reason.'], ['Fast', 'Pick up speed in the story.'], ['Pause', 'Pause, then deliver the takeaway slowly.']])
+      phases: prepPhases([9, 11, 15, 10], [['Slow', 'Open slowly (under 110 words a minute). Let it land.'], ['Steady', '110 to 139 words a minute for the reason.'], ['Fast', 'Pick up speed (140 or more) in the story.'], ['Pause', 'Pause, then deliver the takeaway slowly.']])
     }
   },
   {
@@ -376,20 +374,20 @@ export function dimensionStats(frames, dim, plan, guided, scale) {
     const value = midis.length >= 10 ? quantile(midis, 0.9) - quantile(midis, 0.1) : 0;
     range = { value, text: `${value.toFixed(1)} semitones`, low: quantile(midis, 0.1), high: quantile(midis, 0.9) };
   } else {
-    const rates = shown.map(frame => frame.rate).filter(Number.isFinite);
-    const low = quantile(rates, 0.1), high = quantile(rates, 0.9);
-    const value = rates.length >= 10 && low > 0 ? high / low : 0;
-    range = { value, text: rates.length >= 10 ? `${low.toFixed(1)}–${high.toFixed(1)} syllables/s` : '—', low, high };
+    const wpms = shown.map(frame => frame.wpm).filter(Number.isFinite);
+    const low = quantile(wpms, 0.1), high = quantile(wpms, 0.9);
+    const value = wpms.length >= 10 ? high - low : 0;
+    range = { value, text: wpms.length >= 10 ? `${Math.round(low)} to ${Math.round(high)} words a minute` : '—', low, high };
   }
   const describe = frame => {
     if (!frame) return null;
     const base = { t: frame.t, level: frame[dim] };
     if (dim === 'volume') {
       const rel = dbOfLevel(frame.volume, scale) - scale.natural;
-      return { ...base, rel, text: `${signedNumber(rel)} dB vs your natural voice` };
+      return { ...base, rel, text: `${signedNumber(rel)} dB vs the usual level` };
     }
-    if (dim === 'pitch') return { ...base, rel: Number.isFinite(center) ? frame.midi - center : 0, text: `${noteName(frame.midi)}, ${signedNumber(Number.isFinite(center) ? frame.midi - center : 0, 1)} semitones vs your natural note` };
-    return { ...base, rel: frame.rate, text: `about ${frame.rate.toFixed(1)} syllables per second` };
+    if (dim === 'pitch') return { ...base, rel: Number.isFinite(center) ? frame.midi - center : 0, text: `${noteName(frame.midi)}, ${signedNumber(Number.isFinite(center) ? frame.midi - center : 0, 1)} semitones vs the usual note` };
+    return { ...base, rel: frame.wpm, text: `about ${Math.round(frame.wpm)} words a minute` };
   };
   const peak = shown.reduce((best, frame) => !best || frame[dim] > best[dim] ? frame : best, null);
   const low = shown.filter(frame => frame.active || dim !== 'volume').reduce((best, frame) => !best || frame[dim] < best[dim] ? frame : best, null);
@@ -456,7 +454,7 @@ export function prepBreakdown(frames, stage) {
 }
 
 export function rangeLabel(dim, value) {
-  const cuts = { volume: [6, 12, 20], pitch: [2, 4, 7], pace: [1.3, 1.7, 2.3] }[dim];
+  const cuts = { volume: [6, 12, 20], pitch: [2, 4, 7], pace: [20, 40, 70] }[dim];   // dB, semitones, words a minute
   return value < cuts[0] ? 'Flat' : value < cuts[1] ? 'Gentle' : value < cuts[2] ? 'Dynamic' : 'Electric';
 }
 
@@ -470,8 +468,8 @@ const MISSING = {
     soft: 'Your voice never went Low. Let your pitch fall on the Final Point: falling pitch sounds certain.'
   },
   pace: {
-    strong: 'You never sped up. Tell your Example faster, as if the story is exciting.',
-    soft: 'You never slowed down. Slow your Point, and pause before your Final Point.'
+    strong: 'You never reached Fast (140 words a minute or more). Tell your Example quicker, as if the story is exciting.',
+    soft: 'You never reached Slow (under 110 words a minute). Slow your Point, and pause before your Final Point.'
   }
 };
 export function coachingTip(result) {
@@ -485,7 +483,7 @@ export function coachingTip(result) {
   if (stats.shares.soft < 0.08) return prefix + MISSING[focus].soft;
   if (stats.swings < stats.swingGoal) return `${prefix}You stayed in one gear for long stretches. Every PREP step is a chance to change: try a new ${DIMENSIONS[focus].name.toLowerCase()} for each part.`;
   if (result.kind === 'guided' && result.match < 0.6) {
-    return focus === 'pace' ? 'Speed changes take about a second to show. Start speeding up or slowing down as the ribbon begins to turn.' : 'Watch the glowing ribbon a little earlier. Start changing as the ribbon turns, not after it has passed.';
+    return focus === 'pace' ? 'Your pace is measured over the last few seconds, so it shows a change a little late. Start speeding up or slowing down as the ribbon begins to turn.' : 'Watch the glowing ribbon a little earlier. Start changing as the ribbon turns, not after it has passed.';
   }
   if (result.kind === 'guided' && result.match < 0.85) return 'Strong contrast. To tighten up, change on a PREP boundary and hold it until the ribbon moves.';
   return 'That is real vocal variety with a clear structure: every PREP part sounded different. Try a new question to keep it fresh.';
@@ -504,7 +502,7 @@ export function rankFor(xp) {
   return { index, name: current.name, nextName: next?.name || null, into, span, toNext: next ? next.xp - xp : 0, pct: next ? clamp(into / span, 0, 1) : 1 };
 }
 
-export const emptyProgress = () => ({ v: 1, xp: 0, rounds: 0, stars: {}, best: {}, badges: {}, streak: { count: 0, last: null }, seen: {}, tuned: false });
+export const emptyProgress = () => ({ v: 1, xp: 0, rounds: 0, stars: {}, best: {}, badges: {}, streak: { count: 0, last: null }, seen: {} });
 
 export function sanitizeProgress(raw) {
   const base = emptyProgress();
@@ -517,8 +515,7 @@ export function sanitizeProgress(raw) {
     best: table(raw.best, v => Number.isFinite(v) && v >= 0 && v <= 100),
     badges: table(raw.badges, v => typeof v === 'string'),
     streak: { count: number(raw.streak?.count), last: typeof raw.streak?.last === 'string' ? raw.streak.last : null },
-    seen: table(raw.seen, v => Number.isInteger(v) && v >= 0 && v < QUESTIONS.length),
-    tuned: raw.tuned === true
+    seen: table(raw.seen, v => Number.isInteger(v) && v >= 0 && v < QUESTIONS.length)
   };
 }
 
@@ -532,7 +529,6 @@ function nextStreak(streak, now) {
 
 const dimOf = (ctx, dim) => ctx.result?.dims?.[dim] || null;
 export const BADGES = [
-  { id: 'tuned', name: 'Tuned In', icon: '🎚️', desc: 'Find your range for the first time.', earned: ctx => ctx.progress.tuned },
   { id: 'prepared', name: 'Prepared', icon: '📝', desc: 'Write notes for all four PREP parts before a round.', earned: ctx => ctx.prepared === true },
   { id: 'whisper', name: 'First Whisper', icon: '◌', desc: 'Spend 2 seconds in the Whisper zone.', earned: ctx => dimOf(ctx, 'volume')?.seconds.soft >= 2 },
   { id: 'boom', name: 'Boom!', icon: '💥', desc: 'Spend 2 seconds in the Boom zone.', earned: ctx => dimOf(ctx, 'volume')?.seconds.strong >= 2 },
@@ -555,15 +551,6 @@ function awardBadges(progress, ctx, now) {
     fresh.push(badge);
   }
   return fresh;
-}
-
-export function applyTune(progress, now = new Date()) {
-  const base = sanitizeProgress(progress);
-  const next = { ...base, badges: { ...base.badges }, streak: nextStreak(base.streak, now) };
-  const gained = next.tuned ? 5 : 20;
-  next.xp += gained; next.tuned = true;
-  const badges = awardBadges(next, {}, now);
-  return { progress: next, xpGained: gained, newBadges: badges, rank: rankFor(next.xp) };
 }
 
 // `questionIndex` is the question that was just played; `seen[stage]` stores the next one to offer.
