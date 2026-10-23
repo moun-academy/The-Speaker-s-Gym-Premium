@@ -21,7 +21,11 @@ The connection is shared across rounds. Finishing a round releases its recording
 - If local microphone access is denied, remote participants can still play. The panel explains how to reconnect with the host microphone.
 - A silent connection cannot start a vocal-variety round. Ask the speaker to say a few words first.
 
-Meet can smooth loudness and filter sound. Volume feedback reflects what reaches the host through the call, not calibrated loudness in the participant's room. Pitch and volume are analyzed locally. Pace games send short audio clips to the speech service to count words; they show an estimate when that service is unavailable. Tell participants before playing.
+During the sound check, speak normally for a few seconds. Background noise alone cannot set the scale. Each speaker gets a fresh midpoint, fixed during the round, so a normal voice stays near Steady and deliberate louder/softer speech moves above/below it.
+
+Meet can smooth loudness and filter sound. Volume feedback reflects what reaches the host through the call, not calibrated loudness in the participant's room. Pitch and volume are analyzed locally. Pace games send short audio clips to the signed-in speech service to count words. Tell participants before playing.
+
+Pace updates after recognition, roughly every three seconds plus network/processing time. Its dot and trace appear behind the white time line, at the time those words were spoken. WPM uses the time between recognized words, with pauses between them included. Unrecognized or missing clips are not guessed. If recognition fails or covers too little of the speech, the round is not scored; sign in again or check the connection as the message indicates.
 
 ## Verification
 

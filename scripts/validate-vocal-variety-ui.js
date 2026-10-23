@@ -37,13 +37,16 @@ async (page) => {
 
   // 3. Fixtures: a microphone, a fake Meet tab, and a fake speech service that returns words at a speed the test sets.
   await page.evaluate(() => {
-    window.fixture = { amp: 0.00005, hz: 150, streams: [], picks: 0, t0: 0, wpmAt: () => 120, fetches: [] };
+    window.fixture = { amp: 0, hz: 150, streams: [], picks: 0, t0: 0, wpmAt: () => 120, fetches: [], failSpeech: false };
     const makeTone = () => {
       const ctx = new AudioContext(); const osc = ctx.createOscillator(), gain = ctx.createGain(), dest = ctx.createMediaStreamDestination();
       osc.type = 'sawtooth'; const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; osc.frequency.value = 150; gain.gain.value = 0; osc.connect(lp); lp.connect(gain); gain.connect(dest); osc.start();
-      const timer = setInterval(() => { gain.gain.setTargetAtTime(window.fixture.amp, ctx.currentTime, 0.005); osc.frequency.setTargetAtTime(window.fixture.hz, ctx.currentTime, 0.01); }, 10);
+      const noise = ctx.createBufferSource(), buffer = ctx.createBuffer(1, 16000, ctx.sampleRate), samples = buffer.getChannelData(0);
+      let seed = 42; for (let i = 0; i < samples.length; i++) { seed = (1664525 * seed + 1013904223) >>> 0; samples[i] = (seed / 2 ** 32 - 0.5) * 0.006; }
+      noise.buffer = buffer; noise.loop = true; noise.connect(dest); noise.start();
+      const timer = setInterval(() => { gain.gain.setTargetAtTime(window.fixture.amp * (0.65 + 0.35 * Math.cos(ctx.currentTime * 2 * Math.PI * 3)), ctx.currentTime, 0.005); osc.frequency.setTargetAtTime(window.fixture.hz, ctx.currentTime, 0.01); }, 10);
       const track = dest.stream.getAudioTracks()[0], stop = track.stop.bind(track);
-      track.stop = () => { stop(); clearInterval(timer); osc.stop(); ctx.close().catch(() => {}); track.dispatchEvent(new Event('ended')); };
+      track.stop = () => { stop(); clearInterval(timer); osc.stop(); noise.stop(); ctx.close().catch(() => {}); track.dispatchEvent(new Event('ended')); };
       return track;
     };
     navigator.mediaDevices.getUserMedia = async () => { const stream = new MediaStream([makeTone()]); window.fixture.streams.push(stream); return stream; };
@@ -56,10 +59,11 @@ async (page) => {
     const realFetch = window.fetch.bind(window);
     window.fetch = async (url, init) => {
       if (!String(url).includes('/api/transcribe')) return realFetch(url, init);
+      if (window.fixture.failSpeech) return new Response('{}', { status: 401 });
       const t = (performance.now() - window.fixture.t0) / 1000, prompt = init.body.get('prompt') || '';
       window.fixture.fetches.push({ t, prompt });
-      const n = Math.round(window.fixture.wpmAt(t - 1.5) * 3 / 60);
-      const words = Array.from({ length: n }, (_, i) => ({ word: 'word', start: (i + 0.5) * 3 / Math.max(n, 1) - 0.15, end: (i + 0.5) * 3 / Math.max(n, 1) + 0.1 }));
+      const wpm = window.fixture.wpmAt(t - 1.5), interval = 60 / wpm;
+      const words = Array.from({ length: Math.ceil(3 / interval) }, (_, i) => ({ word: 'word', start: (i + 0.25) * interval, end: (i + 0.5) * interval })).filter(w => w.start < 3);
       return new Response(JSON.stringify({ text: words.map(() => 'word').join(' ') + (prompt ? ` ${prompt}` : ''), words, duration: 3 }), { status: 200, headers: { 'content-type': 'application/json' } });
     };
   });
@@ -71,14 +75,30 @@ async (page) => {
   check(await page.locator('[data-act="speech-time"][data-seconds="120"]').getAttribute('aria-checked') === 'true', 'speech length should default to 2 minutes');
   await page.locator('[data-act="speech-time"][data-seconds="60"]').click();
   await page.locator('[data-act="prep-time"][data-seconds="30"]').click();
-  await page.evaluate(() => { window.fixture.amp = 0.05; });
   await page.getByRole('button', { name: /Start preparing/ }).click();
+  await page.waitForTimeout(2200);
+  check(!(await page.locator('#vvMicText').innerText()).startsWith('✓'), 'background noise must not set the voice level');
+  await page.evaluate(() => { window.fixture.amp = 0.05; });
   for (const key of ['point', 'reason', 'example', 'finalPoint']) await page.locator(`[data-note="${key}"]`).fill(`my ${key}`);
   await page.waitForFunction(() => document.getElementById('vvMicText')?.textContent.startsWith('✓ Voice level set'), null, { timeout: 8000 });
   await page.getByRole('button', { name: /I’m ready/ }).click();
   await page.waitForSelector('#vvStageCanvas');
   check(await page.locator('#vvNotes li').count() === 4, 'PREP notes panel missing under the stage');
-  await page.waitForTimeout(6000);
+  await page.waitForTimeout(4500);
+  const normalVolume = Number(await page.locator('#vvReading').getAttribute('data-volume'));
+  check(normalVolume > 0.28 && normalVolume < 0.72, `normal speech should be Steady, not pinned at the top: ${normalVolume}`);
+  await page.evaluate(() => { window.fixture.amp = 0; });
+  await page.waitForTimeout(1200);
+  check(await page.locator('#vvReading').getAttribute('data-volume') === '', 'background noise should not light the volume meter');
+  await page.evaluate(() => { window.fixture.amp = 0.0125; });
+  await page.waitForTimeout(1300);
+  const softVolume = Number(await page.locator('#vvReading').getAttribute('data-volume'));
+  check(softVolume < 0.28, `soft speech should move below Steady: ${softVolume}`);
+  await page.evaluate(() => { window.fixture.amp = 0.14; });
+  await page.waitForTimeout(1300);
+  const loudVolume = Number(await page.locator('#vvReading').getAttribute('data-volume'));
+  check(loudVolume > 0.72, `louder speech should move above Steady: ${loudVolume}`);
+  await page.evaluate(() => { window.fixture.amp = 0.05; });
   check((await page.locator('#vvCueNote').innerText()).includes('my '), 'the PREP note should show while speaking');
   await page.getByRole('button', { name: /Finish/ }).click();
   await page.waitForFunction(() => document.getElementById('vvView').dataset.view === 'results', null, { timeout: 10000 });
@@ -148,6 +168,19 @@ async (page) => {
   check(await page.evaluate(() => document.querySelector('.vv-tile.wide ~ .vv-tile')?.textContent.includes('WPM')), 'the pace range should be in WPM');
   check(await page.evaluate(() => window.fixture.picks) === 1, 'the pace round must reuse the connection');
 
+  // A failed recognition request must show a repair message, not random WPM or an earned score.
+  await page.getByRole('button', { name: 'Try this question again' }).click();
+  await page.getByRole('button', { name: /Start preparing/ }).click();
+  await page.waitForFunction(() => document.getElementById('vvMicText')?.textContent.startsWith('✓ Voice level set'), null, { timeout: 8000 });
+  await page.evaluate(() => { window.fixture.failSpeech = true; });
+  await page.getByRole('button', { name: /I’m ready/ }).click();
+  await page.waitForFunction(() => document.getElementById('vvLiveStatus')?.textContent.includes('Sign in again'), null, { timeout: 14000 });
+  check(await page.locator('#vvReading').getAttribute('data-wpm') === '', 'recognition failure must not fabricate WPM');
+  const roundsBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('sg-vocal-arena-v1')).rounds);
+  await page.getByRole('button', { name: /Finish/ }).click();
+  await page.waitForFunction(() => document.getElementById('vvView').dataset.view === 'brief', null, { timeout: 10000 });
+  check(await page.evaluate(() => JSON.parse(localStorage.getItem('sg-vocal-arena-v1')).rounds) === roundsBefore, 'unmeasured pace round must not award progress');
+
   // 9. Disconnect releases the call, and the preview stays web-only.
   await page.evaluate(() => { window.navigateToPage('settings'); });
   await panel.getByRole('button', { name: 'Disconnect' }).click();
@@ -164,5 +197,5 @@ async (page) => {
   await nativePage.close();
 
   if (failures.length || errors.length) throw new Error(`Vocal variety UI validation failed: ${JSON.stringify({ failures, errors })}`);
-  return { failures, errors, nativeAssets };
+  return { failures, errors, nativeAssets, normalVolume, softVolume, loudVolume, paceParts };
 }

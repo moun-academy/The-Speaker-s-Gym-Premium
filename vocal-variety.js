@@ -1,11 +1,12 @@
 // Vocal Variety Arena: a web-only practice game. Answer a question with PREP (Point, Reason,
 // Example, Final Point) and vary your volume, pitch or pace while you speak.
-// Audio stays in this browser and nothing is uploaded.
-import { detectPitch, lowPassRms, rmsOf, midiOf, noteName } from './vocal-variety-core.js';
-import { ChunkTranscriber, MeetingAudio, wpmFromWords } from './meeting-audio.js';
+// Volume and pitch stay local. Pace sends short clips to the signed-in speech service.
+import { detectPitch, rmsOf, midiOf, noteName } from './vocal-variety-core.js';
+import { ChunkTranscriber, MeetingAudio } from './meeting-audio.js';
+import { WordPaceTracker } from './vocal-variety-pace.js';
 import {
   BADGES, DEFAULT_NATURAL, DEFAULT_SPEECH, DIMENSIONS, DIM_ORDER, FRAME_DT, PREP_PARTS, QUESTIONS, SOFT_EDGE, SPEECH_LENGTHS, STAGES, STRONG_EDGE,
-  VoiceTracker, applyRound, coachingTip, countSwings, learnPitchCenter, learnVoiceLevel, lengthLabel, paceLevel, phaseAt, prepBreakdown,
+  VoiceTracker, VoiceCalibration, applyRound, coachingTip, countSwings, lengthLabel, paceLevel, phaseAt, prepBreakdown,
   questionIndexFor, rangeLabel, rankFor, ribbonCredit, sanitizeProgress, scaleStage, scoreRound, stageById, targetAt, voiceScale, zoneHint,
   zoneLabel, zoneOf
 } from './vocal-variety-game.js';
@@ -15,7 +16,7 @@ const native = window.Capacitor?.isNativePlatform?.() || ['capacitor:', 'ionic:'
 // ---------------------------------------------------------------------------------------
 // small helpers
 // ---------------------------------------------------------------------------------------
-const PROGRESS_KEY = 'sg-vocal-arena-v1', MUTE_KEY = 'sg-vocal-arena-muted', PREP_KEY = 'sg-vocal-arena-prep', SPEECH_KEY = 'sg-vocal-arena-speech', VOICE_KEY = 'sg-vocal-arena-voice-v1';
+const PROGRESS_KEY = 'sg-vocal-arena-v1', MUTE_KEY = 'sg-vocal-arena-muted', PREP_KEY = 'sg-vocal-arena-prep', SPEECH_KEY = 'sg-vocal-arena-speech';
 const PREP_CHOICES = [30, 60, 90, 120];
 const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -189,13 +190,9 @@ function mount() {
   // the same switch the rest of the app uses), from the call the coach shared: see meeting-audio.js.
   const callOn = () => MeetingAudio.enabled();
 
-  // Nobody is tuned. The zones follow this speaker's typical loudness, learned from the sound check
-  // before each round and carried on to the next speaker (kept for 12 hours on this device).
-  let voiceNatural = DEFAULT_NATURAL;
-  const savedVoice = read(VOICE_KEY);
-  if (Number.isFinite(savedVoice?.natural) && Date.now() - savedVoice.at < 12 * 3600e3) voiceNatural = savedVoice.natural;
-  const learnVoice = (dbs, weight) => { voiceNatural = learnVoiceLevel(voiceNatural, dbs, weight); write(VOICE_KEY, { natural: voiceNatural, at: Date.now() }); };
-  const zonesNow = (pitchCenter = null) => voiceScale(voiceNatural, pitchCenter);
+  // Each speaker gets a fresh speech-only sound check. Do not reuse the old noise-trained
+  // localStorage baseline or learn a new "normal" from deliberate loud/soft exercise voices.
+  const zonesNow = calibration => voiceScale(calibration?.natural ?? DEFAULT_NATURAL, calibration?.pitchCenter, calibration?.noiseFloor);
 
   async function openMic(token) {
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -425,7 +422,7 @@ function mount() {
     viewEl.querySelector('[data-focus]')?.focus({ preventScroll: true });
     announce(`Prepare your answer. You have ${prepSeconds} seconds.`);
     const token = micToken;
-    prep = { mic: null, endsAt: performance.now() + prepSeconds * 1000, total: prepSeconds, waitingForAudio: true, call: callOn(), dbs: [], midis: [], captured: false, ticks: 0, openedAt: performance.now() };
+    prep = { mic: null, endsAt: performance.now() + prepSeconds * 1000, total: prepSeconds, waitingForAudio: true, call: callOn(), calibration: new VoiceCalibration(), captured: false, ticks: 0, openedAt: performance.now() };
     const state = prep;
     if (state.call && !MeetingAudio.isConnected()) $('#vvMicText').textContent = 'Choose your Google Meet tab (or Entire Screen with system audio) in the box your browser shows…';
     state.interval = setInterval(() => tickPrep(state), 100);
@@ -449,13 +446,12 @@ function mount() {
     if (state.mic) {
       state.mic.analyser.getFloatTimeDomainData(state.mic.buffer);
       const db = dbOf(rmsOf(state.mic.buffer));
-      // The sound check: the loudness and the natural note of whoever speaks now set the zones for the round.
-      if (state.dbs.length < 3000) state.dbs.push(db);
-      if (db > voiceNatural - 22 && state.midis.length < 600) state.midis.push(midiOf(detectPitch(state.mic.buffer, state.mic.context.sampleRate)));
-      const level = clamp((db + 70) / 50, 0, 1);
+      const midi = midiOf(detectPitch(state.mic.buffer, state.mic.context.sampleRate, 0.0005));
+      const measured = state.calibration.push(db, midi);
+      const level = Number.isFinite(midi) ? clamp((db + 65) / 50, 0, 1) : 0;
       $('#vvMicLevel').style.width = `${(level * 100).toFixed(0)}%`;
       $('#vvMicCheck').classList.toggle('hearing', level > 0.35);
-      if (!state.captured && state.dbs.length % 5 === 0 && learnVoiceLevel(voiceNatural, state.dbs, 1) !== voiceNatural) {
+      if (!state.captured && measured) {
         state.captured = true; $('#vvMicText').textContent = SOUND_CHECK.done; $('#vvMicCheck').classList.add('set');
       }
       // Nothing heard for a while: say what to try.
@@ -469,19 +465,19 @@ function mount() {
   }
   function beginRound() {
     const state = prep; if (!state?.mic) return;
-    if (state.call && !state.dbs.some(db => db > -62)) {
-      $('#vvMicText').textContent = 'No voice has reached the game yet. Ask the speaker to unmute and say hello. If the bar stays flat, reconnect to the Google Meet tab with tab audio on.';
-      $('#vvReconnect')?.removeAttribute('hidden');
+    const calibration = state.calibration.result();
+    if (!calibration) {
+      $('#vvMicText').textContent = state.call
+        ? 'Ask the speaker to unmute and speak normally for a few seconds. We need their voice, not background noise, to set the volume scale.'
+        : 'Speak normally for a few seconds first. We need your voice, not background noise, to set the volume scale.';
+      if (state.call) $('#vvReconnect')?.removeAttribute('hidden');
       return;
     }
     const mic = state.mic;
-    // The speaker's own level and natural note, from the sound check (the last speaker's level is the fallback).
-    if (state.captured) learnVoice(state.dbs, 0.9);
-    const pitchCenter = learnPitchCenter(state.midis);
     teardown({ keepMic: true });
     view = 'live'; render();
     root.scrollIntoView({ block: 'start', behavior: 'instant' });
-    startRound(mic, pitchCenter);
+    startRound(mic, calibration);
   }
   // After a wrong pick: connect again from this click, then carry on with a fresh microphone for the check.
   async function reconnectCall() {
@@ -489,7 +485,7 @@ function mount() {
     state.reconnecting = true;
     try { await MeetingAudio.connect(); } catch (error) { notice = micMessage(error); go('brief', { quiet: true }); return; }
     if (prep !== state) return;
-    closeMic(state.mic); state.mic = null; state.captured = false; state.dbs = []; state.midis = [];
+    closeMic(state.mic); state.mic = null; state.captured = false; state.calibration = new VoiceCalibration();
     const token = micToken;
     const mic = await openMic(token).catch(() => null);
     if (!mic || token !== micToken || prep !== state) return;
@@ -523,14 +519,15 @@ function mount() {
         <ol>${plan.phases.map((p, i) => `<li data-part="${i}" ${i === 0 ? 'class="now" aria-current="step"' : ''}><span class="vv-letter">${p.letter}</span><div><b>${esc(p.label)}</b><p ${notes[p.key].trim() ? '' : 'class="empty"'}>${notes[p.key].trim() ? esc(notes[p.key]) : 'No note'}</p></div></li>`).join('')}</ol>
       </section>
       ${goals.length ? `<ul class="vv-goals" id="vvGoals">${goals.map(goal => `<li data-goal="${goal.id}"><span aria-hidden="true"></span>${esc(goal.label)}</li>`).join('')}</ul>` : ''}
+      <p class="vv-status" id="vvReading" aria-live="off">Waiting for speech.</p>
       <p class="vv-status" id="vvLiveStatus" role="status">Get ready…</p>
     </div>`;
   }
-  function startRound(mic, pitchCenter = null) {
-    const plan = stage.plan, roundScale = zonesNow(pitchCenter);
+  function startRound(mic, calibration) {
+    const plan = stage.plan, roundScale = zonesNow(calibration);
     round = {
       mic, plan, guided: stage.kind === 'guided', mode: 'countdown', t0: 0, frames: [], scale: roundScale, call: callOn(), tracker: new VoiceTracker(roundScale), tick: 0, lastMidi: null,
-      wantsPace: stage.dim === 'pace' || stage.dim === 'all', paceSource: 'speech', speech: null, soundFrames: 0, finishing: false,
+      wantsPace: stage.dim === 'pace' || stage.dim === 'all', paceSource: 'speech', speech: null, paceError: '', finishing: false,
       live: { t: 0, volume: null, pitch: null, pace: null, wpm: null, active: false, db: -90 }, display: { volume: -0.1, pitch: -0.1, pace: -0.1 },
       particles: [], timers: [], recorder: null, chunks: [], lastHud: 0, lastScore: 0, phaseKey: -1
     };
@@ -561,82 +558,72 @@ function mount() {
         r.recorder.start();
       } catch { r.recorder = null; }
     }
+    $('#vvLiveStatus').textContent = r.wantsPace
+      ? 'Listening. Pace counts recognized words and appears a few seconds behind the white time line.'
+      : 'Listening. Follow the vocal cue for each part.';
     if (r.wantsPace) startSpeech(r);
-    $('#vvLiveStatus').textContent = 'Listening. Answer with PREP and follow the vocal cue for each part.';
     announce(`Go. ${r.plan.phases[0].label}: ${r.plan.phases[0].zone}. ${r.plan.phases[0].cue}`);
   }
 
   // ----- pace: count the words ---------------------------------------------------------------
   // Words a minute needs real words, so for the Pace games (and All Three) a few seconds of the audio at a
   // time go to the app's speech service, which returns the words with their times. Each reading is filed at the
-  // moment the words were spoken, so it shows up a few seconds late on screen but is exact in the score. If the
-  // service cannot be reached, the pace falls back to an estimate from the sound alone (see wpmFromSound).
+  // moment the words were spoken. Never turn sound peaks into pretend words when recognition fails.
   function startSpeech(r) {
-    const transcriber = new ChunkTranscriber(r.mic.stream, { chunkMs: 3000, onResult: res => paceResult(r, res), onFail: fail => paceFailed(r, fail) });
-    if (!transcriber.start()) { r.paceSource = 'sound'; return; }
+    const transcriber = new ChunkTranscriber(r.mic.stream, {
+      chunkMs: 3000, voicedDb: Math.max(-70, r.scale.noiseFloor + 6),
+      onResult: res => paceResult(r, res), onFail: fail => paceFailed(r, fail)
+    });
+    r.speech = { transcriber, pace: new WordPaceTracker() };
+    if (!transcriber.start()) { paceFailed(r, { status: 0, failures: 2 }); return; }
     transcriber.t0 = r.t0;
-    r.speech = { transcriber, words: [], coveredTo: 0, liveWpm: null };
   }
   // Words a minute around moment t: the words that started within 3 seconds either side (only the part of
   // that window already transcribed), pauses included. Null if nobody was speaking there.
   function windowWpm(r, t) {
-    const from = Math.max(0, t - 3), to = Math.min(t + 3, r.speech.coveredTo);
-    if (to - from < 2.5) return null;
-    const first = Math.floor(from / FRAME_DT), last = Math.min(r.frames.length - 1, Math.floor(to / FRAME_DT));
-    let voiced = false;
-    for (let i = first; i <= last; i++) if (Number.isFinite(r.frames[i]?.volume)) { voiced = true; break; }
-    if (!voiced) return null;
-    return r.speech.words.filter(word => word.start >= from && word.start < to).length / (to - from) * 60;
+    return r.speech.pace.at(t);
   }
   function backfillPace(r, from, to) {
     const first = Math.max(0, Math.floor(from / FRAME_DT)), last = Math.min(r.frames.length - 1, Math.floor(to / FRAME_DT));
     for (let i = first; i <= last; i++) {
-      const frame = r.frames[i], wpm = windowWpm(r, frame.t);
+      const frame = r.frames[i], wpm = Number.isFinite(frame.volume) ? windowWpm(r, frame.t) : null;
       frame.wpm = wpm; frame.pace = paceLevel(wpm);
     }
   }
   function paceResult(r, res) {
     if (round !== r || !r.speech) return;
-    r.speech.words.push(...res.words);
-    r.speech.coveredTo = Math.max(r.speech.coveredTo, res.end);
-    r.speech.failures = 0;
-    backfillPace(r, res.start - 3, res.end);
-    r.speech.liveWpm = windowWpm(r, r.speech.coveredTo - 3);
+    r.speech.pace.add(res);
+    backfillPace(r, 0, r.frames.length * FRAME_DT);
   }
   function paceFailed(r, fail) {
     if (round !== r) return;
-    // The chunk that could not be counted gets the sound-based estimate; after two in a row, or if the
-    // service is simply not there, the rest of the round uses the sound estimate too.
-    const first = Math.floor(fail.start / FRAME_DT), last = Math.min(r.frames.length - 1, Math.floor(fail.end / FRAME_DT));
-    for (let i = Math.max(0, first); i <= last; i++) {
-      const frame = r.frames[i];
-      if (frame.pace === null && Number.isFinite(frame.soundWpm)) { frame.wpm = frame.soundWpm; frame.pace = paceLevel(frame.soundWpm); r.soundFrames++; }
-    }
     if (fail.failures >= 2 || [401, 403, 404, 405, 500, 501].includes(fail.status)) {
-      r.paceSource = 'sound';
+      r.paceSource = 'unavailable';
       r.speech?.transcriber.stop(0);
+      r.paceError = fail.status === 401 || fail.status === 403
+        ? 'Pace could not count your words. Sign in again, then retry the exercise.'
+        : 'Pace could not count your words. Check your connection and retry the exercise. No guessed WPM is shown.';
       const status = $('#vvLiveStatus');
-      if (status) status.textContent = fail.status === 401 ? 'Sign in again to count words. Pace is estimated from sound for this round.' : 'The speech service is not reachable, so pace is estimated from the sound.';
+      if (status) status.textContent = r.paceError;
     }
   }
 
   function analyse() {
     const r = round; if (!r) return;
     r.mic.analyser.getFloatTimeDomainData(r.mic.buffer);
-    const rms = rmsOf(r.mic.buffer), lowRms = lowPassRms(r.mic.buffer, r.mic.context.sampleRate, 500);
-    if (r.tick++ % 2 === 0) r.lastMidi = midiOf(detectPitch(r.mic.buffer, r.mic.context.sampleRate));
+    const rms = rmsOf(r.mic.buffer);
+    if (r.tick++ % 2 === 0) r.lastMidi = midiOf(detectPitch(r.mic.buffer, r.mic.context.sampleRate, 0.0005));
     const live = r.mode === 'live';
     const t = live ? (performance.now() - r.t0) / 1000 : 0;
-    const out = r.tracker.push(live ? t : performance.now() / 1000, rms, r.tick % 2 === 1 ? r.lastMidi : null, lowRms);
-    let wpm = null;
-    if (r.wantsPace) wpm = r.paceSource === 'sound' ? out.soundWpm : (r.speech?.liveWpm ?? null);
-    r.live = { ...out, t, wpm, pace: paceLevel(wpm) };
+    const out = r.tracker.push(live ? t : performance.now() / 1000, rms, r.tick % 2 === 1 ? r.lastMidi : null);
+    const counted = r.wantsPace && r.paceSource === 'speech' ? r.speech?.pace.latest(t) : null;
+    const wpm = counted?.wpm ?? null;
+    r.live = { ...out, t, wpm, pace: paceLevel(wpm), paceAt: counted?.at ?? null };
     if (!live) return;
     if (t >= r.plan.duration) { finishRound(); return; }
     while (r.frames.length * FRAME_DT <= t) {
       const ft = r.frames.length * FRAME_DT;
-      const frame = { t: ft, db: out.db, active: out.active, volume: out.volume, midi: out.midi, pitch: out.pitch, soundWpm: out.soundWpm, wpm: null, pace: null };
-      if (r.wantsPace && r.paceSource === 'sound' && Number.isFinite(out.soundWpm)) { frame.wpm = out.soundWpm; frame.pace = paceLevel(out.soundWpm); r.soundFrames++; }
+      const frame = { t: ft, db: out.db, active: out.active, volume: out.volume, midi: out.midi, pitch: out.pitch, wpm: null, pace: null };
       r.frames.push(frame);
     }
   }
@@ -648,7 +635,7 @@ function mount() {
     if (r.recorder?.state === 'recording') r.recorder.stop();
     if (r.speech && played) {
       $('#vvLiveStatus').textContent = 'Counting your words…';
-      await r.speech.transcriber.stop(6000);
+      await r.speech.transcriber.stop(12000);
       if (round !== r) return;                                   // the student left while we waited
       if (r.paceSource === 'speech') backfillPace(r, 0, r.plan.duration);
     }
@@ -656,8 +643,11 @@ function mount() {
     closeMic(r.mic); round = null; micToken++;
     if (!played || frames.length < 20) { notice = 'That round ended before we heard enough. Try again when you are ready.'; go('brief', { quiet: true }); return; }
     result = scoreRound({ frames, stage, scale: r.scale }); result.frames = frames; result.notes = { ...notes };
-    result.paceSource = !r.wantsPace ? null : r.soundFrames > 0 ? 'sound' : 'speech';
-    learnVoice(frames.filter(frame => frame.active).map(frame => frame.db), 0.5);   // the next speaker starts from what this call or microphone sounded like
+    if (r.wantsPace && (r.paceSource === 'unavailable' || frames.filter(f => Number.isFinite(f.pace)).length < frames.filter(f => Number.isFinite(f.volume)).length * 0.5 || !r.speech.pace.words.length)) {
+      notice = r.paceError || 'We could not recognize enough words to measure pace reliably. This round was not scored. Check your connection and try again.';
+      result = null; go('brief', { quiet: true }); return;
+    }
+    result.paceSource = r.wantsPace ? 'speech' : null;
     award = applyRound(progress, stage, result, new Date(), questionIndex, { prepared: prepared() });
     progress = award.progress; save(); example = false;
     go('results');
@@ -675,6 +665,13 @@ function mount() {
     const t = r.mode === 'live' ? r.live.t : 0, plan = r.plan;
     const clockEl = $('#vvClock'); if (!clockEl) return;
     clockEl.textContent = clock(Math.ceil(Math.max(0, plan.duration - t)));
+    const reading = $('#vvReading');
+    reading.dataset.volume = Number.isFinite(r.live.volume) ? r.live.volume.toFixed(3) : '';
+    reading.dataset.wpm = Number.isFinite(r.live.wpm) ? r.live.wpm.toFixed(1) : '';
+    reading.textContent = r.wantsPace
+      ? Number.isFinite(r.live.wpm) ? `Pace: ${Math.round(r.live.wpm)} WPM. Measured at ${clock(r.live.paceAt)}.`
+        : r.paceSource === 'unavailable' ? 'Pace unavailable.' : 'Pace: waiting for enough recognized words.'
+      : Number.isFinite(r.live[stage.dim]) ? `${DIMENSIONS[stage.dim].name}: ${zoneLabel(stage.dim, zoneOf(r.live[stage.dim]))}.` : 'No speech detected.';
     $('#vvTimeFill').style.width = `${clamp(t / plan.duration, 0, 1) * 100}%`;
     if (stage.dim === 'all') {
       DIM_ORDER.forEach((dim, i) => { $(`#vvHud${i + 1}`).textContent = String(countSwings(r.frames.map(f => ({ t: f.t, level: f[dim] }))).swings); });
@@ -731,7 +728,7 @@ function mount() {
   function drawStage(ctx, w, h, s) {
     const plan = stage.plan, compact = w < 560, solo = stage.dim !== 'all';
     const L = solo ? (compact ? 54 : 84) : (compact ? 66 : 92), R = 12, T = 24, B = 22;
-    const pw = w - L - R, ph = h - T - B, past = compact ? 4 : 5, future = compact ? 6 : 9, span = past + future;
+    const pw = w - L - R, ph = h - T - B, past = stage.dim === 'pace' || stage.dim === 'all' ? 10 : compact ? 4 : 5, future = compact ? 6 : 9, span = past + future;
     const xOf = time => L + pw * (past + (time - s.t)) / span, px = L + pw * past / span;
     ctx.clearRect(0, 0, w, h);
     const lanes = lanesFor(stage, T, ph);
@@ -797,17 +794,19 @@ function mount() {
       ctx.globalAlpha = 1; ctx.shadowBlur = 0;
       // orb
       const level = s.display[dim], oy = yOf(level), color = levelRgb(clamp(level, 0, 1)), present = Number.isFinite(s.live[dim]);
-      const inBand = lane.guided && present && s.mode === 'live' && ribbonCredit(dim, s.live[dim], plan, s.t) === 1;
+      const measuredAt = dim === 'pace' && Number.isFinite(s.live.paceAt) ? s.live.paceAt : s.t;
+      const orbX = xOf(measuredAt);
+      const inBand = lane.guided && present && s.mode === 'live' && ribbonCredit(dim, s.live[dim], plan, measuredAt) === 1;
       const radius = lane.solo ? 1 : 0.75;
-      const halo = ctx.createRadialGradient(px, oy, 2, px, oy, (inBand ? 56 : 40) * radius);
+      const halo = ctx.createRadialGradient(orbX, oy, 2, orbX, oy, (inBand ? 56 : 40) * radius);
       halo.addColorStop(0, `rgba(${color},${present ? 0.55 : 0.2})`); halo.addColorStop(1, `rgba(${color},0)`);
-      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(px, oy, (inBand ? 56 : 40) * radius, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(orbX, oy, (inBand ? 56 : 40) * radius, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = present ? 1 : 0.5;
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(px, oy, 7.5 * radius, 0, Math.PI * 2); ctx.fill();
-      ctx.lineWidth = 3; ctx.strokeStyle = `rgb(${color})`; ctx.beginPath(); ctx.arc(px, oy, 12.5 * radius, 0, Math.PI * 2); ctx.stroke();
-      if (inBand) { const pulse = (s.now / 600) % 1; ctx.globalAlpha = 1 - pulse; ctx.strokeStyle = 'rgb(253,224,71)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, oy, 14 + pulse * 20, 0, Math.PI * 2); ctx.stroke(); }
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(orbX, oy, 7.5 * radius, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = `rgb(${color})`; ctx.beginPath(); ctx.arc(orbX, oy, 12.5 * radius, 0, Math.PI * 2); ctx.stroke();
+      if (inBand) { const pulse = (s.now / 600) % 1; ctx.globalAlpha = 1 - pulse; ctx.strokeStyle = 'rgb(253,224,71)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(orbX, oy, 14 + pulse * 20, 0, Math.PI * 2); ctx.stroke(); }
       ctx.globalAlpha = 1;
-      if (!present && s.mode === 'live' && lane.solo) { ctx.fillStyle = 'rgba(210,222,240,.75)'; ctx.font = '600 11px Inter, system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(dim === 'pitch' && s.live.active ? 'finding your note…' : 'speak…', px + 24, oy - 14); }
+      if (!present && s.mode === 'live' && lane.solo) { ctx.fillStyle = 'rgba(210,222,240,.75)'; ctx.font = '600 11px Inter, system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(dim === 'pace' ? 'counting words…' : dim === 'pitch' && s.live.active ? 'finding your note…' : 'speak…', px + 24, oy - 14); }
       if (inBand && !reduceMotion() && Math.random() < 0.7) s.particles.push({ x: px, y: oy + (Math.random() - 0.5) * 10, vx: -(30 + Math.random() * 60), vy: (Math.random() - 0.5) * 50, life: 1 });
     }
     // playhead and sparks
@@ -860,7 +859,6 @@ function mount() {
           <h2 id="vvTitle" tabindex="-1" data-focus>${esc(headline)}</h2>
           <div class="vv-star-row" id="vvStarRow" data-stars="${r.stars}" role="img" aria-label="${r.stars} of 3 stars">${[0, 1, 2].map(i => `<i data-i="${i}">★</i>`).join('')}</div>
           <p class="vv-tip">${esc(coachingTip(r))}</p>
-          ${r.paceSource === 'sound' ? '<p class="vv-warning">Pace was estimated from the sound alone because the speech service could not be reached, so treat the words-a-minute numbers as approximate.</p>' : ''}
           ${award && !example ? `<div class="vv-xp"><div class="vv-xp-row"><strong>+${award.xpGained} XP</strong><span>${esc(rank.name)}${rank.nextName ? ` · ${rank.toNext} to ${esc(rank.nextName)}` : ' · top rank'}</span></div><div class="vv-bar"><i style="width:${(rank.pct * 100).toFixed(0)}%"></i></div>${lvlUp ? `<p class="vv-levelup">Rank up! You have reached ${esc(rank.name)}.</p>` : ''}${award.personalBest ? '<p class="vv-levelup">New personal best</p>' : ''}</div>` : ''}
           <ul class="vv-goal-chips">${r.goals.map(g => `<li class="${g.done ? 'done' : ''}"><span aria-hidden="true">${g.done ? '✓' : '○'}</span><b>${esc(g.label)}</b><small>${esc(g.detail)}</small></li>`).join('')}</ul>
           ${award?.newBadges.length && !example ? `<div class="vv-new-badges">${award.newBadges.map(b => `<span><i aria-hidden="true">${esc(b.icon)}</i> Badge: <b>${esc(b.name)}</b></span>`).join('')}</div>` : ''}

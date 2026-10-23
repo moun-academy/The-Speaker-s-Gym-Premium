@@ -12,8 +12,8 @@ export function rmsOf(samples) {
 
 // Normalized autocorrelation, with the first strong peak to avoid subharmonics.
 // The Lecture 5 detector uses the same principle. Reject silence and noisy frames.
-export function detectPitch(samples, sampleRate) {
-  if (rmsOf(samples) < 0.008) return null;
+export function detectPitch(samples, sampleRate, minRms = 0.008) {
+  if (rmsOf(samples) < minRms) return null;
   const minLag = Math.floor(sampleRate / 650);
   const maxLag = Math.min(Math.floor(sampleRate / 65), samples.length - 2);
   const overlap = samples.length - maxLag;

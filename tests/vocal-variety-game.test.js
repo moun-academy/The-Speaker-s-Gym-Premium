@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { PaceMeter, PitchSmoother } from '../vocal-variety-core.js';
 import {
   BADGES, DEFAULT_NATURAL, DEFAULT_SCALE, DEFAULT_SPEECH, DIM_ORDER, SPEECH_LENGTHS, lengthLabel, scaleStage, FRAME_DT, PREP_PARTS, QUESTIONS, STAGES,
-  EnvelopeTracker, VoiceTracker, WPM_FAST_FROM, WPM_SLOW_BELOW, activeThreshold, applyRound, coachingTip, countSwings, emptyProgress, learnPitchCenter,
+  EnvelopeTracker, VoiceTracker, VoiceCalibration, WPM_FAST_FROM, WPM_SLOW_BELOW, activeThreshold, applyRound, coachingTip, countSwings, emptyProgress, learnPitchCenter,
   learnVoiceLevel, levelOf, normalizeScale, paceLevel, paceZoneOfWpm, phaseAt, pitchLevel, prepBreakdown, questionIndexFor, rankFor, rangeLabel,
   sanitizeProgress, scoreRound, starsFor, targetAt, voiceScale, wpmOfLevel, zoneHint, zoneLabel, zoneOf
 } from '../vocal-variety-game.js';
@@ -111,6 +111,17 @@ test('the envelope bridges syllable dips but leaves a gap for a real pause', () 
   assert.equal(last.level, null, 'silence longer than 0.35 s is a gap');
 });
 
+test('ordinary syllable-level dips do not turn a steady voice into repeated volume swings', () => {
+  const tracker = new EnvelopeTracker(scale);
+  const levels = [];
+  for (let i = 0; i < 300; i++) {
+    const t = i * 0.02, db = scale.natural + 20 * Math.log10(0.65 + 0.35 * Math.cos(t * Math.PI * 6));
+    const out = tracker.push(t, db);
+    if (t > 1) levels.push(out.level);
+  }
+  assert.ok(levels.every(level => zoneOf(level) === 'natural'), 'syllables stay in Steady');
+});
+
 // Amplitude modulated like syllables: `rate` loud peaks per second, 9.5 dB deep.
 function paceAt(rate, seconds = 6, meter = new PaceMeter({ window: 2.5, gateDb: -60 })) {
   let value;
@@ -141,7 +152,7 @@ test('the pitch smoother follows the median and holds briefly over unvoiced soun
   assert.equal(smoother.push(1.2, null), null, 'released after a real pause');
 });
 
-test('the voice tracker turns the sound into volume and pitch levels (and a pace estimate for the fallback)', () => {
+test('the voice tracker measures volume and pitch without inventing word counts', () => {
   const tracker = new VoiceTracker(scale);
   let frame;
   for (let i = 0; i < 250; i++) {
@@ -150,8 +161,27 @@ test('the voice tracker turns the sound into volume and pitch levels (and a pace
   }
   assert.ok(frame.volume > 0.25 && frame.volume < 0.75, `volume ${frame.volume}`);
   assert.equal(frame.pitch, 0.5);
-  assert.ok(frame.soundWpm > 100 && frame.soundWpm < 190, `3 syllable-like peaks a second is about 130 to 160 WPM, got ${frame.soundWpm}`);
+  assert.equal(frame.soundWpm, undefined, 'sound pulses are not words');
   assert.equal(new VoiceTracker(normalizeScale({})).push(0, 0.03, 50).pitch, null, 'no pitch centre yet: wait for enough notes');
+});
+
+test('the sound check ignores room noise and hum, then centers normal speech without saturating', () => {
+  const check = new VoiceCalibration();
+  for (let i = 0; i < 100; i++) assert.equal(check.push(-49 + Math.sin(i), null), null, 'room noise cannot calibrate a voice');
+  const hum = new VoiceCalibration();
+  for (let i = 0; i < 50; i++) assert.equal(hum.push(-45, 50), null, 'a steady hum cannot calibrate a voice');
+  for (let i = 0; i < 60; i++) check.push(i % 4 ? -27 + 3 * Math.sin(i) : -49, i % 4 ? 50 : null);
+  const measured = check.result();
+  assert.ok(measured.natural > -29 && measured.natural < -24);
+  const tracker = new VoiceTracker(voiceScale(measured.natural, measured.pitchCenter, measured.noiseFloor));
+  const feed = (db, count = 30) => { let out; for (let i = 0; i < count; i++) out = tracker.push(t += 0.05, 10 ** (db / 20), 50); return out; };
+  let t = 0;
+  assert.equal(feed(-49).volume, null, 'background stays silent');
+  assert.equal(zoneOf(feed(measured.natural).volume), 'natural', 'normal speech is Steady, not Boom');
+  assert.equal(zoneOf(feed(measured.natural - 10).volume), 'soft', 'soft speech is still audible above room noise');
+  assert.equal(zoneOf(feed(measured.natural + 8).volume), 'strong', 'deliberately louder speech reaches Boom');
+  assert.equal(feed(-49).volume, null, 'silence releases the meter');
+  assert.equal(zoneOf(new VoiceTracker(voiceScale(-9, 50, -45)).push(0, 10 ** (-9 / 20), 50).volume), 'natural', 'high-gain microphones do not pin normal speech at the top');
 });
 
 test('every game is a PREP answer with a clear title, and the question bank suits PREP', () => {

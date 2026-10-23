@@ -24,6 +24,7 @@ async (page) => {
     oscillator.frequency.value = 180; gain.gain.value = 0.08;
     window.testAnalyser = testContext.createAnalyser();
     oscillator.connect(gain).connect(testAnalyser).connect(testContext.destination); oscillator.start();
+    setInterval(() => { gain.gain.setTargetAtTime(0.08 * (0.65 + 0.35 * Math.cos(testContext.currentTime * 2 * Math.PI * 3)), testContext.currentTime, 0.005); }, 20);
     await testContext.resume();
   });
   await page.bringToFront();

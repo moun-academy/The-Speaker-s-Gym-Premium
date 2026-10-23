@@ -2,7 +2,7 @@
 // Every round is a PREP answer (Point, Reason, Example, Final Point) spoken with vocal variety
 // in one of three dimensions: volume, pitch or pace (or all three together).
 // Everything here is browser-only practice. It never feeds the app's AI coaching scores.
-import { quantile, PaceMeter, PitchSmoother, noteName, wpmFromSound } from './vocal-variety-core.js';
+import { quantile, PitchSmoother, noteName } from './vocal-variety-core.js';
 
 export const FRAME_DT = 0.05;       // one stored frame every 50 ms
 export const SOFT_EDGE = 0.28;      // below this level: the low zone (whisper / low / slow)
@@ -46,19 +46,43 @@ export function normalizeScale(raw = {}) {
   if (power - natural < 6) { power = natural + 10; widened = true; }
   if (soft - floor < 6) floor = soft - 6;
   const pitchCenter = Number.isFinite(raw.pitchCenter) && raw.pitchCenter >= 30 && raw.pitchCenter <= 90 ? raw.pitchCenter : null;
-  return { floor, soft, natural, power, span: power - soft, widened, pitchCenter };
+  const noiseFloor = Number.isFinite(raw.noiseFloor) ? raw.noiseFloor : null;
+  return { floor, soft, natural, power, span: power - soft, widened, pitchCenter, noiseFloor };
 }
-export const voiceScale = (natural, pitchCenter = null) => {
-  const n = clamp(Number.isFinite(natural) ? natural : DEFAULT_NATURAL, -55, -15);
-  return normalizeScale({ floor: n - 26, soft: n - 14, natural: n, power: n + 11, pitchCenter });
+export const voiceScale = (natural, pitchCenter = null, noiseFloor = null) => {
+  const n = clamp(Number.isFinite(natural) ? natural : DEFAULT_NATURAL, -55, -6);
+  return normalizeScale({ floor: n - 26, soft: n - 14, natural: n, power: n + 11, pitchCenter, noiseFloor });
 };
+// Only pitched speech teaches the sound check. Planning in silence or a steady room-noise
+// signal must not move the middle of the volume scale down to the background level.
+export class VoiceCalibration {
+  constructor() { this.frames = []; }
+  push(db, midi) {
+    this.frames.push({ db, midi });
+    if (this.frames.length > 1200) this.frames.shift();
+    return this.result();
+  }
+  result() {
+    const voiced = this.frames.filter(f => Number.isFinite(f.midi) && f.db > -65);
+    if (voiced.length < 15) return null;
+    const levels = voiced.map(f => f.db);
+    if (quantile(levels, 0.9) - quantile(levels, 0.1) < 1.5) return null;
+    const typical = quantile(voiced.map(f => f.db), 0.65);
+    const quiet = this.frames.filter(f => !Number.isFinite(f.midi) && f.db < typical - 8).map(f => f.db);
+    const noiseFloor = quiet.length >= 5 ? quantile(quiet, 0.8) : typical - 26;
+    const speech = voiced.filter(f => f.db > noiseFloor + 8);
+    if (speech.length < 15) return null;
+    return { natural: quantile(speech.map(f => f.db), 0.65), noiseFloor, pitchCenter: learnPitchCenter(speech.map(f => f.midi)) };
+  }
+}
 // `dbs` are loudness readings taken while someone talked. Only readings within 25 dB of the loudest
 // count (the rest is room noise and gaps between words); under a second of voice changes nothing.
 export function learnVoiceLevel(previous, dbs, weight = 0.6) {
   const readings = dbs.filter(Number.isFinite);
   const loud = quantile(readings, 0.95);
   if (loud === null || loud < -70) return previous;
-  const voiced = readings.filter(db => db > loud - 25);
+  if (loud - quantile(readings, 0.1) < 2) return previous;
+  const voiced = readings.filter(db => db > loud - 12);
   if (voiced.length < 10) return previous;
   const before = Number.isFinite(previous) ? previous : DEFAULT_NATURAL;
   return clamp(before + (quantile(voiced, 0.5) - before) * weight, -55, -15);
@@ -92,7 +116,10 @@ const WPM_CENTER = 124.5, WPM_SLOPE = 0.0147;
 export const paceLevel = wpm => Number.isFinite(wpm) && wpm >= 0 ? clamp(0.5 + (Math.round(wpm) - WPM_CENTER) * WPM_SLOPE, -0.3, 1.3) : null;
 export const wpmOfLevel = level => WPM_CENTER + (level - 0.5) / WPM_SLOPE;
 export const paceZoneOfWpm = wpm => wpm < WPM_SLOW_BELOW ? 'soft' : wpm >= WPM_FAST_FROM ? 'strong' : 'natural';
-export const activeThreshold = scale => scale.floor + Math.max(4, (scale.soft - scale.floor) * 0.4);
+export const activeThreshold = scale => Math.max(
+  scale.floor + Math.max(4, (scale.soft - scale.floor) * 0.4),
+  Number.isFinite(scale.noiseFloor) ? scale.noiseFloor + 8 : -Infinity
+);
 export const relativeDb = (db, scale) => db - scale.natural;
 
 // Peak-hold envelope. Syllable dips inside a word should not look like a drop in energy,
@@ -106,7 +133,9 @@ export class EnvelopeTracker {
     const raw = levelOf(db, this.scale), active = db > activeThreshold(this.scale);
     if (active) {
       this.lastActive = t;
-      this.env = this.env === null ? raw : Math.max(raw, this.env - 1.5 * dt);
+      // Hold across the valleys between syllables. Fast decay made an unchanged voice
+      // jump between zones on every word instead of showing deliberate loud/soft changes.
+      this.env = this.env === null ? raw : Math.max(raw, this.env - 0.6 * dt);
     } else if (t - this.lastActive > 0.35) {
       this.env = null;                       // a real pause: the next word starts fresh
     }
@@ -114,28 +143,23 @@ export class EnvelopeTracker {
   }
 }
 
-// Turns one microphone reading into volume and pitch levels, plus a sound-only pace estimate that is
-// used only if the speech service is not available (see wpmFromSound). Without a pitch centre from
-// the sound check, the centre is the median note of this take so far. `lowRms` is the level of the
-// low-passed signal (vowels), which the pace estimate counts.
+// Volume and pitch only. Pace must come from recognized words, not acoustic pulse estimates.
 export class VoiceTracker {
   constructor(scale) { this.scale = scale; this.reset(); }
   reset() {
     this.envelope = new EnvelopeTracker(this.scale); this.smoother = new PitchSmoother();
-    this.meter = new PaceMeter({ window: 3.5, gateDb: activeThreshold(this.scale) - 8 }); this.history = [];
+    this.history = [];
   }
-  push(t, rms, midi, lowRms = rms) {
+  push(t, rms, midi) {
     const db = 20 * Math.log10(Math.max(rms, 1e-5));
     const env = this.envelope.push(t, db);
     const talking = env.level !== null;
     if (Number.isFinite(midi) && env.active) { this.history.push(midi); if (this.history.length > 600) this.history.shift(); }
     const smooth = this.smoother.push(t, env.active ? midi : null);
     const center = this.scale.pitchCenter ?? (this.history.length >= 15 ? quantile(this.history, 0.5) : null);
-    const peaks = this.meter.push(t, lowRms);
     return {
       t, db, active: env.active, volume: env.level,
-      midi: talking ? smooth : null, pitch: talking ? pitchLevel(smooth, center) : null, center,
-      soundWpm: talking && peaks !== null ? wpmFromSound(peaks) : null
+      midi: talking ? smooth : null, pitch: talking ? pitchLevel(smooth, center) : null, center
     };
   }
 }
