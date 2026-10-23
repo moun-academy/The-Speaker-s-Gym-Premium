@@ -186,8 +186,7 @@ function mount() {
   const prepared = () => PREP_PARTS.every(part => notes[part.key].trim().length > 0);
 
   // ----- audio helpers ---------------------------------------------------------------------
-  // The audio comes from the microphone, or, when "Meeting audio" is on (Settings > Video Call Audio,
-  // the same switch the rest of the app uses), from the call the coach shared: see meeting-audio.js.
+  // All games use the microphone or the same shared meeting connection. See meeting-audio.js.
   const callOn = () => MeetingAudio.enabled();
 
   // Each speaker gets a fresh speech-only sound check. Do not reuse the old noise-trained

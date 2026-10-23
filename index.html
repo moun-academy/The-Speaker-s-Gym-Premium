@@ -5483,56 +5483,12 @@
         🔄 Refresh Devices
       </button>
       <p style="color: #6b7280; font-size: 12px; margin-top: 10px; line-height: 1.5;">
-        Select a microphone or virtual audio device. To capture Zoom/Meet audio, route it through a virtual audio device first.
+        Choose a microphone for your voice. For a video call, use Meeting audio below.
       </p>
     </div>
 
-    <!-- Video Call Audio Capture Section -->
-    <div class="settings-section">
-      <h3>📞 Video Call Audio</h3>
-      <div class="settings-row">
-        <div style="flex: 1;">
-          <span class="settings-row-label">Capture Audio from Video Calls</span>
-          <div class="call-audio-description">Record audio from browser-based video calls instead of your microphone. Useful for analyzing student speeches during live sessions.</div>
-        </div>
-        <label class="notification-toggle" style="margin-left: 12px; flex-shrink: 0;">
-          <input type="checkbox" id="callAudioToggle">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="call-audio-note">
-        Works with browser-based calls (Google Meet, Zoom web, Teams web, Discord web). Connect once below and every game listens to the call: Speak on the Spot, the home-page recorder and the vocal variety games.
-      </div>
-      <div id="meetingAudioPanel" style="margin-top: 12px;"></div>
-    </div>
-
-    <!-- Call Audio Info Modal -->
-    <div id="callAudioInfoModal" class="call-audio-modal-overlay" style="display: none;">
-      <div class="call-audio-modal">
-        <h3>📞 Video Call Audio Capture Enabled</h3>
-        <p><strong>How it works:</strong></p>
-        <ol>
-          <li>Open your video call in a browser tab (Google Meet, Zoom web, etc.)</li>
-          <li>Open Speaker's Gym in another tab</li>
-          <li>When you click "Start Speaking", you'll be asked to select the call tab</li>
-          <li>The app will record audio from that tab for transcription and AI feedback</li>
-        </ol>
-        <p><strong>Compatible with:</strong></p>
-        <ul>
-          <li class="compat-yes">✓ Google Meet</li>
-          <li class="compat-yes">✓ Zoom (web version)</li>
-          <li class="compat-yes">✓ Microsoft Teams (web)</li>
-          <li class="compat-yes">✓ Discord (web)</li>
-          <li class="compat-yes">✓ Any browser-based video call</li>
-        </ul>
-        <p><strong>Not compatible with:</strong></p>
-        <ul>
-          <li class="compat-no">✗ Desktop apps (Zoom desktop, Teams desktop, etc.)</li>
-        </ul>
-        <p style="margin-top: 12px; color: #facc15; font-size: 13px;">Tip: Make sure to check "Share audio" when selecting the tab!</p>
-        <button class="got-it-btn" id="callAudioInfoGotIt">Got it</button>
-      </div>
-    </div>
+    <!-- One shared meeting-audio control, also used by the games. -->
+    <div id="meetingAudioPanel" style="margin-bottom: 24px;"></div>
 
     <!-- Daily Notifications Section -->
     <div class="settings-section">
@@ -9210,11 +9166,7 @@
       }
     }
 
-    // ========== VIDEO CALL AUDIO CAPTURE TOGGLE ==========
-    const callAudioToggle = document.getElementById('callAudioToggle');
-    const callAudioInfoModal = document.getElementById('callAudioInfoModal');
-    const callAudioInfoGotIt = document.getElementById('callAudioInfoGotIt');
-
+    // ========== SHARED MEETING AUDIO ==========
     const applyCallAudioMode = () => {
       // Reinitialize stream if in audio/video mode and not recording
       if ((currentMode === 'audio' || currentMode === 'video') && !isRunning) {
@@ -9223,13 +9175,12 @@
         else initCamera();
       }
     };
-    // The meeting audio control (Settings and the vocal variety home) can switch this too.
+    // Settings and the games all use the same connection and microphone choice.
     window.addEventListener('meetingaudio:enabled', event => {
       const spotBox = document.getElementById('spotMeetingBox');
       if (spotBox) spotBox.open = event.detail;
       if (callAudioMode === event.detail) return;
       callAudioMode = event.detail;
-      if (callAudioToggle) callAudioToggle.checked = callAudioMode;
       applyCallAudioMode();
     });
     const mountMeetingAudioPanel = () => {
@@ -9242,41 +9193,6 @@
     };
     window.addEventListener('meetingaudio:ready', mountMeetingAudioPanel);
     mountMeetingAudioPanel();
-
-    if (callAudioToggle) {
-      callAudioToggle.checked = callAudioMode;
-
-      callAudioToggle.addEventListener('change', () => {
-        callAudioMode = callAudioToggle.checked;
-        localStorage.setItem('callAudioMode', callAudioMode ? 'true' : 'false');
-        window.MeetingAudio?.setEnabled(callAudioMode);
-
-        if (callAudioMode) {
-          // Show info modal on first enable
-          if (!localStorage.getItem('callAudioInfoShown')) {
-            callAudioInfoModal.style.display = 'flex';
-            localStorage.setItem('callAudioInfoShown', 'true');
-          }
-          showAchievement("📞 Call audio mode enabled");
-        } else {
-          showAchievement("🎙️ Switched back to microphone");
-        }
-
-        applyCallAudioMode();
-      });
-    }
-
-    if (callAudioInfoGotIt) {
-      callAudioInfoGotIt.addEventListener('click', () => {
-        callAudioInfoModal.style.display = 'none';
-      });
-    }
-
-    if (callAudioInfoModal) {
-      callAudioInfoModal.addEventListener('click', (e) => {
-        if (e.target === callAudioInfoModal) callAudioInfoModal.style.display = 'none';
-      });
-    }
 
     // ========== AUDIO INPUT DEVICE SELECTOR ==========
     const audioInputSelect = document.getElementById('audioInputSelect');
@@ -12538,7 +12454,7 @@
       const live = document.getElementById('spotLiveTranscript');
       if (live) live.textContent = 'Listening to the call...';
       spotCallStream = window.MeetingAudio.clone();
-      if (!spotCallStream) { if (live) live.textContent = 'ℹ️ The call audio is not connected. Open Settings, then Video Call Audio, and connect it.'; return; }
+      if (!spotCallStream) { if (live) live.textContent = 'ℹ️ The call audio is not connected. Open Meeting audio and press Connect meeting audio.'; return; }
       const transcriber = new window.ChunkTranscriber(spotCallStream, {
         chunkMs: 3000,
         getPrompt: () => (spotSession?.words || []).map(item => item.word).join(', '),   // helps the service spell the target words

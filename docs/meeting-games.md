@@ -4,7 +4,7 @@ Use the online app in Chrome or Edge on a computer. Participants can join Meet f
 
 1. Open Meet and Speaker's Gym in separate tabs.
 2. In Meet, present the Speaker's Gym tab. Leave presentation audio off so participants do not hear their own voices played back.
-3. In Expand Your Vocal Variety, select Use meeting audio, then Connect meeting audio.
+3. In Settings or Expand Your Vocal Variety, press Connect meeting audio. There is no separate on/off switch.
 4. In the browser's picker, select the Google Meet tab and turn on Also share tab audio. Return to the game.
 5. Ask a participant to unmute and say hello. The audio bar should move and the panel should say Hearing the call.
 6. Choose a game and take turns. Everyone except the current speaker should stay muted. Each speaker starts a new round with a short sound check.

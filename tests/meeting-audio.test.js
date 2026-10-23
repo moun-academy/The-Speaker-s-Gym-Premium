@@ -46,6 +46,58 @@ function fixture() {
   return { ...exports, mediaDevices, Track, Stream, captures, microphones, contexts, options, sandbox };
 }
 
+function panelFixture(f) {
+  f.sandbox.document = { createElement: () => ({}), head: { append() {} } };
+  const panel = { dataset: {}, innerHTML: '', handlers: {}, querySelector: () => null,
+    addEventListener(name, fn) { this.handlers[name] = fn; }, removeEventListener(name) { delete this.handlers[name]; } };
+  const click = (act, checked = false) => panel.handlers.click({ target: { checked, closest: () => ({ dataset: { ma: act } }) } });
+  const unmount = f.MeetingAudio.mountPanel(panel);
+  return { panel, click, unmount };
+}
+
+test('one meeting panel connects directly, selects the shared source and switches back to the microphone', async () => {
+  const f = fixture(), { panel, click, unmount } = panelFixture(f);
+  assert.match(panel.innerHTML, /Using microphone/);
+  assert.match(panel.innerHTML, /data-ma="connect"[^>]*>Connect meeting audio/);
+  assert.doesNotMatch(panel.innerHTML, /data-ma="enable"|>Use meeting audio</);
+  assert.match(panel.innerHTML, /data-ma="host"/, 'host microphone choice is available before connecting');
+  await click('host', true);
+  await click('connect');
+  assert.equal(f.options.length, 1, 'one click opens one capture chooser');
+  assert.equal(f.MeetingAudio.enabled(), true);
+  assert.equal(f.MeetingAudio.isConnected(), true);
+  assert.equal(f.microphones.length, 1);
+  assert.match(panel.innerHTML, /data-ma="disconnect"/);
+  await click('disable');
+  assert.equal(f.MeetingAudio.enabled(), false);
+  assert.equal(f.MeetingAudio.isConnected(), false);
+  assert.ok([...f.captures[0].getTracks(), ...f.microphones[0].getTracks()].every(t => t.readyState === 'ended'));
+  assert.match(panel.innerHTML, /Using microphone/);
+  unmount();
+});
+
+test('cancelling a first connection leaves the microphone selected and allows retry', async () => {
+  const f = fixture(), { panel, click, unmount } = panelFixture(f);
+  const capture = f.mediaDevices.getDisplayMedia;
+  f.mediaDevices.getDisplayMedia = async () => { throw Object.assign(new Error('cancel'), { name: 'NotAllowedError' }); };
+  await click('connect');
+  assert.equal(f.MeetingAudio.enabled(), false);
+  assert.equal(f.MeetingAudio.isConnected(), false);
+  assert.match(panel.innerHTML, /Sharing was cancelled/);
+  f.mediaDevices.getDisplayMedia = capture;
+  await click('connect');
+  assert.equal(f.MeetingAudio.isConnected(), true);
+  assert.doesNotMatch(panel.innerHTML, /Sharing was cancelled/);
+  f.MeetingAudio.disconnect(); unmount();
+});
+
+test('settings contains a single meeting control without the old switch or duplicate introduction modal', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.equal((html.match(/id="meetingAudioPanel"/g) || []).length, 1);
+  assert.doesNotMatch(html, /callAudioToggle|callAudioInfoModal|Capture Audio from Video Calls|<h3>📞 Video Call Audio/);
+  assert.match(html, /meetingaudio:enabled/);
+});
+
 test('meeting capture retains the browser stop control and releases all game copies on disconnect', async () => {
   const f = fixture(); await f.MeetingAudio.connect();
   const first = f.MeetingAudio.clone(), second = f.MeetingAudio.clone();

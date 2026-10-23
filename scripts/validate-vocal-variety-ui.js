@@ -129,15 +129,17 @@ async (page) => {
   // 6. Meeting audio: the panel, its messages, one picker for every game.
   await page.evaluate(() => window.navigateToPage('settings'));
   const panel = page.locator('#meetingAudioPanel');
-  await panel.getByRole('button', { name: 'Use meeting audio' }).click();
-  check(await page.locator('#callAudioToggle').isChecked(), 'the Settings switch should follow the meeting audio control');
+  check(await page.locator('#callAudioToggle').count() === 0, 'the duplicate Settings switch must be removed');
+  check(await panel.getByRole('button', { name: 'Use meeting audio', exact: true }).count() === 0, 'connecting must not need an enable step');
   await page.evaluate(() => { const real = navigator.mediaDevices.getDisplayMedia; navigator.mediaDevices.getDisplayMedia = async () => { window.fixture.picks++; throw new DOMException('Denied', 'NotAllowedError'); }; window.realDisplay = real; });
   await panel.getByRole('button', { name: 'Connect meeting audio' }).click();
   check((await panel.locator('.ma-error').innerText()).includes('cancelled'), 'a cancelled picker should say so');
+  check(await page.evaluate(() => !window.MeetingAudio.enabled()), 'cancelling a first connection must keep the microphone selected');
   await page.evaluate(() => { navigator.mediaDevices.getDisplayMedia = window.realDisplay; window.fixture.picks = 0; });
   await panel.getByRole('button', { name: 'Connect meeting audio' }).click();
   await page.waitForTimeout(300);
   check(await page.evaluate(() => window.MeetingAudio.isConnected()), 'meeting audio should connect');
+  check(await page.evaluate(() => window.MeetingAudio.enabled()), 'connecting must select meeting audio automatically');
   await page.evaluate(() => { window.fixture.amp = 0.06; });
   await page.waitForFunction(() => document.querySelector('#meetingAudioPanel .ma-state')?.textContent === 'Hearing the call', null, { timeout: 4000 });
 

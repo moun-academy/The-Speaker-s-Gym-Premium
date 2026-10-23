@@ -30,7 +30,6 @@ async (page) => {
     await testContext.resume();
   });
   await page.bringToFront();
-  await page.locator('#vvSource').getByRole('button', { name: 'Use meeting audio', exact: true }).click();
   await page.locator('#vvSource').getByRole('button', { name: 'Connect meeting audio', exact: true }).click();
   await page.waitForFunction(() => window.MeetingAudio.status().hearing, null, { timeout: 15000 });
   const initial = await page.evaluate(() => ({ ...window.MeetingAudio.status(), micRequests: window.micRequests }));

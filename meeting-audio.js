@@ -6,7 +6,7 @@
 // from that connection instead of the microphone, until it is disconnected or the share stops.
 // Web only: the native app does not load this file.
 
-const SETTING_KEY = 'callAudioMode';       // the same switch as Settings > Video Call Audio
+const SETTING_KEY = 'callAudioMode';       // one audio-source choice, shared by Settings and the games
 const HOST_KEY = 'meetingAudioIncludeHost';
 const HEARING_DB = -62;                    // above this is "sound"; below is silence or faint noise
 const listeners = new Set();
@@ -182,14 +182,12 @@ export const MeetingAudio = {
       const status = MeetingAudio.status();
       element.className = `ma-panel ${compact ? 'compact' : ''} ${status.connected ? 'on' : ''}`;
       element.innerHTML = `
-        <div class="ma-head"><strong>📞 Meeting audio</strong><span class="ma-state ${status.connected ? (status.hearing || status.silentSeconds !== null ? 'good' : 'wait') : 'off'}">${status.connected ? (status.hearing ? 'Hearing the call' : status.silentSeconds !== null ? 'Connected, quiet right now' : 'Connected, no sound yet') : status.enabled ? 'Not connected' : 'Off'}</span></div>
+        <div class="ma-head"><strong>📞 Meeting audio</strong><span class="ma-state ${status.connected ? (status.hearing || status.silentSeconds !== null ? 'good' : 'wait') : 'off'}">${status.connected ? (status.hearing ? 'Hearing the call' : status.silentSeconds !== null ? 'Connected, quiet right now' : 'Connected, no sound yet') : status.enabled ? 'Not connected' : 'Using microphone'}</span></div>
         ${!status.supported ? '<p class="ma-text">This browser cannot capture call audio. Use Chrome or Edge on a computer.</p>' : ''}
-        ${status.supported ? `<details class="ma-guide"><summary>Play together on Google Meet</summary><ol><li>In Meet, present the <b>Speaker’s Gym tab</b>. Leave presentation audio off to avoid sending people’s voices back to them.</li><li>Here, connect meeting audio. Choose the separate <b>Google Meet tab</b> and turn on <b>Also share tab audio</b>.</li><li>Return to this game. Ask a participant to speak and check that the bar moves.</li><li>Play one person at a time. Everyone else stays muted. Each speaker starts a fresh round.</li></ol><p class="ma-text">Use Chrome or Edge on a computer. Headphones help prevent echo. Meet can smooth out loudness, so volume feedback reflects the sound received from the call.</p></details>` : ''}
-        ${status.supported && !status.enabled ? `<p class="ma-text">The games currently hear your microphone. Connect the meeting to hear participants on their own computers.</p>
-          <div class="ma-actions"><button type="button" class="ma-btn primary" data-ma="enable">Use meeting audio</button></div>` : ''}
-        ${status.supported && status.enabled && !status.connected ? `<p class="ma-text">Choose the <b>Google Meet tab</b> and turn on <b>Also share tab audio</b>. Keep this game on screen while each participant takes a turn. Connect once for all rounds.${/Windows/.test(navigator.userAgent) ? ' If tab audio is unavailable, choose Entire Screen with system audio.' : ''}</p>
-          <div class="ma-actions"><button type="button" class="ma-btn primary" data-ma="connect" ${busy ? 'disabled' : ''}>${busy ? 'Waiting for you to choose…' : 'Connect meeting audio'}</button><button type="button" class="ma-btn" data-ma="disable">Use the microphone instead</button></div>` : ''}
-        ${status.supported && status.enabled ? `<label class="ma-host"><input type="checkbox" data-ma="host" ${MeetingAudio.includeHost() ? 'checked' : ''}> Include my microphone so I can take a turn too</label>${status.connected && MeetingAudio.includeHost() !== status.includeHost ? '<p class="ma-text">Press Reconnect to apply the microphone choice.</p>' : ''}<p class="ma-text">Pitch and volume stay on this computer. Pace games send short audio clips to the speech service to count words. Let participants know before playing.</p>` : ''}
+        ${status.supported ? `<details class="ma-guide"><summary>How to play together on Google Meet</summary><ol><li>In Meet, present the <b>Speaker’s Gym tab</b>. Leave presentation audio off to prevent echo.</li><li>Here, connect to the separate <b>Google Meet tab</b> and turn on <b>Also share tab audio</b>.</li><li>Return to the game and take turns. Everyone except the speaker stays muted.</li></ol><p class="ma-text">Use Chrome or Edge on a computer. Headphones help prevent echo.${/Windows/.test(navigator.userAgent) ? ' If tab audio is unavailable, choose Entire Screen with system audio.' : ''} Meet can smooth loudness, so feedback reflects the sound received from the call.</p></details>` : ''}
+        ${status.supported && !status.connected ? `<p class="ma-text">Choose your call tab and turn on <b>Also share tab audio</b>. Connect once for all games.</p>
+          <div class="ma-actions"><button type="button" class="ma-btn primary" data-ma="connect" ${busy ? 'disabled' : ''}>${busy ? 'Waiting for you to choose…' : 'Connect meeting audio'}</button>${status.enabled ? '<button type="button" class="ma-btn" data-ma="disable">Use the microphone instead</button>' : ''}</div>` : ''}
+        ${status.supported ? `<label class="ma-host"><input type="checkbox" data-ma="host" ${MeetingAudio.includeHost() ? 'checked' : ''}> Include my microphone so I can take a turn too</label>${status.connected && MeetingAudio.includeHost() !== status.includeHost ? '<p class="ma-text">Press Reconnect to apply the microphone choice.</p>' : ''}<p class="ma-text">Pitch and volume stay on this computer. Pace games send short clips for word counting. Let participants know before connecting.</p>` : ''}
         ${status.connected ? `<div class="ma-meter" aria-hidden="true"><i data-ma-meter></i></div>
           <p class="ma-text" id="maHear">${status.hearing || status.silentSeconds !== null ? `Connected to ${surfaceName(status.surface)}. The bar moves when someone speaks in the call.` : `Connected to ${surfaceName(status.surface)}, but nothing has been heard yet. Ask a student to say hello. If the bar stays flat, press Reconnect and pick the Google Meet tab${/Windows/.test(navigator.userAgent) ? ' (or Entire Screen with system audio)' : ''}. Picking the game’s own tab will stay silent.`}</p>
           <div class="ma-actions"><button type="button" class="ma-btn" data-ma="connect">Reconnect</button><button type="button" class="ma-btn" data-ma="disconnect">Disconnect</button><button type="button" class="ma-btn" data-ma="disable">Use the microphone instead</button></div>` : ''}
@@ -200,7 +198,6 @@ export const MeetingAudio = {
       const act = event.target.closest('[data-ma]')?.dataset.ma; if (!act) return;
       if (busy) return;
       if (act === 'host') { MeetingAudio.setIncludeHost(event.target.checked); }
-      else if (act === 'enable') { message = ''; MeetingAudio.setEnabled(true); }
       else if (act === 'disable') { message = ''; MeetingAudio.setEnabled(false); }
       else if (act === 'disconnect') { MeetingAudio.disconnect(); }
       else if (act === 'connect') {
@@ -345,7 +342,8 @@ function injectStyle() {
   style.textContent = `
   .ma-panel{border:1px solid rgba(148,163,184,.22);border-radius:16px;padding:14px 16px;background:rgba(15,23,42,.6);color:#e5e7eb;text-align:left;font-family:inherit}
   .ma-panel.on{border-color:rgba(45,212,191,.5);background:linear-gradient(135deg,rgba(45,212,191,.08),rgba(167,139,250,.05))}
-  .ma-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+  #meetingAudioPanel{padding:20px;border-radius:20px}#meetingAudioPanel .ma-head strong{font-size:18px;color:#facc15}
+  .ma-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px}
   .ma-head strong{font-size:15px}
   .ma-state{font-size:11px;font-weight:800;letter-spacing:.06em;padding:4px 10px;border-radius:99px;border:1px solid rgba(148,163,184,.3);color:#94a3b8}
   .ma-state.good{color:#5eead4;border-color:rgba(94,234,212,.5);background:rgba(94,234,212,.1)}
