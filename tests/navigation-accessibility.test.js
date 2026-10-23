@@ -29,14 +29,14 @@ test('marks the current page and provides visible keyboard focus', () => {
   assert.match(html, /button:focus-visible,[\s\S]*outline: 3px solid #fde047 !important/);
 });
 
-test('shows the October 19 update date and refreshes the web cache', () => {
+test('shows the latest web update date and refreshes the web cache', () => {
   const gradle = readFileSync(new URL('../android/app/build.gradle', import.meta.url), 'utf8');
   const serviceWorker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 
   assert.match(html, /const APP_VERSION = '33'/);
-  assert.match(html, /const LAST_UPDATED = 'October 19, 2026'/);
+  assert.match(html, /const LAST_UPDATED = 'October 23, 2026'/);
   assert.match(html, /settingsLastUpdated\.textContent = LAST_UPDATED/);
   assert.match(gradle, /versionCode 33/);
   assert.match(gradle, /versionName "33"/);
-  assert.match(serviceWorker, /speakers-gym-v27-web-variety/);
+  assert.match(serviceWorker, /speakers-gym-v28-meeting-audio/);
 });

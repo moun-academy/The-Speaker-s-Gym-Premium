@@ -4,10 +4,12 @@
 // round with PREP notes, meeting audio (panel messages, one picker, Speak on the Spot, a Pace round counted in
 // words a minute), cleanup, and the native gate.
 async (page) => {
+  const baseUrl = new URL(page.url()).origin;
   const failures = [];
   const check = (condition, message) => { if (!condition) failures.push(message); };
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addStyleTag({ content: '#loginGate { display: none !important; }' });
@@ -64,7 +66,7 @@ async (page) => {
   const allEnded = () => page.evaluate(() => window.fixture.streams.every(s => s.getTracks().every(t => t.readyState === 'ended')));
 
   // 4. One microphone round of Volume: Loud & Soft, with PREP notes and a sound check.
-  await page.locator('[data-stage="volume-ribbon"]').click();
+  await page.locator('.vv-stage-card[data-stage="volume-ribbon"]').click();
   check((await page.locator('.vv-question').innerText()).length > 10, 'question missing');
   check(await page.locator('[data-act="speech-time"][data-seconds="120"]').getAttribute('aria-checked') === 'true', 'speech length should default to 2 minutes');
   await page.locator('[data-act="speech-time"][data-seconds="60"]').click();
@@ -115,7 +117,7 @@ async (page) => {
   await page.evaluate(() => { navigator.mediaDevices.getDisplayMedia = window.realDisplay; window.fixture.picks = 0; });
   await panel.getByRole('button', { name: 'Connect meeting audio' }).click();
   await page.waitForTimeout(300);
-  check((await panel.locator('.ma-state').innerText()).startsWith('Connected'), 'meeting audio should connect');
+  check(await page.evaluate(() => window.MeetingAudio.isConnected()), 'meeting audio should connect');
   await page.evaluate(() => { window.fixture.amp = 0.06; });
   await page.waitForFunction(() => document.querySelector('#meetingAudioPanel .ma-state')?.textContent === 'Hearing the call', null, { timeout: 4000 });
 
@@ -155,7 +157,7 @@ async (page) => {
   await nativePage.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true }; });
   const nativeAssets = [];
   nativePage.on('request', request => { if (/vocal-variety|meeting-audio/.test(request.url())) nativeAssets.push(request.url()); });
-  await nativePage.goto('http://127.0.0.1:8766/index.html');
+  await nativePage.goto(`${baseUrl}/index.html`);
   await nativePage.waitForTimeout(700);
   check(await nativePage.locator('#menuVariety').count() === 0, 'native app must not expose the preview');
   check(nativeAssets.length === 0, 'native app must not request preview or meeting audio assets');

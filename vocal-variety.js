@@ -214,7 +214,7 @@ function mount() {
     if (token !== micToken) { stream.getTracks().forEach(track => track.stop()); context.close().catch(() => {}); return null; }
     const analyser = context.createAnalyser(); analyser.fftSize = 2048;
     const source = context.createMediaStreamSource(stream); source.connect(analyser);
-    return { stream, context, analyser, source, buffer: new Float32Array(analyser.fftSize), call: callOn() };
+    return { stream, context, analyser, source, buffer: new Float32Array(analyser.fftSize), call: callOn(), sourceId: callOn() ? MeetingAudio.status().sourceId : null };
   }
   function closeMic(mic) {
     if (!mic) return;
@@ -425,7 +425,7 @@ function mount() {
     viewEl.querySelector('[data-focus]')?.focus({ preventScroll: true });
     announce(`Prepare your answer. You have ${prepSeconds} seconds.`);
     const token = micToken;
-    prep = { mic: null, endsAt: performance.now() + prepSeconds * 1000, total: prepSeconds, call: callOn(), dbs: [], midis: [], captured: false, ticks: 0, openedAt: performance.now() };
+    prep = { mic: null, endsAt: performance.now() + prepSeconds * 1000, total: prepSeconds, waitingForAudio: true, call: callOn(), dbs: [], midis: [], captured: false, ticks: 0, openedAt: performance.now() };
     const state = prep;
     if (state.call && !MeetingAudio.isConnected()) $('#vvMicText').textContent = 'Choose your Google Meet tab (or Entire Screen with system audio) in the box your browser shows…';
     state.interval = setInterval(() => tickPrep(state), 100);
@@ -435,12 +435,13 @@ function mount() {
       notice = micMessage(error); go('brief', { quiet: true }); return;
     }
     if (!mic || token !== micToken) return;
-    state.mic = mic; state.openedAt = performance.now();
+    state.mic = mic; state.openedAt = performance.now(); state.waitingForAudio = false;
+    state.endsAt = performance.now() + state.total * 1000;
     $('#vvMicText').textContent = state.call ? SOUND_CHECK.call : SOUND_CHECK.mic;
   }
   function tickPrep(state) {
     if (prep !== state) return;
-    const left = (state.endsAt - performance.now()) / 1000;
+    const left = state.waitingForAudio ? state.total : (state.endsAt - performance.now()) / 1000;
     const clockEl = $('#vvPrepClock'); if (!clockEl) return;
     clockEl.textContent = clock(Math.ceil(Math.max(0, left)));
     $('#vvPrepTimer').style.setProperty('--p', clamp(left / state.total, 0, 1).toFixed(3));
@@ -468,6 +469,11 @@ function mount() {
   }
   function beginRound() {
     const state = prep; if (!state?.mic) return;
+    if (state.call && !state.dbs.some(db => db > -62)) {
+      $('#vvMicText').textContent = 'No voice has reached the game yet. Ask the speaker to unmute and say hello. If the bar stays flat, reconnect to the Google Meet tab with tab audio on.';
+      $('#vvReconnect')?.removeAttribute('hidden');
+      return;
+    }
     const mic = state.mic;
     // The speaker's own level and natural note, from the sound check (the last speaker's level is the fallback).
     if (state.captured) learnVoice(state.dbs, 0.9);
@@ -480,13 +486,15 @@ function mount() {
   // After a wrong pick: connect again from this click, then carry on with a fresh microphone for the check.
   async function reconnectCall() {
     const state = prep; if (!state) return;
-    try { MeetingAudio.disconnect(true); await MeetingAudio.connect(); } catch (error) { notice = micMessage(error); go('brief', { quiet: true }); return; }
+    state.reconnecting = true;
+    try { await MeetingAudio.connect(); } catch (error) { notice = micMessage(error); go('brief', { quiet: true }); return; }
     if (prep !== state) return;
     closeMic(state.mic); state.mic = null; state.captured = false; state.dbs = []; state.midis = [];
     const token = micToken;
     const mic = await openMic(token).catch(() => null);
     if (!mic || token !== micToken || prep !== state) return;
-    state.mic = mic; state.openedAt = performance.now(); $('#vvMicText').textContent = SOUND_CHECK.call; $('#vvReconnect')?.setAttribute('hidden', '');
+    state.mic = mic; state.openedAt = performance.now(); state.reconnecting = false; state.endsAt = performance.now() + state.total * 1000;
+    $('#vvMicText').textContent = SOUND_CHECK.call; $('#vvReconnect')?.setAttribute('hidden', '');
   }
 
   // ----- LIVE ------------------------------------------------------------------------------
@@ -588,7 +596,7 @@ function mount() {
     }
   }
   function paceResult(r, res) {
-    if (!r.speech) return;
+    if (round !== r || !r.speech) return;
     r.speech.words.push(...res.words);
     r.speech.coveredTo = Math.max(r.speech.coveredTo, res.end);
     r.speech.failures = 0;
@@ -596,6 +604,7 @@ function mount() {
     r.speech.liveWpm = windowWpm(r, r.speech.coveredTo - 3);
   }
   function paceFailed(r, fail) {
+    if (round !== r) return;
     // The chunk that could not be counted gets the sound-based estimate; after two in a row, or if the
     // service is simply not there, the rest of the round uses the sound estimate too.
     const first = Math.floor(fail.start / FRAME_DT), last = Math.min(r.frames.length - 1, Math.floor(fail.end / FRAME_DT));
@@ -605,7 +614,9 @@ function mount() {
     }
     if (fail.failures >= 2 || [401, 403, 404, 405, 500, 501].includes(fail.status)) {
       r.paceSource = 'sound';
-      $('#vvLiveStatus').textContent = 'The speech service is not reachable, so pace is estimated from the sound.';
+      r.speech?.transcriber.stop(0);
+      const status = $('#vvLiveStatus');
+      if (status) status.textContent = fail.status === 401 ? 'Sign in again to count words. Pace is estimated from sound for this round.' : 'The speech service is not reachable, so pace is estimated from the sound.';
     }
   }
 
@@ -1107,8 +1118,17 @@ function mount() {
     go('brief', { quiet: true });
   });
   menu.addEventListener('click', () => { window.navigateToPage('variety'); });
+  MeetingAudio.onChange(status => {
+    const state = round || prep;
+    if (!state?.call || !state.mic || state.reconnecting) return;
+    if (!status.connected || state.mic.sourceId !== status.sourceId) {
+      notice = 'Meeting audio stopped or changed. This round was not scored. Reconnect the meeting, check that the bar moves, and start the same question again.';
+      go('brief', { quiet: true });
+    }
+  });
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden || !(round || prep)) return;
+    if (prep && (!prep.mic || prep.reconnecting)) return; // The browser's capture chooser can temporarily hide this tab.
     notice = 'We paused because the game tab was hidden. Stay on this tab while students play. Start again when you are ready.';
     go('brief', { quiet: true });
   });

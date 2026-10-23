@@ -1,0 +1,16 @@
+.git/
+.claude/
+.vercel/
+node_modules/
+android/
+www/
+.env*
+.playwright-cli/
+output/
+tests/
+*.aab
+*.apk
+*.jks
+*.keystore
+*.keystore.properties
+android/keystore.properties
