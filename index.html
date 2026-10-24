@@ -4101,6 +4101,371 @@
     .program-day.current { background: rgba(250, 204, 21, 0.2); border-color: #facc15; color: #facc15; }
     .program-day .pd-dot { font-size: 9px; margin-top: 2px; }
 
+    /* ===================================================================
+       Home page polish. Everything is scoped to #mainPage (or body::before)
+       so the other pages keep their own look. No ids or behaviour change.
+       =================================================================== */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        radial-gradient(55% 45% at 12% 0%, rgba(250, 204, 21, 0.11), transparent 62%),
+        radial-gradient(48% 42% at 100% 22%, rgba(99, 102, 241, 0.16), transparent 62%),
+        radial-gradient(45% 38% at 0% 100%, rgba(56, 189, 248, 0.09), transparent 62%);
+    }
+
+    #mainPage.container {
+      background: linear-gradient(180deg, rgba(21, 30, 49, 0.94), rgba(12, 18, 33, 0.96));
+      border-color: rgba(250, 204, 21, 0.16);
+      box-shadow:
+        0 30px 70px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(255, 255, 255, 0.03),
+        inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    }
+
+    /* Header ----------------------------------------------------------- */
+    #mainPage .header { margin-bottom: 26px; }
+    #mainPage h1 {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      font-size: 30px;
+      line-height: 1.15;
+      margin-bottom: 8px;
+      background: none;
+      -webkit-text-fill-color: initial;
+      color: inherit;
+    }
+    #mainPage .logo-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      font-size: 24px;
+      background: linear-gradient(145deg, rgba(250, 204, 21, 0.28), rgba(245, 158, 11, 0.1));
+      border: 1px solid rgba(250, 204, 21, 0.38);
+      box-shadow: 0 8px 22px rgba(245, 158, 11, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    }
+    #mainPage .title-text {
+      background: linear-gradient(135deg, #fef08a, #facc15 55%, #f59e0b);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+    }
+    #mainPage .brand { margin-bottom: 8px; }
+    #mainPage .tagline {
+      font-size: 14px;
+      color: #94a3b8;
+      line-height: 1.5;
+      max-width: 46ch;
+      margin: 0 auto;
+    }
+
+    /* Week calendar ---------------------------------------------------- */
+    #mainPage .week-calendar {
+      gap: 8px;
+      padding: 16px 12px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.55), rgba(30, 41, 59, 0.28));
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+    #mainPage .day-dot { flex: 1 1 0; max-width: 56px; }
+    #mainPage .day-circle { width: 38px; height: 38px; font-size: 13px; border-width: 1.5px; }
+    #mainPage .day-circle.completed {
+      background: linear-gradient(145deg, #34d399, #16a34a);
+      border-color: rgba(134, 239, 172, 0.8);
+      color: #052e16;
+      box-shadow: 0 6px 16px rgba(34, 197, 94, 0.32);
+    }
+    #mainPage .day-circle.today {
+      border-color: #facc15;
+      color: #fde047;
+      box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.16), 0 6px 18px rgba(250, 204, 21, 0.22);
+    }
+    #mainPage .day-circle.completed.today { color: #052e16; }
+    #mainPage .day-dot:has(.day-circle.today) .day-label { color: #facc15; }
+
+    /* Stats ------------------------------------------------------------ */
+    #mainPage .stats-bar { gap: 12px; margin-bottom: 22px; }
+    #mainPage .stat {
+      position: relative;
+      overflow: hidden;
+      padding: 16px 8px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.5));
+    }
+    #mainPage .stat::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--tint, #facc15), transparent);
+      opacity: 0.85;
+    }
+    #mainPage .stat:nth-child(1) { --tint: #facc15; }
+    #mainPage .stat:nth-child(2) { --tint: #fb923c; }
+    #mainPage .stat:nth-child(3) { --tint: #34d399; }
+    #mainPage .stat:nth-child(4) { --tint: #818cf8; }
+    #mainPage .stat-value {
+      font-size: 28px;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+      color: var(--tint, #facc15);
+      text-shadow: 0 0 22px color-mix(in srgb, var(--tint, #facc15) 40%, transparent);
+    }
+    #mainPage .stat-label { margin-top: 6px; color: #94a3b8; letter-spacing: 0.08em; }
+    #mainPage .stat:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--tint, #facc15) 40%, transparent); }
+
+    #mainPage .nudge-banner {
+      border-radius: 16px;
+      padding: 14px 18px;
+      line-height: 1.5;
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.14), rgba(34, 197, 94, 0.04));
+    }
+
+    /* Prompt choice + modes: segmented controls ------------------------ */
+    #mainPage .prompt-mode-toggle,
+    #mainPage .mode-selector {
+      width: max-content;
+      max-width: 100%;
+      margin: 0 auto 18px;
+      padding: 4px;
+      gap: 4px;
+      border-radius: 18px;
+      background: rgba(8, 13, 26, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+    #mainPage .prompt-mode-btn,
+    #mainPage .mode-btn {
+      border: 0;
+      background: transparent;
+      color: #94a3b8;
+      padding: 11px 22px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: none;
+    }
+    #mainPage .prompt-mode-btn:hover,
+    #mainPage .mode-btn:hover {
+      transform: none;
+      color: #e2e8f0;
+      background: rgba(148, 163, 184, 0.1);
+      box-shadow: none;
+    }
+    #mainPage .prompt-mode-btn.active,
+    #mainPage .mode-btn.active {
+      color: #0f172a;
+      background: linear-gradient(135deg, #fde047, #f59e0b);
+      box-shadow: 0 8px 20px rgba(245, 158, 11, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    }
+
+    /* Main call to action ---------------------------------------------- */
+    #mainPage .controls { margin-bottom: 18px; }
+    #mainPage #newWordBtn {
+      position: relative;
+      overflow: hidden;
+      min-width: min(100%, 320px);
+      padding: 17px 30px;
+      font-size: 16px;
+      font-weight: 800;
+      border-radius: 18px;
+      color: #1a1203;
+      background: linear-gradient(135deg, #fef08a, #facc15 45%, #f59e0b);
+      box-shadow:
+        0 14px 32px rgba(245, 158, 11, 0.34),
+        0 2px 0 rgba(255, 255, 255, 0.35) inset,
+        0 -3px 0 rgba(180, 83, 9, 0.28) inset;
+    }
+    #mainPage #newWordBtn::before { content: '✦'; margin-right: 10px; font-size: 15px; }
+    #mainPage #newWordBtn::after {
+      content: '';
+      position: absolute;
+      inset: 0 auto 0 -60%;
+      width: 40%;
+      background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+      transform: skewX(-18deg);
+      animation: homeShine 5.5s ease-in-out infinite;
+    }
+    #mainPage #newWordBtn:hover { transform: translateY(-2px); box-shadow: 0 18px 38px rgba(245, 158, 11, 0.45), 0 2px 0 rgba(255, 255, 255, 0.35) inset, 0 -3px 0 rgba(180, 83, 9, 0.28) inset; }
+    @keyframes homeShine {
+      0%, 55% { left: -60%; }
+      85%, 100% { left: 130%; }
+    }
+
+    /* The prompt card -------------------------------------------------- */
+    #mainPage .word-box {
+      padding: 34px 26px 30px;
+      border-radius: 26px;
+      margin-bottom: 22px;
+      background:
+        radial-gradient(110% 80% at 50% -15%, rgba(250, 204, 21, 0.14), transparent 58%),
+        radial-gradient(70% 60% at 100% 100%, rgba(99, 102, 241, 0.12), transparent 60%),
+        linear-gradient(160deg, #0a1122, #0f1830 60%, #111b37);
+      border: 1px solid rgba(250, 204, 21, 0.2);
+      box-shadow: 0 22px 46px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+    #mainPage .word-box .label {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      color: #facc15;
+      opacity: 0.9;
+      letter-spacing: 0.24em;
+    }
+    #mainPage .word-box .label::before,
+    #mainPage .word-box .label::after {
+      content: '';
+      width: 22px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(250, 204, 21, 0.7));
+    }
+    #mainPage .word-box .label::after { transform: scaleX(-1); }
+    #mainPage .word-box.conversation-mode .label { display: none; }
+    #mainPage .word {
+      font-size: clamp(38px, 10vw, 56px);
+      line-height: 1.1;
+      margin-bottom: 14px;
+      filter: drop-shadow(0 6px 22px rgba(250, 204, 21, 0.25));
+    }
+    #mainPage .definition { font-size: 15px; color: #cbd5e1; max-width: 46ch; margin: 0 auto; }
+    #mainPage .conversation-question-text { font-size: 22px; letter-spacing: -0.005em; }
+    #mainPage .category-pill {
+      border-color: rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    /* Recorder --------------------------------------------------------- */
+    #mainPage .audio-section,
+    #mainPage .camera-section {
+      padding: 26px 20px 24px;
+      border-radius: 26px;
+      background:
+        radial-gradient(90% 60% at 50% 0%, rgba(99, 102, 241, 0.14), transparent 65%),
+        linear-gradient(180deg, rgba(30, 41, 59, 0.5), rgba(15, 23, 42, 0.55));
+      border: 1px solid rgba(148, 163, 184, 0.13);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    #mainPage .audio-visualizer {
+      width: 124px;
+      height: 124px;
+      font-size: 42px;
+      background: linear-gradient(145deg, #818cf8, #4f46e5 55%, #3730a3);
+      box-shadow:
+        0 0 0 10px rgba(99, 102, 241, 0.12),
+        0 0 0 22px rgba(99, 102, 241, 0.06),
+        0 20px 44px rgba(79, 70, 229, 0.42),
+        inset 0 2px 0 rgba(255, 255, 255, 0.3);
+    }
+    #mainPage .audio-visualizer.recording {
+      background: linear-gradient(145deg, #f87171, #ef4444 55%, #b91c1c);
+      box-shadow:
+        0 0 0 10px rgba(239, 68, 68, 0.16),
+        0 0 0 24px rgba(239, 68, 68, 0.08),
+        0 20px 50px rgba(239, 68, 68, 0.5),
+        inset 0 2px 0 rgba(255, 255, 255, 0.3);
+    }
+    #mainPage #audioTimer { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; margin-top: 8px; }
+    #mainPage .timer-legend { color: #94a3b8; }
+    #mainPage .record-btn { padding: 17px 38px; font-size: 16px; }
+    #mainPage .record-btn.start {
+      background: linear-gradient(135deg, #f87171, #ef4444 50%, #dc2626);
+      box-shadow: 0 12px 30px rgba(239, 68, 68, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+    #mainPage .record-btn.stop { background: linear-gradient(135deg, #64748b, #475569); }
+
+    /* Structure guide + AI panel -------------------------------------- */
+    #mainPage .structure-guide-row { margin: 22px 0 12px; }
+    #mainPage .structure-btn {
+      padding: 14px 28px;
+      font-size: 15px;
+      border-radius: 16px;
+      color: #fde68a;
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.14), rgba(250, 204, 21, 0.05));
+      border: 1px solid rgba(250, 204, 21, 0.38);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+    #mainPage .structure-btn:hover {
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.24), rgba(250, 204, 21, 0.09));
+      box-shadow: 0 12px 28px rgba(250, 204, 21, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    #mainPage .structure-btn.active {
+      color: #e2e8f0;
+      background: linear-gradient(135deg, #64748b, #475569);
+      border-color: rgba(148, 163, 184, 0.4);
+    }
+    #mainPage .ai-panel {
+      border-radius: 22px;
+      padding: 20px;
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.5));
+      border: 1px solid rgba(250, 204, 21, 0.18);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    #mainPage .ai-panel h3 { font-size: 17px; letter-spacing: -0.005em; }
+    #mainPage .ai-feedback-box,
+    #mainPage .transcript-display { border-radius: 16px; }
+    #mainPage .app-version { opacity: 0.7; }
+
+    /* Gentle entrance, once ------------------------------------------- */
+    @keyframes homeRise {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    #mainPage .header,
+    #mainPage .week-calendar,
+    #mainPage .stats-bar,
+    #mainPage .prompt-mode-toggle,
+    #mainPage .controls,
+    #mainPage .word-box {
+      animation: homeRise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    }
+    #mainPage .week-calendar { animation-delay: 0.05s; }
+    #mainPage .stats-bar { animation-delay: 0.1s; }
+    #mainPage .prompt-mode-toggle { animation-delay: 0.15s; }
+    #mainPage .controls { animation-delay: 0.2s; }
+    #mainPage .word-box { animation-delay: 0.25s; }
+
+    @media (max-width: 520px) {
+      #mainPage.container { padding: 22px 16px 26px; border-radius: 24px; }
+      /* the menu and profile buttons float over the top corners on phones; keep the title clear of them */
+      #mainPage .header { padding-top: 74px; }
+      #mainPage h1 { font-size: 24px; gap: 10px; }
+      #mainPage .logo-mark { width: 38px; height: 38px; font-size: 20px; border-radius: 12px; }
+      #mainPage .tagline { font-size: 13px; }
+      #mainPage .stats-bar { gap: 8px; }
+      #mainPage .stat-value { font-size: 23px; }
+      #mainPage .stat-label { font-size: 9px; letter-spacing: 0.05em; }
+      #mainPage .prompt-mode-toggle,
+      #mainPage .mode-selector { width: 100%; }
+      #mainPage .prompt-mode-btn,
+      #mainPage .mode-btn { flex: 1; justify-content: center; padding: 11px 10px; }
+      #mainPage .word-box { padding: 28px 18px 24px; }
+      #mainPage .conversation-question-text { font-size: 19px; }
+      #mainPage #newWordBtn { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #mainPage .header,
+      #mainPage .week-calendar,
+      #mainPage .stats-bar,
+      #mainPage .prompt-mode-toggle,
+      #mainPage .controls,
+      #mainPage .word-box,
+      #mainPage #newWordBtn::after { animation: none; }
+    }
+
   </style>
 </head>
 
@@ -4184,8 +4549,9 @@
       <!-- Hamburger Menu Button -->
       <button class="hamburger-btn" id="hamburgerBtn" type="button" aria-label="Open menu" aria-controls="menuSidebar" aria-expanded="false">☰</button>
 
-      <h1>🏋️ The Speaker's Gym</h1>
+      <h1><span class="logo-mark" aria-hidden="true">🏋️</span><span class="title-text">The Speaker's Gym</span></h1>
       <div class="brand">by <span class="brand-name">MOUN Academy</span></div>
+      <p class="tagline">Speak a little every day and get a little better each time.</p>
 
       <!-- Profile Button -->
       <button class="profile-btn" id="profileBtn" type="button" aria-label="Open profile menu" aria-controls="profileDropdown" aria-expanded="false">
