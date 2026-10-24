@@ -1,0 +1,83 @@
+/* Settings: loaded after the page's own styles and scoped to #settingsPage so nothing else changes. */
+#settingsPage {
+  --gold: #facc15; --gold-2: #f59e0b; --muted: #94a3b8; --line: rgba(148, 163, 184, 0.16); --cyan: #22d3ee; --good: #34d399;
+  --card: linear-gradient(180deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.5));
+}
+
+/* hero */
+#settingsPage .set-hero { text-align: center; margin: 4px 0 20px; }
+#settingsPage .set-hero-icon { width: 64px; height: 64px; margin: 0 auto 10px; border-radius: 20px; display: grid; place-items: center; font-size: 32px; background: linear-gradient(145deg, rgba(250, 204, 21, 0.3), rgba(245, 158, 11, 0.08)); border: 1px solid rgba(250, 204, 21, 0.4); box-shadow: 0 12px 30px rgba(245, 158, 11, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
+#settingsPage .set-hero h2 { font-size: 34px; font-weight: 900; line-height: 1.1; margin: 0 0 8px; background: linear-gradient(135deg, #fef08a, #facc15 55%, #f59e0b); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+#settingsPage .set-hero p { color: var(--muted); font-size: 15px; line-height: 1.55; max-width: 42ch; margin: 0 auto; }
+
+/* setup at a glance */
+#settingsPage .set-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+#settingsPage .set-chip { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 12px 14px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); transition: transform 0.2s, border-color 0.2s; -webkit-tap-highlight-color: transparent; }
+#settingsPage .set-chip:hover { transform: translateY(-2px); border-color: rgba(250, 204, 21, 0.4); }
+#settingsPage .set-chip:focus-visible { outline: 3px solid #fde047; outline-offset: 3px; }
+#settingsPage .set-chip.on { border-color: rgba(52, 211, 153, 0.4); background: linear-gradient(180deg, rgba(52, 211, 153, 0.1), rgba(15, 23, 42, 0.5)); }
+#settingsPage .set-chip-icon { flex: none; width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; font-size: 18px; background: rgba(8, 13, 26, 0.55); }
+#settingsPage .set-chip-text { min-width: 0; display: flex; flex-direction: column; }
+#settingsPage .set-chip-text small { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+#settingsPage .set-chip-text b { font-size: 13.5px; font-weight: 800; color: #f1f5f9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#settingsPage .set-chip.on .set-chip-text b { color: #a7f3d0; }
+
+/* jump chips */
+#settingsPage .set-nav { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 12px; margin-bottom: 8px; scrollbar-width: none; }
+#settingsPage .set-nav::-webkit-scrollbar { display: none; }
+#settingsPage .set-nav button { all: unset; box-sizing: border-box; flex: none; cursor: pointer; padding: 10px 16px; border-radius: 99px; font-size: 13.5px; font-weight: 800; color: #cbd5e1; white-space: nowrap; background: rgba(30, 41, 59, 0.6); border: 1px solid var(--line); transition: background 0.2s, border-color 0.2s, transform 0.2s; -webkit-tap-highlight-color: transparent; }
+#settingsPage .set-nav button:hover { border-color: rgba(250, 204, 21, 0.5); background: rgba(51, 65, 85, 0.6); transform: translateY(-1px); }
+#settingsPage .set-nav button:focus-visible { outline: 3px solid #fde047; outline-offset: 3px; }
+
+/* cards */
+#settingsPage .settings-section { scroll-margin-top: 12px; margin-bottom: 18px; padding: 20px; border-radius: 24px; background: var(--card); border: 1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05); transition: border-color 0.2s; }
+#settingsPage .settings-section:hover { transform: none; border-color: rgba(250, 204, 21, 0.28); }
+#settingsPage .settings-section h3 { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 900; color: #f8fafc; margin: 0 0 6px; letter-spacing: -0.01em; }
+#settingsPage .set-intro { color: var(--muted); font-size: 13.5px; line-height: 1.55; margin: 0 0 14px; }
+#settingsPage .set-hint { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 8px 0 0; }
+#settingsPage .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.1); }
+#settingsPage .settings-row:last-child { border-bottom: 0; }
+#settingsPage .settings-row-label { font-size: 14.5px; font-weight: 700; color: #e2e8f0; }
+#settingsPage .settings-row-label small { display: block; margin-top: 3px; font-size: 12.5px; font-weight: 500; line-height: 1.45; color: #7c8aa0; max-width: 46ch; }
+#settingsPage .settings-row-value { font-size: 14px; font-weight: 700; color: #cbd5e1; text-align: right; overflow-wrap: anywhere; }
+
+/* controls */
+#settingsPage .audio-input-select, #settingsPage .set-time { width: 100%; padding: 12px 14px; border-radius: 14px; font: inherit; font-size: 15px; font-weight: 600; color: #f1f5f9; background: rgba(8, 13, 26, 0.7); border: 1px solid var(--line); }
+#settingsPage .set-time { width: auto; }
+#settingsPage .audio-input-select:focus, #settingsPage .set-time:focus { outline: 3px solid #fde047; outline-offset: 2px; }
+#settingsPage .notification-toggle { flex: none; }
+#settingsPage .toggle-slider { background: #334155; border: 1px solid var(--line); }
+#settingsPage .notification-toggle input:checked + .toggle-slider { background: linear-gradient(135deg, var(--cyan), #38bdf8); border-color: transparent; box-shadow: 0 0 16px rgba(34, 211, 238, 0.35); }
+#settingsPage .notification-toggle input:focus-visible + .toggle-slider { outline: 3px solid #fde047; outline-offset: 3px; }
+#settingsPage .set-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+#settingsPage .set-btn { all: unset; box-sizing: border-box; flex: 1 1 160px; cursor: pointer; text-align: center; padding: 14px 18px; border-radius: 16px; font-size: 14.5px; font-weight: 800; color: #e2e8f0; background: rgba(51, 65, 85, 0.65); border: 1px solid var(--line); transition: transform 0.2s, background 0.2s, box-shadow 0.2s; -webkit-tap-highlight-color: transparent; }
+#settingsPage .set-btn:hover { transform: translateY(-2px); background: rgba(71, 85, 105, 0.7); }
+#settingsPage .set-btn:focus-visible { outline: 3px solid #fde047; outline-offset: 3px; }
+#settingsPage .set-btn[hidden] { display: none; }
+#settingsPage .set-btn.primary { color: #1a1203; border: 0; background: linear-gradient(135deg, #fef08a, #facc15 45%, #f59e0b); box-shadow: 0 12px 26px rgba(245, 158, 11, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.35), inset 0 -3px 0 rgba(180, 83, 9, 0.25); }
+#settingsPage .set-btn.primary:hover { background: linear-gradient(135deg, #fef08a, #facc15 45%, #f59e0b); }
+#settingsPage .tutorial-replay-btn { display: block; width: 100%; margin-top: 12px; }
+#settingsPage .profile-action-btn.primary { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px 18px; border-radius: 16px; font-size: 15px; font-weight: 800; color: #1f2937; background: #fff; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3); transition: transform 0.2s; }
+#settingsPage .profile-action-btn.primary:hover { transform: translateY(-2px); }
+#settingsPage .profile-action-btn.primary:focus-visible { outline: 3px solid #fde047; outline-offset: 3px; }
+#settingsPage .audio-input-status { margin-top: 10px; border-radius: 14px; }
+
+/* microphone test */
+#settingsPage .set-mictest { margin-top: 14px; padding: 14px; border-radius: 18px; background: rgba(8, 13, 26, 0.55); border: 1px solid var(--line); }
+#settingsPage .set-mictest[hidden] { display: none; }
+#settingsPage .set-meter { height: 12px; border-radius: 99px; overflow: hidden; background: rgba(8, 13, 26, 0.85); border: 1px solid var(--line); }
+#settingsPage .set-meter i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--cyan), var(--good) 55%, var(--gold) 85%, #f87171); transition: width 0.08s linear; }
+
+/* the Google Meet control (its own look comes from meeting-audio.js; this just fits it in the card) */
+#settingsPage #meetingAudioPanel { margin-bottom: 14px; }
+
+@media (max-width: 620px) {
+  #settingsPage .set-hero h2 { font-size: 28px; }
+  #settingsPage .set-summary { grid-template-columns: 1fr 1fr; }
+  #settingsPage .settings-section { padding: 16px 14px; border-radius: 20px; }
+  #settingsPage .settings-row { align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #settingsPage *, #settingsPage *::before, #settingsPage *::after { transition: none !important; animation: none !important; }
+}
+#settingsPage .set-summary .set-chip:last-child:nth-child(odd) { grid-column: 1 / -1; }

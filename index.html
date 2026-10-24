@@ -4470,6 +4470,7 @@
   </style>
   <link rel="stylesheet" href="spot.css">
   <link rel="stylesheet" href="tracker.css">
+  <link rel="stylesheet" href="settings.css">
 </head>
 
 <body>
@@ -5818,11 +5819,27 @@
   <!-- SETTINGS PAGE -->
   <div class="container page" id="settingsPage">
     <button class="back-btn" id="settingsBackBtn">← Back to Home</button>
-    <h2 style="font-size: 24px; color: #facc15; margin-bottom: 20px; text-align: center;">⚙️ Settings</h2>
+    <header class="set-hero">
+      <div class="set-hero-icon" aria-hidden="true">⚙️</div>
+      <h2>Settings</h2>
+      <p>Set up your microphone, Google Meet classes, reminders and account in one place.</p>
+    </header>
+
+    <!-- Your setup at a glance (filled in by script) -->
+    <section class="set-summary" id="settingsSummary" aria-label="Your setup at a glance"></section>
+
+    <nav class="set-nav" id="settingsNav" aria-label="Jump to a section">
+      <button type="button" data-jump="setAudio">🎙️ Microphone</button>
+      <button type="button" data-jump="setMeet">📞 Google Meet</button>
+      <button type="button" data-jump="setReminders">🔔 Reminders</button>
+      <button type="button" data-jump="setAccount">👤 Account</button>
+      <button type="button" data-jump="setAbout">ℹ️ About</button>
+    </nav>
 
     <!-- Audio Input Section -->
-    <div class="settings-section">
-      <h3>🎙️ Audio Input</h3>
+    <div class="settings-section" id="setAudio">
+      <h3>🎙️ Microphone</h3>
+      <p class="set-intro">The microphone the games and the recorder listen to when you are not using Google Meet.</p>
       <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: 10px;">
         <span class="settings-row-label">Input Device</span>
         <select id="audioInputSelect" class="audio-input-select">
@@ -5830,68 +5847,55 @@
         </select>
       </div>
       <div id="audioInputStatus" class="audio-input-status" style="display: none;"></div>
-      <button id="audioInputRefreshBtn" class="audio-input-refresh-btn" style="width: 100%; margin-top: 10px;">
-        🔄 Refresh Devices
-      </button>
-      <p style="color: #6b7280; font-size: 12px; margin-top: 10px; line-height: 1.5;">
-        Choose a microphone for your voice. For a video call, use Meeting audio below.
-      </p>
+      <div class="set-actions">
+        <button type="button" id="micTestBtn" class="set-btn primary">🎤 Test my microphone</button>
+        <button id="audioInputRefreshBtn" class="audio-input-refresh-btn set-btn">🔄 Refresh devices</button>
+      </div>
+      <div class="set-mictest" id="micTestBox" hidden>
+        <div class="set-meter" aria-hidden="true"><i id="micTestBar"></i></div>
+        <p class="set-hint" id="micTestText" role="status">Say a few words.</p>
+      </div>
     </div>
 
     <!-- The one meeting-audio control. Turn it on here once and every game that listens uses it. -->
-    <div class="settings-section" style="margin-bottom: 12px;">
+    <div class="settings-section" id="setMeet">
       <h3>📞 Play with students on Google Meet</h3>
-      <p style="color: #9ca3af; font-size: 13.5px; line-height: 1.55;">Off by default: the games listen to your microphone. Switch it on here once and Think Fast, Speak on the Spot, Vocal Variety and the recorder all hear your students through your Google Meet call instead. The games themselves show no call controls.</p>
-      <div class="settings-row" style="margin-top: 14px;">
-        <span class="settings-row-label">Hear me in Think Fast<br><small style="color:#6b7280; font-weight:500;">Times how fast each speaker starts talking (microphone, or the meeting when it is on). Nothing is recorded.</small></span>
+      <p class="set-intro">Off by default, so the games listen to your microphone. Switch it on here once and Think Fast, Speak on the Spot, Vocal Variety and the recorder all hear your students through your Google Meet call instead. The games themselves show no call controls.</p>
+      <div id="meetingAudioPanel" style="margin-bottom: 14px;"></div>
+      <div class="settings-row">
+        <span class="settings-row-label">Hear me in Think Fast<small>Times how fast each speaker starts talking (microphone, or the meeting when it is on). Nothing is recorded.</small></span>
         <label class="notification-toggle">
-          <input type="checkbox" id="thinkFastListenToggle" checked>
+          <input type="checkbox" id="thinkFastListenToggle" checked aria-label="Hear me in Think Fast">
           <span class="toggle-slider"></span>
         </label>
       </div>
     </div>
-    <div id="meetingAudioPanel" style="margin-bottom: 24px;"></div>
 
     <!-- Daily Notifications Section -->
-    <div class="settings-section">
-      <h3>🔔 Daily Notifications</h3>
+    <div class="settings-section" id="setReminders">
+      <h3>🔔 Daily reminders</h3>
+      <p class="set-intro">A gentle nudge to practice at the same time every day.</p>
       <div class="settings-row">
         <span class="settings-row-label">Enable Reminders</span>
         <label class="notification-toggle">
-          <input type="checkbox" id="notificationToggle">
+          <input type="checkbox" id="notificationToggle" aria-label="Enable reminders">
           <span class="toggle-slider"></span>
         </label>
       </div>
       <div class="settings-row">
         <span class="settings-row-label">Reminder Time</span>
-        <input type="time" id="notificationTime" value="09:00" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #374151; background: #0f172a; color: #e5e7eb;">
+        <input type="time" id="notificationTime" value="09:00" class="set-time" aria-label="Reminder time">
       </div>
       <div class="notification-status" id="notificationStatus" style="margin-top: 12px;">
         Enable notifications to get daily practice reminders
       </div>
     </div>
 
-    <!-- Sync Section -->
-    <div class="settings-section">
-      <h3>☁️ Cloud Sync</h3>
-      <div class="settings-row">
-        <span class="settings-row-label">Sync Status</span>
-        <span class="settings-row-value" id="settingsSyncStatus">Not signed in</span>
-      </div>
-      <div class="settings-row">
-        <span class="settings-row-label">Last Sync</span>
-        <span class="settings-row-value" id="settingsLastSync">Never</span>
-      </div>
-      <button id="manualSyncBtn" class="primary" style="width: 100%; margin-top: 12px;">
-        🔄 Sync Now
-      </button>
-    </div>
-
-    <!-- Account Section -->
-    <div class="settings-section">
-      <h3>👤 Account</h3>
+    <!-- Account and sync -->
+    <div class="settings-section" id="setAccount">
+      <h3>👤 Account and sync</h3>
       <div id="settingsSignedOut">
-        <p style="color: #9ca3af; font-size: 14px; margin-bottom: 12px;">Sign in to sync your data across devices</p>
+        <p class="set-intro">Sign in to keep your speeches, progress and tracker on every device.</p>
         <button class="profile-action-btn primary" id="settingsGoogleSignInBtn" style="width: 100%;">
           <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -5908,14 +5912,23 @@
           <span class="settings-row-label">Email</span>
           <span class="settings-row-value" id="settingsUserEmail">user@example.com</span>
         </div>
-        <button id="settingsSignOutBtn" class="secondary" style="width: 100%; margin-top: 12px;">
-          Sign Out
-        </button>
+      </div>
+      <div class="settings-row">
+        <span class="settings-row-label">Sync Status</span>
+        <span class="settings-row-value" id="settingsSyncStatus">Not signed in</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-row-label">Last Sync</span>
+        <span class="settings-row-value" id="settingsLastSync">Never</span>
+      </div>
+      <div class="set-actions">
+        <button id="manualSyncBtn" class="set-btn primary">🔄 Sync now</button>
+        <button id="settingsSignOutBtn" class="set-btn" hidden>Sign out</button>
       </div>
     </div>
 
     <!-- About Section -->
-    <div class="settings-section">
+    <div class="settings-section" id="setAbout">
       <h3>ℹ️ About</h3>
       <div class="settings-row">
         <span class="settings-row-label">App Version</span>
@@ -5929,7 +5942,7 @@
         <span class="settings-row-label">Developer</span>
         <span class="settings-row-value">MOUN Academy</span>
       </div>
-      <button id="replayTutorialBtn" class="secondary tutorial-replay-btn">▶ How to Use the App</button>
+      <button id="replayTutorialBtn" class="secondary tutorial-replay-btn set-btn">▶ How to Use the App</button>
     </div>
   </div>
   <!-- END SETTINGS PAGE -->
@@ -10306,6 +10319,8 @@
         window.ThinkFast?.stop();
       }
 
+      if (currentPage === 'settings') stopMicTest();
+
       // Stop warm up timers if leaving that page
       if (currentPage === 'warmup') {
         stopAllWarmupTimers();
@@ -13112,8 +13127,83 @@
     document.getElementById('thinkFastListenToggle')?.addEventListener('change', event => window.ThinkFast?.setListen(event.target.checked));
     window.addEventListener('thinkfast:ready', syncThinkFastListenToggle);
 
+    // ----- Settings page: the setup summary, jump chips and the microphone test -----
+    function renderSettingsSummary() {
+      const box = document.getElementById('settingsSummary'); if (!box) return;
+      const ma = window.MeetingAudio, meet = Boolean(ma?.enabled?.());
+      const hear = window.ThinkFast?.getListen ? window.ThinkFast.getListen() : true;
+      const remindersOn = Boolean(document.getElementById('notificationToggle')?.checked);
+      const time = document.getElementById('notificationTime')?.value || '';
+      const items = [
+        ['🎙️', 'Microphone', selectedAudioDeviceLabel || 'Default Microphone', 'setAudio', true],
+        ['📞', 'Google Meet', meet ? (ma.isConnected() ? 'Connected' : 'On, not connected') : 'Off', 'setMeet', meet],
+        ['👂', 'Hear me', hear ? 'On' : 'Off', 'setMeet', hear],
+        ['🔔', 'Reminders', remindersOn ? `Daily at ${time}` : 'Off', 'setReminders', remindersOn],
+        ['👤', 'Account', currentUser ? (currentUser.email || 'Signed in') : 'Not signed in', 'setAccount', Boolean(currentUser)]
+      ];
+      const html = items.map(([icon, label, value, target, on]) =>
+        `<button type="button" class="set-chip${on ? ' on' : ''}" data-jump="${target}"><span class="set-chip-icon" aria-hidden="true">${icon}</span><span class="set-chip-text"><small>${label}</small><b>${escapeHtml(String(value))}</b></span></button>`).join('');
+      if (box.dataset.html !== html) { box.dataset.html = html; box.innerHTML = html; }
+    }
+    setInterval(() => { if (document.getElementById('settingsPage')?.classList.contains('active')) renderSettingsSummary(); }, 1000);
+    document.addEventListener('click', event => {
+      const jump = event.target.closest('#settingsSummary [data-jump], #settingsNav [data-jump]');
+      if (jump) document.getElementById(jump.dataset.jump)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    let micTestState = null;
+    function stopMicTest(message) {
+      const state = micTestState; micTestState = null;
+      if (state) {
+        clearInterval(state.timer); clearTimeout(state.limit);
+        state.stream.getTracks().forEach(track => track.stop());
+        try { state.source.disconnect(); } catch { /* already disconnected */ }
+        state.context.close().catch(() => {});
+      }
+      const button = document.getElementById('micTestBtn'), bar = document.getElementById('micTestBar'), text = document.getElementById('micTestText');
+      if (button) button.textContent = '🎤 Test my microphone';
+      if (bar) bar.style.width = '0%';
+      if (text && message) text.textContent = message;
+      if (!message && document.getElementById('micTestBox')) document.getElementById('micTestBox').hidden = true;
+    }
+    async function toggleMicTest() {
+      if (micTestState) { stopMicTest('Test stopped. Press the button to try again.'); return; }
+      const box = document.getElementById('micTestBox'), text = document.getElementById('micTestText'), bar = document.getElementById('micTestBar');
+      box.hidden = false; text.textContent = 'Starting your microphone…';
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      try {
+        if (!navigator.mediaDevices?.getUserMedia || !Ctx) throw Object.assign(new Error('unsupported'), { name: 'Unsupported' });
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: selectedAudioDeviceId ? { deviceId: { exact: selectedAudioDeviceId } } : true });
+        const context = new Ctx(); await context.resume();
+        const analyser = context.createAnalyser(); analyser.fftSize = 1024;
+        const source = context.createMediaStreamSource(stream); source.connect(analyser);
+        const buffer = new Float32Array(analyser.fftSize);
+        let loudest = -100, lastLoud = 0;
+        const state = { stream, context, source };
+        state.timer = setInterval(() => {
+          analyser.getFloatTimeDomainData(buffer);
+          let energy = 0; for (const sample of buffer) energy += sample * sample;
+          const db = 20 * Math.log10(Math.max(Math.sqrt(energy / buffer.length), 1e-5));
+          loudest = Math.max(db, loudest - 0.6);
+          bar.style.width = `${Math.max(0, Math.min(100, (db + 60) / 45 * 100)).toFixed(0)}%`;
+          if (db > lastLoud) lastLoud = db;
+          text.textContent = loudest < -55 ? 'No sound yet. Say a few words.' : loudest < -42 ? 'Quiet. Speak up or move closer to the microphone.' : loudest > -8 ? 'Very loud. Move back a little so it does not distort.' : 'Good level. The games will hear you clearly.';
+        }, 80);
+        state.limit = setTimeout(() => stopMicTest('Test finished. Press the button to run it again.'), 30000);
+        micTestState = state;
+        document.getElementById('micTestBtn').textContent = '⏹ Stop the test';
+      } catch (error) {
+        text.textContent = error?.name === 'NotAllowedError' ? 'The microphone was declined. Allow it in your browser’s site settings, then try again.'
+          : error?.name === 'NotFoundError' || error?.name === 'OverconstrainedError' ? 'That microphone was not found. Press Refresh devices and choose another.'
+          : 'Could not start the microphone. Check that it is connected and not used by another app.';
+        micTestState = null;
+      }
+    }
+    document.getElementById('micTestBtn').addEventListener('click', toggleMicTest);
+
     function updateSettingsPageUI() {
       syncThinkFastListenToggle();
+      renderSettingsSummary();
       // Update sync status
       const syncStatusEl = document.getElementById('settingsSyncStatus');
       const lastSyncEl = document.getElementById('settingsLastSync');
@@ -13136,6 +13226,8 @@
         settingsSignedIn.style.display = 'none';
       }
 
+      document.getElementById('settingsSignOutBtn').hidden = !currentUser;
+      document.getElementById('manualSyncBtn').hidden = !currentUser;
       if (lastSyncTime) {
         lastSyncEl.textContent = lastSyncTime.toLocaleString();
       } else {

@@ -97,6 +97,13 @@ are unchanged in what they measure: the AI vocal and verbal review with history,
 month, practice patterns, personal records, three trend charts and milestone badges. Signed-out visitors see what the page
 offers and a Sign in button. Styles are in `tracker.css`; every number still comes from the same speech records.
 
+## Settings
+
+One place for everything you set up: a row of "your setup at a glance" chips (microphone, Google Meet, Hear me, reminders,
+account) that jump to each section, then **Microphone** (device picker and a **Test my microphone** level meter),
+**Google Meet** (the only place meeting audio is controlled, plus the Think Fast Hear me switch), **Daily reminders**,
+**Account and sync**, and **About**. Styles are in `settings.css`.
+
 ## Playing over a video call (every game)
 
 The coach shares their screen in a Google Meet and students speak from their own laptops. The
