@@ -4128,39 +4128,40 @@
 
     /* Header ----------------------------------------------------------- */
     #mainPage .header { margin-bottom: 26px; }
-    #mainPage h1 {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      font-size: 30px;
-      line-height: 1.15;
-      margin-bottom: 8px;
+    #mainPage h1.brand-logo {
+      position: relative;
+      display: block;
+      width: min(100%, 300px);
+      margin: -6px auto 2px;
+      line-height: 0;
       background: none;
       -webkit-text-fill-color: initial;
-      color: inherit;
     }
-    #mainPage .logo-mark {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      font-size: 24px;
-      background: linear-gradient(145deg, rgba(250, 204, 21, 0.28), rgba(245, 158, 11, 0.1));
-      border: 1px solid rgba(250, 204, 21, 0.38);
-      box-shadow: 0 8px 22px rgba(245, 158, 11, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    /* a soft golden halo behind the emblem so it glows instead of sitting on the page */
+    #mainPage h1.brand-logo::before {
+      content: '';
+      position: absolute;
+      inset: 4% -22% 0;
+      z-index: 0;
+      background:
+        radial-gradient(closest-side, rgba(250, 204, 21, 0.26), rgba(245, 158, 11, 0.08) 58%, transparent 74%);
+      filter: blur(6px);
+      pointer-events: none;
     }
-    #mainPage .title-text {
-      background: linear-gradient(135deg, #fef08a, #facc15 55%, #f59e0b);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      font-weight: 900;
-      letter-spacing: -0.02em;
+    #mainPage h1.brand-logo img {
+      position: relative;
+      z-index: 1;
+      display: block;
+      width: 100%;
+      height: auto;
+      filter: drop-shadow(0 14px 26px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 22px rgba(250, 204, 21, 0.16));
+      animation: logoFloat 7s ease-in-out infinite;
     }
-    #mainPage .brand { margin-bottom: 8px; }
+    @keyframes logoFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    #mainPage .brand { margin: 6px 0 8px; }
     #mainPage .tagline {
       font-size: 14px;
       color: #94a3b8;
@@ -4439,10 +4440,9 @@
 
     @media (max-width: 520px) {
       #mainPage.container { padding: 22px 16px 26px; border-radius: 24px; }
-      /* the menu and profile buttons float over the top corners on phones; keep the title clear of them */
-      #mainPage .header { padding-top: 74px; }
-      #mainPage h1 { font-size: 24px; gap: 10px; }
-      #mainPage .logo-mark { width: 38px; height: 38px; font-size: 20px; border-radius: 12px; }
+      /* the menu and profile buttons float over the top corners; the emblem sits between them */
+      #mainPage .header { padding-top: 34px; }
+      #mainPage h1.brand-logo { width: min(64%, 236px); }
       #mainPage .tagline { font-size: 13px; }
       #mainPage .stats-bar { gap: 8px; }
       #mainPage .stat-value { font-size: 23px; }
@@ -4463,7 +4463,8 @@
       #mainPage .prompt-mode-toggle,
       #mainPage .controls,
       #mainPage .word-box,
-      #mainPage #newWordBtn::after { animation: none; }
+      #mainPage #newWordBtn::after,
+      #mainPage h1.brand-logo img { animation: none; }
     }
 
   </style>
@@ -4549,7 +4550,7 @@
       <!-- Hamburger Menu Button -->
       <button class="hamburger-btn" id="hamburgerBtn" type="button" aria-label="Open menu" aria-controls="menuSidebar" aria-expanded="false">☰</button>
 
-      <h1><span class="logo-mark" aria-hidden="true">🏋️</span><span class="title-text">The Speaker's Gym</span></h1>
+      <h1 class="brand-logo"><img src="logo-header.webp" alt="The Speaker's Gym" width="720" height="542" decoding="async" fetchpriority="high"></h1>
       <div class="brand">by <span class="brand-name">MOUN Academy</span></div>
       <p class="tagline">Speak a little every day and get a little better each time.</p>
 
