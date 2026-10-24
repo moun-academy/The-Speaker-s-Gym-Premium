@@ -240,7 +240,7 @@ export function applyResult(profile, ctx, now = Date.now()) {
 }
 
 export function coachingTip(summary, limit) {
-  if (!summary.listening) return 'Switch on “Hear me” and the game times how fast you start speaking, so you can watch your reaction time shrink.';
+  if (!summary.listening) return 'Switch on “Hear me” in Settings and the game times how fast you start speaking, so you can watch your reaction time shrink.';
   if (!summary.rounds) return 'Start a session and say the first word that comes to mind.';
   if (summary.misses >= Math.ceil(summary.rounds * 0.3)) return 'Open with a sound, any sound: “Because…”, “Well…” or “Imagine…”. Starting out loud beats waiting for the perfect line.';
   if (summary.avgReactionMs !== null && summary.avgReactionMs > limit * 1000 * 0.6) return 'You get there, just late. Say the first word of the prompt out loud the moment it appears, then let the rest follow.';

@@ -216,8 +216,6 @@
 #thinkFastRoot .tf-how li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; font-weight: 900; color: #1a1203; background: linear-gradient(135deg, #fde047, var(--gold-2)); }
 #thinkFastRoot .tf-how-eg { margin-top: 12px; padding: 10px 14px; border-radius: 14px; background: rgba(250, 204, 21, 0.08); border: 1px dashed rgba(250, 204, 21, 0.4); font-size: 13px; color: var(--muted); }
 #thinkFastRoot .tf-how-eg b { color: #fde68a; }
-#thinkFastRoot .tf-callnote { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 14px; border-radius: 14px; background: rgba(34, 211, 238, 0.08); border: 1px solid rgba(34, 211, 238, 0.3); color: #cffafe; font-size: 14px; line-height: 1.45; }
-#thinkFastRoot .tf-callnote button { margin-left: auto; flex: none; padding: 8px 14px; border-radius: 12px; font-weight: 800; background: rgba(34, 211, 238, 0.16); border: 1px solid rgba(34, 211, 238, 0.4); }
 #thinkFastRoot .tf-hint { max-width: 36ch; font-size: 14px; line-height: 1.4; font-weight: 700; color: #cbd5e1; }
 #thinkFastRoot .tf-hint:empty { display: none; }
 #thinkFastRoot .tf-readyhint { max-width: 34ch; font-size: 17px; font-weight: 800; line-height: 1.4; color: #f1f5f9; }

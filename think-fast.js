@@ -96,9 +96,7 @@ function lobbyHtml() {
   const times = TIME_OPTIONS.map(o => `<button type="button" class="tf-opt" role="radio" aria-checked="${o.seconds === s.limit}" data-act="limit" data-v="${o.seconds}"><b>${o.label}</b><i>${o.hint}</i></button>`).join('');
   const counts = ROUND_OPTIONS.map(o => `<button type="button" class="tf-opt" role="radio" aria-checked="${o.rounds === s.rounds}" data-act="rounds" data-v="${o.rounds}"><b>${o.label}</b><i>${o.hint}</i></button>`).join('');
   const badges = BADGES.map(b => `<li class="tf-badge${profile.badges.includes(b.id) ? ' on' : ''}" title="${esc(b.hint)}"><span aria-hidden="true">${b.icon}</span><b>${esc(b.name)}</b><i>${esc(b.hint)}</i></li>`).join('');
-  const call = callOn();
-  const callNote = call ? '<div class="tf-callnote" role="status"><span aria-hidden="true">📞</span><span>Meeting audio is on, so this game listens to your students through the call. You can change this in Settings.</span><button type="button" data-act="settings">Settings</button></div>' : '';
-  const how = `<section class="tf-card tf-how" aria-label="How ${esc(mode.name)} works"><h3 class="tf-h flat">How ${esc(mode.name)} works</h3><ol>${mode.how.map(step => `<li>${esc(step)}</li>`).join('')}</ol><p class="tf-how-eg">Example: <b>${esc(mode.example)}</b></p></section>`;
+    const how = `<section class="tf-card tf-how" aria-label="How ${esc(mode.name)} works"><h3 class="tf-h flat">How ${esc(mode.name)} works</h3><ol>${mode.how.map(step => `<li>${esc(step)}</li>`).join('')}</ol><p class="tf-how-eg">Example: <b>${esc(mode.example)}</b></p></section>`;
   return `<div class="tf">
     <header class="tf-hero"><div class="tf-bolt" aria-hidden="true">⚡</div><h2>Think Fast</h2><p>Say it before you think it. The faster you start, the more you score.</p></header>
     <section class="tf-card tf-rank" aria-label="Your rank">
@@ -113,12 +111,7 @@ function lobbyHtml() {
     <section class="tf-card tf-setup">
       <div class="tf-field"><span class="tf-label">Time for each prompt</span><div class="tf-opts" role="radiogroup" aria-label="Time per prompt">${times}</div></div>
       <div class="tf-field"><span class="tf-label">Number of prompts</span><div class="tf-opts" role="radiogroup" aria-label="Number of prompts">${counts}</div></div>
-      <div class="tf-listen">
-        <label class="tf-switch"><input type="checkbox" id="tfListen" ${s.listen ? 'checked' : ''}><span class="tf-track"></span>
-          <span class="tf-switch-text"><b>Hear me</b><i>${call ? 'Meeting audio is on, so it times how fast your students start speaking.' : 'Times how fast you start speaking, using your microphone. Nothing is recorded.'}</i></span></label>
-      </div>
     </section>
-    ${callNote}
     ${notice ? `<p class="tf-notice" role="status">${esc(notice)}</p>` : ''}
     <p class="tf-cue">“${esc(cue)}”</p>
     <button type="button" class="tf-start" data-act="start"><span aria-hidden="true">▶</span> Start ${esc(mode.name)}</button>
@@ -342,11 +335,7 @@ function onClick(event) {
   else if (act === 'lobby') { view = 'lobby'; notice = ''; cue = CUES[Math.floor(Math.random() * CUES.length)]; paint(); }
   else if (act === 'next') { if (session?.phase === 'round') finishRound(session, 'skip'); }
   else if (act === 'end') { if (session) finishSession(session, false); }
-  else if (act === 'settings') { window.navigateToPage?.('settings'); }
   else if (act === 'mute') { s.muted = !s.muted; saveProfile(); target.textContent = s.muted ? '🔇' : '🔊'; }
-}
-function onChange(event) {
-  if (event.target.id === 'tfListen') { profile.settings.listen = event.target.checked; saveProfile(); }
 }
 function onKey(event) {
   if (!pageActive() || !session) return;
@@ -367,15 +356,18 @@ function mount() {
   root.dataset.ready = '1';
   mountStyles();
   root.addEventListener('click', onClick);
-  root.addEventListener('change', onChange);
   document.addEventListener('keydown', onKey);
   window.addEventListener('meetingaudio:ready', () => { if (view === 'lobby') paint(); });
   window.addEventListener('meetingaudio:enabled', () => { if (view === 'lobby') paint(); });
   paint();
 }
 
+// "Hear me" is a Settings option, not a game option: the app's Settings page reads and writes it here.
 window.ThinkFast = {
+  getListen: () => profile.settings.listen,
+  setListen(value) { profile.settings.listen = Boolean(value); saveProfile(); },
   render() { endSession(); view = 'lobby'; notice = ''; cue = CUES[Math.floor(Math.random() * CUES.length)]; paint(); },
   stop() { endSession(); view = 'lobby'; }
 };
+window.dispatchEvent(new Event('thinkfast:ready'));
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();

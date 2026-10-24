@@ -62,7 +62,7 @@ Pick **Analogy Blitz** ("A battery is like a jacuzzi, because…"), **Hot Take**
 (pitch a strange product) or **Wild Mix** (all three). Choose 2 to 5 seconds a prompt and 5 to 20 prompts. All modes are
 open from the start. A 3-2-1 countdown, then each prompt shows a draining ring; start talking at once.
 
-**Hear me** (on by default) listens through the microphone, or through the meeting audio when that is on, and times
+**Hear me** (a switch in Settings, on by default; the games have no listening controls of their own) listens through the microphone, or through the meeting audio when that is on, and times
 how long it takes to start speaking. It learns the room's quiet during the countdown, so nobody is tuned or asked to shout.
 Each prompt scores up to 100: up to 80 for a fast start (full marks within 0.6 s, falling to 25 at the buzzer) and up to
 20 for talking through the rest of the time. Answer 35 points or more to keep a combo going; the session score is the
@@ -88,6 +88,14 @@ reach 100 like a 10-word marathon. The results screen shows the score, grade (S 
 a line-by-line breakdown. XP builds ranks (Newcomer to Spotlight Star) and eight badges, saved in this browser
 (`sg-spot-v1`). The old Games, Best Score, Avg Words and Fastest counters keep counting. Rules and scoring live in
 `spot-core.js` (tested by `tests/spot-core.test.js`) with the look in `spot.css`.
+
+## Performance Tracker
+
+Opens with a score hero (the speaking score ring and its two ingredients), four numbers at a glance (speeches, day streak,
+time spoken, average words a minute) and jump chips to the AI review, progress, charts and milestones. The sections below
+are unchanged in what they measure: the AI vocal and verbal review with history, weekly insight, track record by week or
+month, practice patterns, personal records, three trend charts and milestone badges. Signed-out visitors see what the page
+offers and a Sign in button. Styles are in `tracker.css`; every number still comes from the same speech records.
 
 ## Playing over a video call (every game)
 

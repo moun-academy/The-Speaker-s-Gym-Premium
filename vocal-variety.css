@@ -363,8 +363,6 @@ html:has(#varietyPage.active){background:#0a0f1e}
 
 /* where the games listen (the meeting audio control) */
 .vv-source{margin-top:12px}
-.vv-source-note{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.3);color:#cffafe;font-size:14px;line-height:1.45}
-.vv-source-note .vv-ghost{margin-left:auto;flex:none}
 .vv-source-slot{margin:14px 0 16px}
 .vv-miccheck.set .vv-mic-dot{background:var(--gold);box-shadow:0 0 10px var(--gold)}
 .vv-miccheck.set{color:var(--gold-soft)}

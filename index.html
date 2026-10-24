@@ -4469,6 +4469,7 @@
 
   </style>
   <link rel="stylesheet" href="spot.css">
+  <link rel="stylesheet" href="tracker.css">
 </head>
 
 <body>
@@ -4869,10 +4870,6 @@
         <div class="spot-controls spot-controls-center">
           <button class="spot-btn primary spot-start" id="spotStartBtn">▶ Start Challenge</button>
         </div>
-        <p class="spot-callnote" id="spotCallNote" role="status" hidden>
-          <span aria-hidden="true">📞</span><span>Meeting audio is on, so this game listens to your students through the call. You can change this in Settings.</span>
-          <button type="button" class="spot-mini" id="spotCallSettingsBtn">Settings</button>
-        </p>
       </div>
 
       <div class="spot-phase" id="spotThinkPhase">
@@ -5410,6 +5407,7 @@
   <div class="container page" id="analyticsPage">
     <button class="back-btn" id="analyticsBackBtn">← Back to Home</button>
     <div class="analytics-header">
+      <div class="tracker-hero-icon" aria-hidden="true">📊</div>
       <h2>Performance Tracker</h2>
       <p>Evidence-based vocal and verbal progress from every analyzed speech</p>
     </div>
@@ -5417,18 +5415,8 @@
     <!-- Content shown when signed in -->
     <div id="analyticsContent" style="display: none;">
 
-      <!-- AI Performance Tracker -->
-      <div class="performance-tracker">
-        <div class="analytics-section-title">AI Vocal &amp; Verbal Review</div>
-        <div id="performanceTrackerLatest" class="performance-empty">
-          Record a speech in Audio or Video mode with AI feedback enabled to create your first full performance report.
-        </div>
-        <div class="analytics-section-title" style="margin-top: 22px;">Recent Performance Reports</div>
-        <div id="performanceTrackerHistory" class="performance-history"></div>
-      </div>
-
       <!-- Speaking Score -->
-      <div class="speaking-score-container">
+      <div class="speaking-score-container" id="trackerScore">
         <div class="score-ring">
           <svg viewBox="0 0 160 160">
             <circle class="score-ring-bg" cx="80" cy="80" r="70"></circle>
@@ -5453,6 +5441,26 @@
         <div class="speaking-score-method">Updates after every AI-analyzed speech. Latest five reports: 80%. Practice consistency: 20%.</div>
       </div>
 
+      <!-- At a glance -->
+      <div class="tracker-overview" id="trackerOverview" aria-label="Your practice at a glance"></div>
+
+      <nav class="tracker-nav" id="trackerNav" aria-label="Jump to a section">
+        <button type="button" data-jump="trackerReview">🤖 AI review</button>
+        <button type="button" data-jump="trackerProgress">📅 Progress</button>
+        <button type="button" data-jump="trackerCharts">📈 Charts</button>
+        <button type="button" data-jump="trackerMilestones">🏆 Milestones</button>
+      </nav>
+
+      <!-- AI Performance Tracker -->
+      <div class="performance-tracker" id="trackerReview">
+        <div class="analytics-section-title">AI Vocal &amp; Verbal Review</div>
+        <div id="performanceTrackerLatest" class="performance-empty">
+          Record a speech in Audio or Video mode with AI feedback enabled to create your first full performance report.
+        </div>
+        <div class="analytics-section-title" style="margin-top: 22px;">Recent Performance Reports</div>
+        <div id="performanceTrackerHistory" class="performance-history"></div>
+      </div>
+
       <!-- Weekly AI Insight -->
       <div class="ai-insight-card" id="aiInsightCard">
         <div class="ai-insight-header">
@@ -5468,7 +5476,7 @@
       </div>
 
       <!-- Track Record (Weekly / Monthly) -->
-      <div class="analytics-section">
+      <div class="analytics-section" id="trackerProgress">
         <div class="analytics-section-title">📅 Track Record</div>
         <div class="track-record-container">
           <div class="track-record-tabs" id="trackRecordTabs">
@@ -5586,7 +5594,7 @@
       </div>
 
       <!-- WPM Trend Chart -->
-      <div class="analytics-section">
+      <div class="analytics-section" id="trackerCharts">
         <div class="analytics-section-title">📈 Words Per Minute</div>
         <div class="chart-container">
           <div class="chart-summary" id="wpmSummary"></div>
@@ -5637,7 +5645,7 @@
       </div>
 
       <!-- Milestone Badges -->
-      <div class="analytics-section">
+      <div class="analytics-section" id="trackerMilestones">
         <div class="analytics-section-title">🏆 Milestones</div>
         <div class="badges-grid" id="badgesGrid">
           <!-- Populated by JS -->
@@ -5648,8 +5656,11 @@
     <!-- Shown when not signed in -->
     <div id="analyticsLoginPrompt">
       <div class="analytics-login-prompt">
-        <span style="font-size: 48px; display: block; margin-bottom: 16px;">📊</span>
-        <p>Sign in to unlock your personalized progress analytics, speaking score, and AI-powered weekly insights.</p>
+        <span class="tracker-login-icon" aria-hidden="true">📊</span>
+        <h3>See how far you have come</h3>
+        <p>Sign in to unlock your speaking score, progress charts, personal records and a weekly AI insight.</p>
+        <ul class="tracker-login-list"><li>📈 Pace, filler words and confidence over time</li><li>🏆 Milestones and personal records</li><li>🤖 A full AI review of every analyzed speech</li></ul>
+        <button type="button" class="tracker-signin" id="analyticsSignInBtn">Sign in with Google</button>
         <p style="font-size: 12px; color: #6b7280;">Your speech data is used to track trends and generate improvement insights.</p>
       </div>
     </div>
@@ -5831,6 +5842,13 @@
     <div class="settings-section" style="margin-bottom: 12px;">
       <h3>📞 Play with students on Google Meet</h3>
       <p style="color: #9ca3af; font-size: 13.5px; line-height: 1.55;">Off by default: the games listen to your microphone. Switch it on here once and Think Fast, Speak on the Spot, Vocal Variety and the recorder all hear your students through your Google Meet call instead. The games themselves show no call controls.</p>
+      <div class="settings-row" style="margin-top: 14px;">
+        <span class="settings-row-label">Hear me in Think Fast<br><small style="color:#6b7280; font-weight:500;">Times how fast each speaker starts talking (microphone, or the meeting when it is on). Nothing is recorded.</small></span>
+        <label class="notification-toggle">
+          <input type="checkbox" id="thinkFastListenToggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     </div>
     <div id="meetingAudioPanel" style="margin-bottom: 24px;"></div>
 
@@ -9114,7 +9132,6 @@
     };
     // Settings and the games all use the same connection and microphone choice.
     window.addEventListener('meetingaudio:enabled', event => {
-      window.updateSpotCallNote?.(event.detail);
       if (callAudioMode === event.detail) return;
       callAudioMode = event.detail;
       applyCallAudioMode();
@@ -9122,7 +9139,6 @@
     const mountMeetingAudioPanel = () => {
       const panel = document.getElementById('meetingAudioPanel');
       if (panel && window.MeetingAudio && !panel.dataset.mounted) { panel.dataset.mounted = '1'; window.MeetingAudio.mountPanel(panel); }
-      window.updateSpotCallNote?.();
     };
     window.addEventListener('meetingaudio:ready', mountMeetingAudioPanel);
     mountMeetingAudioPanel();
@@ -9267,6 +9283,12 @@
 
     // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
+      const hadController = Boolean(navigator.serviceWorker.controller);
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hadController || window.__appUpdateReady) return;          // the very first install needs no reload
+        window.__appUpdateReady = true;
+        if (typeof currentPage !== 'undefined' && currentPage === 'main' && !isRunning) location.reload();
+      });
       navigator.serviceWorker.register('sw.js')
         .then(async (reg) => {
           console.log('Service Worker registered');
@@ -10269,6 +10291,7 @@
     let currentPage = 'main';
 
     function navigateToPage(pageName) {
+      if (window.__appUpdateReady && pageName === 'main' && !isRunning) { location.reload(); return; }
       if (currentPage === 'variety') window.VocalVariety?.stop();
       // Stop any active media/timers when leaving main page
       if (currentPage === 'main') {
@@ -11089,6 +11112,27 @@
       { id: 'long_session', icon: '🎯', name: 'Deep Diver', desc: 'Complete a 2+ minute speech', check: s => s.some(sp => sp.duration >= 120) },
     ];
 
+    function renderTrackerOverview() {
+      const box = document.getElementById('trackerOverview'); if (!box) return;
+      const list = analyticsSpeeches;
+      const minutes = Math.round(list.reduce((sum, speech) => sum + (Number(speech.duration) || 0), 0) / 60);
+      const paces = list.map(speech => Number(speech.metrics?.wordsPerMinute)).filter(value => Number.isFinite(value) && value > 0);
+      const avgPace = paces.length ? Math.round(paces.reduce((a, b) => a + b, 0) / paces.length) : null;
+      const streak = (typeof stats !== 'undefined' && stats && stats.streak) || 0;
+      const items = [
+        ['🎤', list.length, 'Speeches'],
+        ['🔥', streak, streak === 1 ? 'Day streak' : 'Day streak'],
+        ['⏱️', minutes >= 60 ? (minutes / 60).toFixed(1) + ' h' : minutes + ' min', 'Time spoken'],
+        ['🎯', avgPace === null ? '–' : avgPace, 'Avg words a minute']
+      ];
+      box.innerHTML = items.map(([icon, value, label], i) => '<div class="tracker-kpi" style="--i:' + i + '"><span class="tracker-kpi-icon" aria-hidden="true">' + icon + '</span><b>' + value + '</b><span>' + label + '</span></div>').join('');
+    }
+    document.addEventListener('click', event => {
+      const jump = event.target.closest('#trackerNav [data-jump]');
+      if (jump) document.getElementById(jump.dataset.jump)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (event.target.closest('#analyticsSignInBtn')) document.getElementById('profileGoogleSignInBtn')?.click();
+    });
+
     async function loadAnalyticsDashboard() {
       const content = document.getElementById('analyticsContent');
       const loginPrompt = document.getElementById('analyticsLoginPrompt');
@@ -11129,6 +11173,7 @@
         });
 
         calculateSpeakingScore();
+        renderTrackerOverview();
         renderTrackRecord(currentTrackPeriod);
         renderPracticePatterns();
         renderPersonalRecords();
@@ -12150,12 +12195,6 @@
       spotEl('spotPreviewQuestion').textContent = spotNextQuestion;
     }
 
-    function updateSpotCallNote(forced) {
-      const note = document.getElementById('spotCallNote'); if (!note) return;
-      note.hidden = !(forced !== undefined ? forced : Boolean(window.MeetingAudio?.enabled?.()));
-    }
-    window.updateSpotCallNote = updateSpotCallNote;
-
     function refreshSpotSettingsDefaults() {
       const core = spotCore(), profile = getSpotProfile();
       if (core && profile && !refreshSpotSettingsDefaults.done) {          // first visit: bring back the last chosen preset
@@ -12164,7 +12203,6 @@
       }
       renderSpotPresets();
       renderSpotRank();
-      updateSpotCallNote();
       if (!spotOwnOpen || !spotEl('spotOwnQuestion').value.trim()) shuffleSpotQuestion();
     }
 
@@ -12205,7 +12243,6 @@
       spotEl('spotPlayAgainBtn').addEventListener('click', () => { spotNextQuestion = ''; spotEl('spotOwnQuestion').value = ''; startSpotChallenge(); });
       spotEl('spotChangeBtn').addEventListener('click', () => { setSpotPhase('spotSetupPhase'); refreshSpotSettingsDefaults(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
       spotEl('spotViewRecordingBtn').addEventListener('click', viewSpotRecording);
-      spotEl('spotCallSettingsBtn').addEventListener('click', () => navigateToPage('settings'));
       window.addEventListener('spotcore:ready', () => { refreshSpotSettingsDefaults(); });
     }
 
@@ -13068,7 +13105,15 @@
     // ===== SETTINGS PAGE FUNCTIONS =====
     let lastSyncTime = null;
 
+    function syncThinkFastListenToggle() {
+      const toggle = document.getElementById('thinkFastListenToggle');
+      if (toggle && window.ThinkFast?.getListen) toggle.checked = window.ThinkFast.getListen();
+    }
+    document.getElementById('thinkFastListenToggle')?.addEventListener('change', event => window.ThinkFast?.setListen(event.target.checked));
+    window.addEventListener('thinkfast:ready', syncThinkFastListenToggle);
+
     function updateSettingsPageUI() {
+      syncThinkFastListenToggle();
       // Update sync status
       const syncStatusEl = document.getElementById('settingsSyncStatus');
       const lastSyncEl = document.getElementById('settingsLastSync');
