@@ -1,11 +1,16 @@
 // Service Worker for The Speaker's Gym
-const CACHE_NAME = 'speakers-gym-v32-logo-header';
+const CACHE_NAME = 'speakers-gym-v33-think-fast';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icon-192.png',
-  '/icon-512.png'
+  '/icon-512.png',
+  '/logo-header.webp',
+  '/think-fast.js',
+  '/think-fast-core.js',
+  '/think-fast-words.js',
+  '/think-fast.css'
 ];
 
 // Motivational messages for notifications

@@ -56,6 +56,24 @@ reaches High and Low), the loudness carries on from one student to the next, and
 absolute words a minute. This also covers microphones that are louder or quieter than usual
 and the levelling a video call applies.
 
+## Think Fast (reaction arena)
+
+Pick **Analogy Blitz** ("A battery is like a jacuzzi, because…"), **Hot Take** (agree or disagree, and why), **Sell It**
+(pitch a strange product) or **Wild Mix** (all three). Choose 2 to 5 seconds a prompt and 5 to 20 prompts. All modes are
+open from the start. A 3-2-1 countdown, then each prompt shows a draining ring; start talking at once.
+
+**Hear me** (on by default) listens through the microphone, or through the meeting audio when that is on, and times
+how long it takes to start speaking. It learns the room's quiet during the countdown, so nobody is tuned or asked to shout.
+Each prompt scores up to 100: up to 80 for a fast start (full marks within 0.6 s, falling to 25 at the buzzer) and up to
+20 for talking through the rest of the time. Answer 35 points or more to keep a combo going; the session score is the
+average, with stars at 35, 65 and 85. XP builds ranks (Rookie, Sprinter, Quick Draw, Lightning, Thunder, Mind Reader) and
+eight badges. Without a microphone it is a practice run: the prompts and timer only, no scores.
+
+Sounds are skipped in meeting mode (they would be heard as answers). Nothing is recorded or uploaded. Progress is
+kept in this browser (`sg-think-fast-v1`), and sessions and prompts still add to the old Think Fast totals and the account
+sync. Files: `think-fast-core.js` (prompts, listening maths, scoring, ranks, badges; covered by
+`tests/think-fast-core.test.js`), `think-fast.js` and `think-fast.css` (screen), `think-fast-words.js` (analogy words).
+
 ## Playing over a video call (every game)
 
 The coach shares their screen in a Google Meet and students speak from their own laptops. The
@@ -74,7 +92,8 @@ games listen to the call instead of the microphone:
    - **Home-page recorder** records the call without asking for the tab each time.
    - **Vocal variety** reads loudness and pitch from the call audio and counts words a minute
      for the pace games.
-   - **Think Fast** and **Warm Up** do not listen to anyone, so they need nothing.
+   - **Think Fast** listens through its "Hear me" switch (the Think Fast section above) and times how fast each student starts.
+   - **Warm Up** does not listen to anyone, so it needs nothing.
 
 Chrome or Edge on a computer only. The coach stays on the game tab (a round stops if the tab is
 hidden). Only the students are heard: the coach's own voice is not in the shared audio. Pitch
