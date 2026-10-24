@@ -22,6 +22,8 @@ const assets = [
   'think-fast-core.js',
   'think-fast-words.js',
   'think-fast.css',
+  'spot-core.js',
+  'spot.css',
   'icon-192.png',
   'icon-192-maskable.png',
   'icon-512.png',

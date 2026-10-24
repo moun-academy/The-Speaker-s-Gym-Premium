@@ -74,6 +74,21 @@ kept in this browser (`sg-think-fast-v1`), and sessions and prompts still add to
 sync. Files: `think-fast-core.js` (prompts, listening maths, scoring, ranks, badges; covered by
 `tests/think-fast-core.test.js`), `think-fast.js` and `think-fast.css` (screen), `think-fast-words.js` (analogy words).
 
+## Speak on the Spot
+
+Answer a question while surprise words appear one at a time; work each word into what you are saying before its timer
+runs out. Pick **Quick Spark** (30 s, 4 words), **Classic** (60 s, 6 words), **Pressure** (8 words, 6 s each),
+**Endurance** (90 s, 10 words) or **Custom**. The question can be shuffled or typed in ("Write my own"), which suits a
+coach running a session. Words are detected with the browser's speech recognition, or through the meeting audio when it
+is on (see below); detection, call mode and recording are unchanged.
+
+The score is out of 100 for every challenge: 15 points a word, up to 10 more for using it quickly, 10 for finishing, minus
+10 for each missed word (and 5 for stopping early), all divided by what a perfect run could earn, so a 4-word spark can
+reach 100 like a 10-word marathon. The results screen shows the score, grade (S to D), stars, a word-by-word timeline, and
+a line-by-line breakdown. XP builds ranks (Newcomer to Spotlight Star) and eight badges, saved in this browser
+(`sg-spot-v1`). The old Games, Best Score, Avg Words and Fastest counters keep counting. Rules and scoring live in
+`spot-core.js` (tested by `tests/spot-core.test.js`) with the look in `spot.css`.
+
 ## Playing over a video call (every game)
 
 The coach shares their screen in a Google Meet and students speak from their own laptops. The

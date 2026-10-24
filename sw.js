@@ -1,5 +1,5 @@
 // Service Worker for The Speaker's Gym
-const CACHE_NAME = 'speakers-gym-v33-think-fast';
+const CACHE_NAME = 'speakers-gym-v34-spot-arena';
 const ASSETS = [
   '/',
   '/index.html',
@@ -10,7 +10,9 @@ const ASSETS = [
   '/think-fast.js',
   '/think-fast-core.js',
   '/think-fast-words.js',
-  '/think-fast.css'
+  '/think-fast.css',
+  '/spot-core.js',
+  '/spot.css'
 ];
 
 // Motivational messages for notifications

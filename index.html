@@ -4468,6 +4468,7 @@
     }
 
   </style>
+  <link rel="stylesheet" href="spot.css">
 </head>
 
 <body>
@@ -4796,9 +4797,12 @@
   <div class="container page" id="spotChallengePage">
     <button class="back-btn" id="spotBackBtn">← Back to Home</button>
     <div class="spot-header">
-      <h2>🎯 Speak on the Spot Challenge</h2>
-      <p>Answer a simple question while weaving random words into your 60-second response.</p>
+      <div class="spot-hero-icon" aria-hidden="true">🎯</div>
+      <h2>Speak on the Spot</h2>
+      <p>Get a question, think for a moment, then answer it while surprise words appear one by one. Work each word into what you are saying before its timer runs out.</p>
     </div>
+
+    <section class="spot-rank" id="spotRankCard" aria-label="Your rank"></section>
 
     <div class="spot-stats-grid">
       <div class="spot-stat"><div class="spot-stat-value" id="spotTotalGames">0</div><div class="spot-stat-label">Games</div></div>
@@ -4807,9 +4811,12 @@
       <div class="spot-stat"><div class="spot-stat-value" id="spotFastest">--</div><div class="spot-stat-label">Fastest</div></div>
     </div>
 
+    <h3 class="spot-h">Choose your challenge</h3>
+    <div class="spot-presets" id="spotPresets" role="radiogroup" aria-label="Challenge type"></div>
+
     <div class="spot-settings-grid" id="spotSettingsBox">
       <div class="spot-setting-card">
-        <label>Thinking Time</label>
+        <label for="spotThinkTime">Thinking Time</label>
         <select id="spotThinkTime">
           <option value="3">3 seconds</option>
           <option value="5" selected>5 seconds</option>
@@ -4817,7 +4824,7 @@
         </select>
       </div>
       <div class="spot-setting-card">
-        <label>Speech Duration</label>
+        <label for="spotSpeechDuration">Speech Duration</label>
         <select id="spotSpeechDuration">
           <option value="30">30 seconds</option>
           <option value="60" selected>60 seconds</option>
@@ -4825,17 +4832,21 @@
         </select>
       </div>
       <div class="spot-setting-card">
-        <label>Word Interval</label>
+        <label for="spotWordInterval">Word Interval</label>
         <select id="spotWordInterval">
           <option value="5">5 seconds</option>
+          <option value="6">6 seconds</option>
+          <option value="7">7 seconds</option>
+          <option value="8">8 seconds</option>
           <option value="10" selected>10 seconds</option>
           <option value="15">15 seconds</option>
         </select>
       </div>
       <div class="spot-setting-card">
-        <label>Number of Words</label>
+        <label for="spotNumWords">Number of Words</label>
         <select id="spotNumWords">
           <option value="3">3 words</option>
+          <option value="4">4 words</option>
           <option value="5">5 words</option>
           <option value="6" selected>6 words</option>
           <option value="8">8 words</option>
@@ -4846,12 +4857,20 @@
 
     <div class="spot-game-shell" id="spotGameShell">
       <div class="spot-phase active" id="spotSetupPhase">
+        <div class="spot-q-label">Your question</div>
         <div class="spot-question" id="spotPreviewQuestion">Tap Start Challenge to get a random question.</div>
-        <div class="spot-controls">
-          <button class="spot-btn primary" id="spotStartBtn">▶ Start Challenge</button>
+        <div class="spot-q-actions">
+          <button type="button" class="spot-mini" id="spotShuffleBtn">🔄 New question</button>
+          <button type="button" class="spot-mini" id="spotOwnBtn" aria-expanded="false" aria-controls="spotOwnWrap">✏️ Write my own</button>
         </div>
-        <details class="spot-meeting" id="spotMeetingBox" style="margin-top: 16px; text-align: left;">
-          <summary style="cursor: pointer; color: #9ca3af; font-size: 13px; padding: 8px 0;">📞 Playing in a video call? Let the game hear your students</summary>
+        <div class="spot-own" id="spotOwnWrap" hidden>
+          <input type="text" id="spotOwnQuestion" maxlength="140" placeholder="Type any question, for example: Should cities ban cars?" autocomplete="off">
+        </div>
+        <div class="spot-controls spot-controls-center">
+          <button class="spot-btn primary spot-start" id="spotStartBtn">▶ Start Challenge</button>
+        </div>
+        <details class="spot-meeting" id="spotMeetingBox">
+          <summary>📞 Playing in a video call? Let the game hear your students</summary>
           <div id="spotMeetingPanel" style="margin-top: 8px;"></div>
         </details>
       </div>
@@ -4859,64 +4878,85 @@
       <div class="spot-phase" id="spotThinkPhase">
         <div class="spot-think-banner">THINK FAST!</div>
         <div class="spot-question" id="spotQuestionText">Question</div>
-        <div class="spot-think-count" id="spotThinkCountdown">5</div>
+        <div class="spot-think-clock">
+          <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="spot-ring-bg" cx="60" cy="60" r="54"/><circle class="spot-ring-fg" id="spotThinkRing" cx="60" cy="60" r="54"/></svg>
+          <div class="spot-think-count" id="spotThinkCountdown">5</div>
+        </div>
         <div class="spot-go" id="spotGoText">5...4...3...2...1...GO!</div>
+        <p class="spot-think-tip">Plan your answer: say what you think, give a reason, then use the words as your examples.</p>
       </div>
 
       <div class="spot-phase" id="spotSpeakPhase">
-        <div class="spot-question spot-question-small" id="spotQuestionSpeakText">Question</div>
-        <div class="spot-timers">
-          <div class="spot-timer-box">
-            <div class="spot-timer-label">Main Timer</div>
-            <div class="spot-timer-value" id="spotMainTimer">60</div>
+        <div class="spot-hud">
+          <div class="spot-main-clock" aria-label="Time left">
+            <svg viewBox="0 0 100 100" aria-hidden="true"><circle class="spot-ring-bg" cx="50" cy="50" r="42"/><circle class="spot-ring-fg" id="spotMainRing" cx="50" cy="50" r="42"/></svg>
+            <div class="spot-main-num"><span id="spotMainTimer">60</span><small>sec</small></div>
           </div>
-          <div class="spot-timer-box">
-            <div class="spot-timer-label">Word Timer</div>
-            <div class="spot-timer-value" id="spotWordTimer">10</div>
+          <div class="spot-hud-side">
+            <div class="spot-question spot-question-small" id="spotQuestionSpeakText">Question</div>
+            <div class="spot-hud-row">
+              <span class="spot-pill">Words <b id="spotWordsProgress">0/6</b></span>
+              <span class="spot-pill streak" id="spotStreakPill" data-on="0">🔥 ×0</span>
+            </div>
           </div>
         </div>
         <div class="spot-word-card" id="spotWordCard">
-          <div class="spot-word-title">Current Word</div>
+          <div class="spot-word-title">Work this word into your answer</div>
           <div class="spot-word-value" id="spotCurrentWord">READY</div>
+          <div class="spot-word-bar" aria-hidden="true"><i id="spotWordBar"></i></div>
+          <div class="spot-word-timer" id="spotWordTimerInline">10s to use this word</div>
+          <span id="spotWordTimer" hidden>10</span>
+          <div class="spot-word-pop" id="spotWordPop" role="status" aria-live="polite"></div>
         </div>
-        <div class="spot-word-timer" id="spotWordTimerInline">10s to use this word</div>
-        <div class="spot-words-row">
-          <div class="spot-word-list">
-            <h4>Words Used</h4>
-            <div id="spotUsedWordsList"></div>
-          </div>
-          <div class="spot-word-list">
-            <h4>Upcoming Words</h4>
-            <div id="spotUpcomingWordsList"></div>
-          </div>
-        </div>
+        <div class="spot-dots" id="spotWordDots" aria-hidden="true"></div>
+        <div class="spot-used" id="spotUsedWordsList"></div>
         <div class="spot-transcript" id="spotLiveTranscript">Live transcript will appear here...</div>
-        <div class="spot-controls">
+        <div class="spot-controls spot-controls-center">
           <button class="spot-btn stop" id="spotStopBtn">⏹ Stop Early</button>
         </div>
       </div>
 
       <div class="spot-phase" id="spotResultsPhase">
-        <div class="spot-question" style="font-size:26px;">Challenge Complete!</div>
+        <div class="spot-res-title">Challenge Complete!</div>
+        <div class="spot-res-hero">
+          <div class="spot-dial" id="spotDial" style="--p:0"><b id="spotScoreValue">0</b><span>score</span></div>
+          <div class="spot-res-side">
+            <div class="spot-grade" id="spotGrade">–</div>
+            <div class="spot-grade-label" id="spotGradeLabel"></div>
+            <div class="spot-stars" id="spotStars" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div class="spot-xpline" id="spotXpLine"></div>
         <div class="spot-results-grid">
-          <div class="spot-result-card"><div class="v" id="spotScoreValue">0</div><div class="l">Score</div></div>
-          <div class="spot-result-card"><div class="v" id="spotWordsUsedValue">0/0</div><div class="l">Words Used</div></div>
+          <div class="spot-result-card"><div class="v" id="spotWordsUsedValue">0/0</div><div class="l">Words used</div></div>
           <div class="spot-result-card"><div class="v" id="spotTimeValue">0s</div><div class="l">Time</div></div>
+          <div class="spot-result-card"><div class="v" id="spotStreakValue">×0</div><div class="l">Best streak</div></div>
         </div>
         <div class="spot-word-list">
-          <h4>Word Results</h4>
+          <h4>Word by word</h4>
           <div id="spotWordResultsList"></div>
         </div>
+        <div class="spot-word-list spot-breakdown">
+          <h4>How your score adds up</h4>
+          <div id="spotBreakdown"></div>
+        </div>
+        <div id="spotNewBadges"></div>
+        <p class="spot-tip" id="spotTip"></p>
         <div class="spot-transcript" id="spotFinalTranscript">Transcript appears here after your run.</div>
-        <div class="spot-controls">
+        <div class="spot-controls spot-controls-center">
           <button class="spot-btn primary" id="spotPlayAgainBtn">🔁 Play Again</button>
+          <button class="spot-btn alt" id="spotChangeBtn">🎛️ Change challenge</button>
           <button class="spot-btn alt" id="spotViewRecordingBtn">▶ View Recording</button>
           <a class="spot-btn alt" id="spotDownloadRecordingBtn" download="speak-on-the-spot.webm" style="display:none; text-decoration:none;">⬇ Download</a>
         </div>
       </div>
     </div>
+
+    <h3 class="spot-h">Badges <small id="spotBadgeCount"></small></h3>
+    <ul class="spot-badges" id="spotBadges"></ul>
   </div>
   <!-- END SPEAK ON THE SPOT PAGE -->
+
 
   <!-- WARM UP PAGE -->
   <div class="container page" id="warmUpPage">
@@ -12042,32 +12082,91 @@
     };
 
     // ===== SPEAK ON THE SPOT CHALLENGE =====
+    // ----- upgraded Speak on the Spot: lobby, presets, rank (rules live in spot-core.js, loaded as window.SpotCore) -----
+    const SPOT_PROFILE_KEY = 'sg-spot-v1';
+    const SPOT_THINK_RING = 2 * Math.PI * 54, SPOT_MAIN_RING = 2 * Math.PI * 42;
+    const spotCore = () => window.SpotCore;
+    let spotProfile = null, spotNextQuestion = '', spotCustomOpen = false, spotOwnOpen = false;
+    const spotEl = id => document.getElementById(id);
+    const spotEsc = text => String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+    function getSpotProfile() {
+      const core = spotCore(); if (!core) return null;
+      if (!spotProfile) { try { spotProfile = core.normalizeProfile(JSON.parse(localStorage.getItem(SPOT_PROFILE_KEY))); } catch { spotProfile = core.normalizeProfile(null); } }
+      return spotProfile;
+    }
+    function saveSpotProfile() { try { localStorage.setItem(SPOT_PROFILE_KEY, JSON.stringify(spotProfile)); } catch { /* private mode: the game still works */ } }
+
     function getSpotSettings() {
-      const thinkTime = parseInt(document.getElementById('spotThinkTime').value, 10);
-      const speechDuration = parseInt(document.getElementById('spotSpeechDuration').value, 10);
-      const wordInterval = parseInt(document.getElementById('spotWordInterval').value, 10);
-      const numWords = parseInt(document.getElementById('spotNumWords').value, 10);
+      const thinkTime = parseInt(spotEl('spotThinkTime').value, 10);
+      const speechDuration = parseInt(spotEl('spotSpeechDuration').value, 10);
+      const wordInterval = parseInt(spotEl('spotWordInterval').value, 10);
+      const numWords = parseInt(spotEl('spotNumWords').value, 10);
       return { thinkTime, speechDuration, wordInterval, numWords };
     }
 
-    function refreshSpotSettingsDefaults() {
-      const duration = parseInt(document.getElementById('spotSpeechDuration').value, 10);
-      const interval = parseInt(document.getElementById('spotWordInterval').value, 10);
-      const suggested = Math.max(3, Math.min(10, Math.floor(duration / interval)));
-      const wordsSelect = document.getElementById('spotNumWords');
-      const active = parseInt(wordsSelect.value, 10);
-      if (![3, 5, 6, 8, 10].includes(active)) {
-        wordsSelect.value = String(suggested);
+    function applySpotPreset(id) {
+      const core = spotCore(); if (!core) return;
+      const preset = core.presetById(id);
+      if (id === 'custom') { spotCustomOpen = true; }
+      else {
+        spotCustomOpen = false;
+        spotEl('spotThinkTime').value = String(preset.think);
+        spotEl('spotSpeechDuration').value = String(preset.duration);
+        spotEl('spotWordInterval').value = String(preset.interval);
+        spotEl('spotNumWords').value = String(preset.words);
       }
-      document.getElementById('spotPreviewQuestion').textContent = SPOT_CHALLENGE_QUESTIONS[Math.floor(Math.random() * SPOT_CHALLENGE_QUESTIONS.length)];
+      const profile = getSpotProfile(); if (profile) { profile.settings.preset = id; saveSpotProfile(); }
+      renderSpotPresets();
+    }
+
+    function renderSpotPresets() {
+      const core = spotCore(), box = spotEl('spotPresets'); if (!core || !box) return;
+      const matched = core.presetFor(getSpotSettings());
+      const selected = spotCustomOpen || matched === 'custom' ? 'custom' : matched;
+      box.innerHTML = core.PRESETS.map(p => `<button type="button" class="spot-preset" role="radio" aria-checked="${p.id === selected}" data-preset="${p.id}">
+        <span class="spot-preset-icon" aria-hidden="true">${p.icon}</span><span class="spot-preset-name">${p.name}</span><span class="spot-preset-blurb">${p.blurb}</span></button>`).join('');
+      spotEl('spotSettingsBox').classList.toggle('open', selected === 'custom');
+    }
+
+    function renderSpotRank() {
+      const core = spotCore(), profile = getSpotProfile(); if (!core || !profile) return;
+      const rank = core.rankFor(profile.xp);
+      spotEl('spotRankCard').innerHTML = `<div class="spot-rank-top"><span class="spot-rank-icon" aria-hidden="true">${rank.current.icon}</span>
+        <div><b>${rank.current.name}</b><span>${profile.xp} XP${rank.next ? ` · ${rank.toNext} to ${rank.next.name}` : ' · top rank'}</span></div></div>
+        <div class="spot-xp" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(rank.progress * 100)}"><i style="width:${(rank.progress * 100).toFixed(1)}%"></i></div>`;
+      spotEl('spotBadgeCount').textContent = `${profile.badges.length} of ${core.BADGES.length}`;
+      spotEl('spotBadges').innerHTML = core.BADGES.map(b => `<li class="spot-badge${profile.badges.includes(b.id) ? ' on' : ''}"><span aria-hidden="true">${b.icon}</span><b>${spotEsc(b.name)}</b><i>${spotEsc(b.hint)}</i></li>`).join('');
+    }
+
+    function pickSpotQuestion() {
+      const own = spotOwnOpen ? spotEl('spotOwnQuestion').value.trim() : '';
+      if (own) return own;
+      if (spotNextQuestion) return spotNextQuestion;
+      return SPOT_CHALLENGE_QUESTIONS[Math.floor(Math.random() * SPOT_CHALLENGE_QUESTIONS.length)];
+    }
+    function shuffleSpotQuestion() {
+      spotNextQuestion = SPOT_CHALLENGE_QUESTIONS[Math.floor(Math.random() * SPOT_CHALLENGE_QUESTIONS.length)];
+      spotEl('spotPreviewQuestion').textContent = spotNextQuestion;
+    }
+
+    function refreshSpotSettingsDefaults() {
+      const core = spotCore(), profile = getSpotProfile();
+      if (core && profile && !refreshSpotSettingsDefaults.done) {          // first visit: bring back the last chosen preset
+        refreshSpotSettingsDefaults.done = true;
+        if (profile.settings.preset !== 'custom') applySpotPreset(profile.settings.preset);
+      }
+      renderSpotPresets();
+      renderSpotRank();
+      if (!spotOwnOpen || !spotEl('spotOwnQuestion').value.trim()) shuffleSpotQuestion();
     }
 
     function updateSpotChallengeStatsUI() {
-      document.getElementById('spotTotalGames').textContent = spotChallengeStats.totalGames;
-      document.getElementById('spotBestScore').textContent = spotChallengeStats.bestScore;
+      spotEl('spotTotalGames').textContent = spotChallengeStats.totalGames;
+      spotEl('spotBestScore').textContent = spotChallengeStats.bestScore;
       const avgWords = spotChallengeStats.totalGames ? (spotChallengeStats.totalWordsUsed / spotChallengeStats.totalGames).toFixed(1) : '0.0';
-      document.getElementById('spotAvgWords').textContent = avgWords;
-      document.getElementById('spotFastest').textContent = spotChallengeStats.fastestCompletion ? `${spotChallengeStats.fastestCompletion}s` : '--';
+      spotEl('spotAvgWords').textContent = avgWords;
+      spotEl('spotFastest').textContent = spotChallengeStats.fastestCompletion ? `${spotChallengeStats.fastestCompletion}s` : '--';
     }
 
     function saveSpotChallengeStats() {
@@ -12078,12 +12177,28 @@
     function initSpotChallengePage() {
       updateSpotChallengeStatsUI();
       refreshSpotSettingsDefaults();
-      document.getElementById('spotSpeechDuration').addEventListener('change', refreshSpotSettingsDefaults);
-      document.getElementById('spotWordInterval').addEventListener('change', refreshSpotSettingsDefaults);
-      document.getElementById('spotStartBtn').addEventListener('click', startSpotChallenge);
-      document.getElementById('spotStopBtn').addEventListener('click', () => stopSpotChallenge(false));
-      document.getElementById('spotPlayAgainBtn').addEventListener('click', startSpotChallenge);
-      document.getElementById('spotViewRecordingBtn').addEventListener('click', viewSpotRecording);
+      ['spotThinkTime', 'spotSpeechDuration', 'spotWordInterval', 'spotNumWords'].forEach(id => spotEl(id).addEventListener('change', () => { renderSpotPresets(); }));
+      spotEl('spotPresets').addEventListener('click', event => {
+        const card = event.target.closest('[data-preset]'); if (card) applySpotPreset(card.dataset.preset);
+      });
+      spotEl('spotShuffleBtn').addEventListener('click', () => { spotEl('spotOwnQuestion').value = ''; shuffleSpotQuestion(); });
+      spotEl('spotOwnBtn').addEventListener('click', () => {
+        spotOwnOpen = !spotOwnOpen;
+        spotEl('spotOwnWrap').hidden = !spotOwnOpen;
+        spotEl('spotOwnBtn').setAttribute('aria-expanded', String(spotOwnOpen));
+        if (spotOwnOpen) spotEl('spotOwnQuestion').focus();
+      });
+      spotEl('spotOwnQuestion').addEventListener('input', event => {
+        const text = event.target.value.trim();
+        spotEl('spotPreviewQuestion').textContent = text || spotNextQuestion || 'Tap Start Challenge to get a random question.';
+      });
+      spotEl('spotOwnQuestion').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); startSpotChallenge(); } });
+      spotEl('spotStartBtn').addEventListener('click', startSpotChallenge);
+      spotEl('spotStopBtn').addEventListener('click', () => stopSpotChallenge(false));
+      spotEl('spotPlayAgainBtn').addEventListener('click', () => { spotNextQuestion = ''; spotEl('spotOwnQuestion').value = ''; startSpotChallenge(); });
+      spotEl('spotChangeBtn').addEventListener('click', () => { setSpotPhase('spotSetupPhase'); refreshSpotSettingsDefaults(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+      spotEl('spotViewRecordingBtn').addEventListener('click', viewSpotRecording);
+      window.addEventListener('spotcore:ready', () => { refreshSpotSettingsDefaults(); });
     }
 
     function setSpotPhase(phaseId) {
@@ -12395,25 +12510,15 @@
 
     function renderSpotWords() {
       if (!spotSession) return;
-      const usedList = document.getElementById('spotUsedWordsList');
-      const upcomingList = document.getElementById('spotUpcomingWordsList');
-      usedList.innerHTML = '';
-      upcomingList.innerHTML = '';
-      spotSession.words.forEach((item, idx) => {
-        if (item.used || item.missed) {
-          const chip = document.createElement('div');
-          chip.className = `spot-chip ${item.used ? 'used' : 'missed'}`;
-          chip.textContent = `${item.used ? '✅' : '❌'} ${item.word}`;
-          usedList.appendChild(chip);
-        } else if (idx > spotSession.currentWordIndex) {
-          const chip = document.createElement('div');
-          chip.className = 'spot-chip locked';
-          chip.textContent = '🔒 Hidden word';
-          upcomingList.appendChild(chip);
-        }
-      });
-      if (!usedList.innerHTML) usedList.innerHTML = '<div class="spot-chip">No words completed yet</div>';
-      if (!upcomingList.innerHTML) upcomingList.innerHTML = '<div class="spot-chip">No upcoming words</div>';
+      const words = spotSession.words;
+      const used = words.filter(w => w.used).length;
+      spotEl('spotWordsProgress').textContent = `${used}/${words.length}`;
+      spotEl('spotWordDots').innerHTML = words.map((w, idx) =>
+        `<i class="spot-dot${w.used ? ' used' : w.missed ? ' missed' : idx === spotSession.currentWordIndex ? ' now' : ''}"></i>`).join('');
+      spotEl('spotUsedWordsList').innerHTML = words.filter(w => w.used).map(w => `<span class="spot-chip used">✓ ${spotEsc(w.word)}</span>`).join('');
+      const pill = spotEl('spotStreakPill');
+      pill.textContent = `🔥 ×${spotSession.streak || 0}`;
+      pill.dataset.on = (spotSession.streak || 0) >= 2 ? '1' : '0';
     }
 
     function showSpotWord(index) {
@@ -12422,12 +12527,17 @@
       spotSession.currentWordIndex = index;
       spotSession.wordTimeLeft = spotSession.settings.wordInterval;
       const item = spotSession.words[index];
-      document.getElementById('spotCurrentWord').textContent = item.word.toUpperCase();
-      document.getElementById('spotWordTimer').textContent = String(spotSession.wordTimeLeft);
-      document.getElementById('spotWordTimerInline').textContent = `${spotSession.wordTimeLeft}s to use this word`;
-      document.getElementById('spotWordCard').style.animation = 'none';
-      requestAnimationFrame(() => { document.getElementById('spotWordCard').style.animation = ''; });
+      spotEl('spotCurrentWord').textContent = item.word.toUpperCase();
+      spotEl('spotWordTimer').textContent = String(spotSession.wordTimeLeft);
+      spotEl('spotWordTimerInline').textContent = `${spotSession.wordTimeLeft}s to use this word`;
+      const card = spotEl('spotWordCard');
+      card.style.animation = 'none';
+      card.classList.remove('hurry');
+      const bar = spotEl('spotWordBar');
+      bar.classList.add('snap'); bar.style.width = '100%';
+      requestAnimationFrame(() => { card.style.animation = ''; bar.classList.remove('snap'); });
       renderSpotWords();
+      updateSpotTimersUI();
     }
 
     function spotTranscriptMatchesWord(transcript, word) {
@@ -12458,6 +12568,16 @@
       return false;
     }
 
+    function showSpotPop(item) {
+      const pop = spotEl('spotWordPop'); if (!pop) return;
+      pop.innerHTML = `<b>✓ ${spotEsc(item.word.toUpperCase())}</b><span>in ${item.detectedAt}s</span>`;
+      pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show');
+      const shell = spotEl('spotGameShell');
+      shell.classList.remove('spot-hit'); void shell.offsetWidth; shell.classList.add('spot-hit');
+      clearTimeout(showSpotPop.timer);
+      showSpotPop.timer = setTimeout(() => { pop.classList.remove('show'); shell.classList.remove('spot-hit'); }, 1500);
+    }
+
     function detectSpotCurrentWord() {
       if (!spotSession) return;
       const i = spotSession.currentWordIndex;
@@ -12466,23 +12586,27 @@
       if (!spotTranscriptMatchesWord(spotMatchTranscript || spotTranscript, item.word)) return;
       item.used = true;
       item.detectedAt = spotSession.settings.wordInterval - spotSession.wordTimeLeft;
-      const bonus = Math.max(0, 5 - Math.floor(item.detectedAt / 2));
-      spotSession.bonus += bonus;
-      renderSpotWords();
-      showAchievement('✅ Word detected!');
+      spotSession.streak = (spotSession.streak || 0) + 1;
+      spotSession.longestStreak = Math.max(spotSession.longestStreak || 0, spotSession.streak);
+      showSpotPop(item);
       showSpotWord(i + 1);
     }
 
     function updateSpotTimersUI() {
       if (!spotSession) return;
-      document.getElementById('spotMainTimer').textContent = String(spotSession.mainTimeLeft);
-      const wordTimerEl = document.getElementById('spotWordTimer');
-      const inline = document.getElementById('spotWordTimerInline');
-      wordTimerEl.textContent = String(spotSession.wordTimeLeft);
+      const total = spotSession.settings.speechDuration;
+      spotEl('spotMainTimer').textContent = String(spotSession.mainTimeLeft);
+      const ring = spotEl('spotMainRing');
+      ring.style.strokeDashoffset = (SPOT_MAIN_RING * (1 - clamp01(spotSession.mainTimeLeft / total))).toFixed(2);
+      spotEl('spotWordTimer').textContent = String(spotSession.wordTimeLeft);
+      const inline = spotEl('spotWordTimerInline');
       inline.textContent = `${spotSession.wordTimeLeft}s to use this word`;
       inline.classList.toggle('danger', spotSession.wordTimeLeft <= 3);
-      document.getElementById('spotGameShell').classList.toggle('spot-border-danger', spotSession.mainTimeLeft <= 10);
+      spotEl('spotWordCard').classList.toggle('hurry', spotSession.wordTimeLeft <= 3);
+      spotEl('spotWordBar').style.width = `${clamp01((spotSession.wordTimeLeft - 1) / spotSession.settings.wordInterval) * 100}%`;
+      spotEl('spotGameShell').classList.toggle('spot-border-danger', spotSession.mainTimeLeft <= 10);
     }
+    const clamp01 = value => Math.min(1, Math.max(0, value));
 
     async function primeSpotMicPermission() {
       // Request mic permission inside the click's async chain so the browser
@@ -12497,6 +12621,11 @@
       }
     }
 
+    function setSpotThinkRing(fraction) {
+      const ring = spotEl('spotThinkRing');
+      if (ring) ring.style.strokeDashoffset = (SPOT_THINK_RING * (1 - Math.min(1, Math.max(0, fraction)))).toFixed(2);
+    }
+
     async function startSpotChallenge() {
       try {
         hardResetSpotRuntime();
@@ -12508,7 +12637,8 @@
         spotSession = null;
         if (!spotCall()) await primeSpotMicPermission();
         const settings = getSpotSettings();
-      const question = SPOT_CHALLENGE_QUESTIONS[Math.floor(Math.random() * SPOT_CHALLENGE_QUESTIONS.length)];
+      const question = pickSpotQuestion();
+      spotNextQuestion = '';
       spotSession = {
         settings,
         question,
@@ -12519,12 +12649,16 @@
         startTime: null,
         endTime: null,
         earlyStopped: false,
-        bonus: 0
+        bonus: 0,
+        streak: 0,
+        longestStreak: 0,
+        previousBest: spotChallengeStats.bestScore
       };
       document.getElementById('spotQuestionText').textContent = question;
       document.getElementById('spotQuestionSpeakText').textContent = question;
       document.getElementById('spotGoText').textContent = `${settings.thinkTime}...`;
       document.getElementById('spotThinkCountdown').textContent = settings.thinkTime;
+      setSpotThinkRing(1);
       document.getElementById('spotDownloadRecordingBtn').style.display = 'none';
       setSpotPhase('spotThinkPhase');
 
@@ -12540,6 +12674,7 @@
         think -= 1;
         document.getElementById('spotThinkCountdown').textContent = Math.max(think, 0);
         document.getElementById('spotGoText').textContent = think > 0 ? `${think}...` : 'GO!';
+        setSpotThinkRing(Math.max(think, 0) / settings.thinkTime);
         if (think <= 0) {
           clearInterval(spotThinkInterval);
           setSpotPhase('spotSpeakPhase');
@@ -12572,7 +12707,7 @@
             spotSession.wordTimeLeft -= 1;
             if (spotSession.wordTimeLeft <= 0) {
               const idx = spotSession.currentWordIndex;
-              if (spotSession.words[idx] && !spotSession.words[idx].used) spotSession.words[idx].missed = true;
+              if (spotSession.words[idx] && !spotSession.words[idx].used) { spotSession.words[idx].missed = true; spotSession.streak = 0; }
               showSpotWord(idx + 1);
             }
             updateSpotTimersUI();
@@ -12587,12 +12722,61 @@
     }
 
     function calculateSpotScore(session) {
-      const used = session.words.filter(w => w.used).length;
+      const core = spotCore();
+      if (core) return core.scoreSession(session).score;
+      const used = session.words.filter(w => w.used).length;       // the module did not load: keep the original maths
       const missed = session.words.filter(w => w.missed).length;
       const fullTimeBonus = session.mainTimeLeft <= 0 && !session.earlyStopped ? 10 : 0;
       const earlyPenalty = session.earlyStopped ? 5 : 0;
       const raw = (used * 15) + session.bonus + fullTimeBonus - (missed * 10) - earlyPenalty;
       return Math.max(0, Math.min(100, Math.round(raw)));
+    }
+
+    function renderSpotResults(session, elapsed) {
+      const core = spotCore();
+      const result = core ? core.scoreSession(session) : null;
+      const used = session.words.filter(w => w.used).length;
+      const score = result ? result.score : calculateSpotScore(session);
+      spotEl('spotScoreValue').textContent = score;
+      spotEl('spotDial').style.setProperty('--p', score);
+      spotEl('spotWordsUsedValue').textContent = `${used}/${session.words.length}`;
+      spotEl('spotTimeValue').textContent = `${elapsed}s`;
+      spotEl('spotStreakValue').textContent = `×${result ? result.longestStreak : (session.longestStreak || 0)}`;
+      const interval = session.settings.wordInterval;
+      spotEl('spotWordResultsList').innerHTML = session.words.map(w => {
+        const fast = w.used ? clamp01(1 - w.detectedAt / interval) : 0;
+        return `<div class="spot-wrow ${w.used ? 'used' : 'missed'}"><span class="spot-wi">${w.used ? '✓' : '✗'}</span><span class="spot-ww">${spotEsc(w.word)}</span>
+          <span class="spot-wbar"><i style="width:${w.used ? Math.max(8, fast * 100) : 0}%"></i></span><span class="spot-wt">${w.used ? `${w.detectedAt}s` : 'missed'}</span></div>`;
+      }).join('');
+      const gradeBox = spotEl('spotGrade'), starsBox = spotEl('spotStars');
+      if (!core) { gradeBox.textContent = ''; starsBox.textContent = ''; spotEl('spotXpLine').textContent = ''; spotEl('spotBreakdown').textContent = ''; spotEl('spotNewBadges').textContent = ''; spotEl('spotTip').textContent = ''; return; }
+
+      const grade = core.gradeOf(score), stars = core.starsFor(score);
+      gradeBox.textContent = grade.letter; spotEl('spotGradeLabel').textContent = grade.label;
+      starsBox.innerHTML = [1, 2, 3].map(n => `<span class="spot-star${n <= stars ? ' on' : ''}" style="--i:${n}">★</span>`).join('');
+
+      const presetId = core.presetFor(session.settings);
+      const outcome = core.applyResult(getSpotProfile(), { result, session, preset: presetId });
+      spotProfile = outcome.profile; saveSpotProfile(); renderSpotRank();
+      const rank = core.rankFor(spotProfile.xp);
+      const newBest = score > 0 && score > (session.previousBest || 0) && spotChallengeStats.totalGames > 1;
+      spotEl('spotXpLine').innerHTML = `<b>+${outcome.xp} XP</b>${newBest ? '<span class="spot-new">New best!</span>' : ''}
+        ${outcome.rankedUp ? `<div class="spot-rankup">${rank.current.icon} Rank up: <b>${rank.current.name}</b></div>` : `<div class="spot-rankline">${rank.current.icon} ${rank.current.name}${rank.next ? ` · ${rank.toNext} XP to ${rank.next.name}` : ''}</div>`}`;
+
+      const line = (label, value, tone) => `<div class="spot-brow ${tone || ''}"><span>${label}</span><b>${value}</b></div>`;
+      spotEl('spotBreakdown').innerHTML = [
+        line(`Words used (${result.used} × ${core.WORD_POINTS})`, `+${result.wordPoints}`, 'plus'),
+        line('Speed bonus (faster = more)', `+${result.speed}`, 'plus'),
+        result.finish ? line('Finished the challenge', `+${result.finish}`, 'plus') : '',
+        result.missed ? line(`Missed words (${result.missed} × ${core.MISS_PENALTY})`, `−${result.missPoints}`, 'minus') : '',
+        result.early ? line('Stopped early', `−${result.early}`, 'minus') : '',
+        line(`Out of ${result.max} possible`, `${score} / 100`, 'total')
+      ].join('');
+
+      spotEl('spotNewBadges').innerHTML = outcome.earned.length
+        ? `<h4 class="spot-h flat">New badges</h4><ul class="spot-badges">${outcome.earned.map(b => `<li class="spot-badge on new"><span aria-hidden="true">${b.icon}</span><b>${spotEsc(b.name)}</b><i>${spotEsc(b.hint)}</i></li>`).join('')}</ul>` : '';
+      if (outcome.earned.length) showAchievement(`${outcome.earned[0].icon} Badge earned: ${outcome.earned[0].name}`);
+      spotEl('spotTip').innerHTML = `<b>Coach:</b> ${spotEsc(core.coachingTip(result, session, spotRecogDiag.apiSupported ? 'on' : 'off'))}`;
     }
 
     async function finishSpotChallenge() {
@@ -12618,14 +12802,13 @@
       }
       saveSpotChallengeStats();
 
-      document.getElementById('spotScoreValue').textContent = score;
-      document.getElementById('spotWordsUsedValue').textContent = `${used}/${spotSession.words.length}`;
-      document.getElementById('spotTimeValue').textContent = `${elapsed}s`;
-      const resultsList = document.getElementById('spotWordResultsList');
-      resultsList.innerHTML = spotSession.words.map(w => `<div class="spot-chip ${w.used ? 'used' : 'missed'}">${w.used ? '✅ Used' : '❌ Missed'}: ${w.word}</div>`).join('');
+      renderSpotResults(spotSession, elapsed);
       const finalTranscriptEl = document.getElementById('spotFinalTranscript');
       if (spotTranscript) {
-        finalTranscriptEl.textContent = spotTranscript;
+        const core = spotCore();
+        finalTranscriptEl.innerHTML = core
+          ? core.highlightWords(spotTranscript, spotSession.words.map(w => w.word)).map(p => (p.hit ? `<mark>${spotEsc(p.text)}</mark>` : spotEsc(p.text))).join('')
+          : spotEsc(spotTranscript);
       } else {
         let reason = 'No transcript captured. ';
         if (!spotRecogDiag.apiSupported) {
@@ -13349,6 +13532,7 @@
   </script>
   <script type="module">
     import('./think-fast.js').catch(error => console.warn('Think Fast could not load:', error));
+    import('./spot-core.js').then(core => { window.SpotCore = core; window.dispatchEvent(new Event('spotcore:ready')); }).catch(error => console.warn('Speak on the Spot extras could not load:', error));
   </script>
   <script>
     // This preview is online-only. Do not load its assets in the native app.
