@@ -46,9 +46,13 @@ async (page) => {
   check(await page.evaluate(() => MeetingAudio.enabled() && MeetingAudio.status().includeHost), 'direct connect did not enable the selected sources');
   check(await page.evaluate(() => meetingControlsTest.picks === 2), 'direct connection should use one successful picker after the cancelled picker');
   await page.evaluate(() => window.navigateToPage('variety'));
-  check((await page.locator('#vvSource .ma-state').innerText()).includes('Connected') || (await page.locator('#vvSource .ma-state').innerText()).includes('Hearing'), 'game did not share the connection');
+  check(await page.locator('#vvSource .ma-state').count() === 0, 'games must not carry their own meeting controls');
+  check(await page.locator('.vv-source-note').count() === 1, 'the vocal variety home should say that meeting audio is on');
+  check(await page.evaluate(() => MeetingAudio.isConnected()), 'game did not share the connection');
   await page.evaluate(() => window.navigateToPage('spot'));
-  await page.locator('#spotMeetingPanel').getByRole('button', { name: 'Disconnect', exact: true }).click();
+  check(await page.locator('#spotCallNote').isVisible(), 'Speak on the Spot should say that meeting audio is on');
+  await page.evaluate(() => window.navigateToPage('settings'));
+  await panel.getByRole('button', { name: 'Disconnect', exact: true }).click();
   check(await page.evaluate(() => !MeetingAudio.isConnected() && MeetingAudio.enabled()), 'disconnect must stop capture without silently switching to a microphone');
   check(await page.evaluate(() => meetingControlsTest.captured.every(s => s.getTracks().every(t => t.readyState === 'ended'))), 'disconnect leaked a capture track');
   await page.evaluate(() => window.navigateToPage('settings'));

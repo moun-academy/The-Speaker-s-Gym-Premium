@@ -6,10 +6,18 @@ export const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
 
 // ---------------------------------------------------------------- prompts
 export const MODES = [
-  { id: 'analogy', icon: '🔗', name: 'Analogy Blitz', blurb: 'Link two random things with a quick “because”.', lead: 'Complete the analogy', tail: 'BECAUSE…', example: 'A BATTERY IS LIKE A JACUZZI' },
-  { id: 'hottake', icon: '🔥', name: 'Hot Take', blurb: 'Pick a side in one breath and defend it.', lead: 'Agree or disagree', tail: 'AGREE OR DISAGREE, AND WHY?', example: 'Homework should be banned.' },
-  { id: 'sellit', icon: '🎤', name: 'Sell It', blurb: 'Pitch a strange product like your rent depends on it.', lead: 'Pitch this now', tail: 'SELL IT IN ONE BREATH!', example: 'A pen that never runs out' },
-  { id: 'mix', icon: '🎲', name: 'Wild Mix', blurb: 'All three, shuffled. You never know what is next.', lead: '', tail: '', example: 'Anything can come next' }
+  { id: 'analogy', icon: '🔗', name: 'Analogy Blitz', blurb: 'Link two random things with a quick “because”.', lead: 'Complete the analogy', tail: 'BECAUSE…', example: 'A BATTERY IS LIKE A JACUZZI',
+    hint: 'Say “…because” and finish the thought out loud.',
+    how: ['Two random things appear in a sentence, like “A BATTERY IS LIKE A JACUZZI”.', 'Start talking straight away: say “because…” and give any reason that comes to mind.', 'Keep going until the buzzer. Silly answers are welcome. Silence is the only way to lose.'] },
+  { id: 'hottake', icon: '🔥', name: 'Hot Take', blurb: 'Pick a side in one breath and defend it.', lead: 'Agree or disagree', tail: 'AGREE OR DISAGREE, AND WHY?', example: 'Homework should be banned.',
+    hint: 'Pick a side now, then give one reason.',
+    how: ['A bold statement appears, like “Homework should be banned.”', 'Pick a side at once: “I agree because…” or “I disagree because…”.', 'Give a reason, then keep talking until the buzzer. Either side scores the same.'] },
+  { id: 'sellit', icon: '🎤', name: 'Sell It', blurb: 'A strange product appears. Pitch it out loud like a salesperson.', lead: 'Pitch this now', tail: 'SELL IT IN ONE BREATH!', example: 'A pen that never runs out',
+    hint: 'Say what it is, who needs it, and why it is amazing.',
+    how: ['A strange product appears, like “A pen that never runs out”.', 'Start pitching immediately, as if you were selling it to a stranger: say what it is, who needs it and why it is amazing.', 'Keep selling until the buzzer. Big claims and silly details are the whole point.'] },
+  { id: 'mix', icon: '🎲', name: 'Wild Mix', blurb: 'All three, shuffled. You never know what is next.', lead: '', tail: '', example: 'Anything can come next',
+    hint: '',
+    how: ['Every prompt is a surprise: an analogy, a hot take or a product to sell.', 'The small label above the prompt tells you which one it is.', 'Start talking at once and keep going until the buzzer.'] }
 ];
 export const modeById = id => MODES.find(mode => mode.id === id) || MODES[0];
 

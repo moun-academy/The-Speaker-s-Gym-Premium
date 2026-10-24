@@ -94,8 +94,8 @@ a line-by-line breakdown. XP builds ranks (Newcomer to Spotlight Star) and eight
 The coach shares their screen in a Google Meet and students speak from their own laptops. The
 games listen to the call instead of the microphone:
 
-1. Turn on **Meeting audio** (Settings → Video Call Audio, on the Speak on the Spot page, or on
-   the vocal variety home screen). It is the same switch as "Capture Audio from Video Calls".
+1. Turn on **Meeting audio** in **Settings** ("Play with students on Google Meet"). It is off by default, it lives only
+   there, and once it is on every game that listens uses it: the games show a short note instead of their own controls.
 2. Press **Connect meeting audio** once. In the box the browser shows, choose your **Google Meet
    tab** and tick **Also share tab audio**, or (Windows) choose **Entire Screen** and tick
    **Also share system audio**, which also works when the call is in another window or app.

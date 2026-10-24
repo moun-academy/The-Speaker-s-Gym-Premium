@@ -277,7 +277,6 @@ function mount() {
     viewEl.dataset.view = view;
     unmountSource?.(); unmountSource = null;
     viewEl.innerHTML = { home: homeHtml, brief: briefHtml, prep: prepHtml, live: liveHtml, results: resultsHtml }[view]();
-    if (view === 'home' || view === 'brief') unmountSource = MeetingAudio.mountPanel($('#vvSource'), { compact: true });
     if (view === 'live') drawStageFrame();
     if (view === 'results') afterResults();
   }
@@ -324,7 +323,7 @@ function mount() {
       <div class="vv-stat"><strong>${totalStars()}<span aria-hidden="true">★</span></strong><small>of ${STAGES.length * 3} stars</small></div>
       <div class="vv-stat"><strong>${Object.keys(progress.badges).filter(id => BADGES.some(b => b.id === id)).length}<span aria-hidden="true">🏅</span></strong><small>of ${BADGES.length} badges</small></div>
     </section>
-    <section class="vv-source" id="vvSource" aria-label="Where the games listen"></section>
+    ${callOn() ? '<p class="vv-source vv-source-note" role="status"><span aria-hidden="true">📞</span><span>Meeting audio is on, so every game listens to your students through the call. You can change this in Settings.</span><button type="button" class="vv-ghost" data-act="open-settings">Settings</button></p>' : ''}
     <section aria-labelledby="vvGamesTitle"><div class="vv-section-head"><div class="vv-section-label">ALL GAMES · ALL OPEN</div><h2 id="vvGamesTitle">Choose what to train.</h2></div>
       ${['volume', 'pitch', 'pace', 'all'].map(group).join('')}</section>
     <section aria-labelledby="vvBadgesTitle"><div class="vv-section-head"><div class="vv-section-label">COLLECTION</div><h2 id="vvBadgesTitle">Badges</h2></div>
@@ -376,7 +375,6 @@ function mount() {
         <div class="vv-section-label">PREPARATION TIME</div>
         <div class="vv-seg" role="radiogroup" aria-label="Preparation time">${PREP_CHOICES.map(s => `<button type="button" role="radio" aria-checked="${s === prepSeconds}" data-act="prep-time" data-seconds="${s}">${s < 60 ? `${s}s` : `${s / 60} min`.replace('1.5 min', '1½ min')}</button>`).join('')}</div>
         ${notice ? `<p class="vv-warning" role="alert">${esc(notice)}</p>` : ''}
-        <div class="vv-source-slot" id="vvSource"></div>
         <button type="button" class="vv-primary vv-big" data-act="start-prep"><span aria-hidden="true">✎</span> Start preparing (${prepSeconds}s)</button>
         <p class="vv-fine">${callOn()
           ? '📞 Meeting audio is on, so the game listens to the students in your call. Stay on this tab so the class sees the game. Nothing is recorded until the student starts speaking.'
@@ -1086,6 +1084,7 @@ function mount() {
       case 'open-stage': openStage(target.dataset.stage); break;
       case 'example': showExample(); break;
       case 'reconnect-call': reconnectCall(); break;
+      case 'open-settings': window.navigateToPage?.('settings'); break;
       case 'swap': questionIndex = (questionIndex + 1) % QUESTIONS.length; clearNotes(); window.speechSynthesis?.cancel(); render(); viewEl.querySelector('[data-focus]')?.focus({ preventScroll: true }); break;
       case 'speak': if ('speechSynthesis' in window) { speechSynthesis.cancel(); speechSynthesis.speak(Object.assign(new SpeechSynthesisUtterance(question()), { rate: 0.95 })); } break;
       case 'speech-time': speechSeconds = Number(target.dataset.seconds); write(SPEECH_KEY, speechSeconds); stage = scaleStage(stageById(stage.id), speechSeconds); render(); viewEl.querySelector(`[data-act="speech-time"][data-seconds="${speechSeconds}"]`)?.focus(); break;

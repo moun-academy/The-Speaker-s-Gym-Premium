@@ -30,8 +30,10 @@ async (page) => {
     await testContext.resume();
   });
   await page.bringToFront();
-  await page.locator('#vvSource').getByRole('button', { name: 'Connect meeting audio', exact: true }).click();
+  await page.evaluate(() => window.navigateToPage('settings'));
+  await page.locator('#meetingAudioPanel').getByRole('button', { name: 'Connect meeting audio', exact: true }).click();
   await page.waitForFunction(() => window.MeetingAudio.status().hearing, null, { timeout: 15000 });
+  await page.evaluate(() => window.navigateToPage('variety'));
   const initial = await page.evaluate(() => ({ ...window.MeetingAudio.status(), micRequests: window.micRequests }));
   if (initial.surface !== 'browser' || initial.micRequests !== 0) throw new Error(`Wrong audio source: ${JSON.stringify(initial)}`);
   await page.locator('.vv-stage-card[data-stage="pitch-ribbon"]').click();

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  MODES, makeDeck, analogyText, estimateFloorDb, voicedThresholdDb, analyseRound, scoreRound, gradeOf,
+  MODES, modeById, makeDeck, analogyText, estimateFloorDb, voicedThresholdDb, analyseRound, scoreRound, gradeOf,
   summarize, rankFor, RANKS, applyResult, newProfile, normalizeProfile, coachingTip, MIN_REACTION_MS
 } from '../think-fast-core.js';
 import { WORDS } from '../think-fast-words.js';
@@ -13,6 +13,16 @@ function frames(totalMs, speech) {
   for (let t = 0; t <= totalMs; t += 25) out.push({ t, db: speech.some(([a, b]) => t >= a && t < b) ? -30 : -70 });
   return out;
 }
+
+test('every mode explains itself in three short steps, and the single modes give a one-line hint', () => {
+  MODES.forEach(mode => {
+    assert.equal(mode.how.length, 3, `${mode.id} needs three steps`);
+    mode.how.forEach(step => assert.ok(step.length > 20 && step.length < 160, `${mode.id} step reads well`));
+    if (mode.id !== 'mix') assert.ok(mode.hint.length > 10, `${mode.id} needs a hint`);
+  });
+  assert.match(MODES.find(m => m.id === 'sellit').how.join(' '), /pitch/i);
+  assert.ok(makeDeck('sellit', 3, () => 0.3).every(prompt => modeById(prompt.kind).hint), 'every prompt can show its hint');
+});
 
 test('the whole analogy word list survived the move into its own module', () => {
   assert.equal(WORDS.length, 169);

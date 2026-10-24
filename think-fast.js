@@ -97,6 +97,8 @@ function lobbyHtml() {
   const counts = ROUND_OPTIONS.map(o => `<button type="button" class="tf-opt" role="radio" aria-checked="${o.rounds === s.rounds}" data-act="rounds" data-v="${o.rounds}"><b>${o.label}</b><i>${o.hint}</i></button>`).join('');
   const badges = BADGES.map(b => `<li class="tf-badge${profile.badges.includes(b.id) ? ' on' : ''}" title="${esc(b.hint)}"><span aria-hidden="true">${b.icon}</span><b>${esc(b.name)}</b><i>${esc(b.hint)}</i></li>`).join('');
   const call = callOn();
+  const callNote = call ? '<div class="tf-callnote" role="status"><span aria-hidden="true">📞</span><span>Meeting audio is on, so this game listens to your students through the call. You can change this in Settings.</span><button type="button" data-act="settings">Settings</button></div>' : '';
+  const how = `<section class="tf-card tf-how" aria-label="How ${esc(mode.name)} works"><h3 class="tf-h flat">How ${esc(mode.name)} works</h3><ol>${mode.how.map(step => `<li>${esc(step)}</li>`).join('')}</ol><p class="tf-how-eg">Example: <b>${esc(mode.example)}</b></p></section>`;
   return `<div class="tf">
     <header class="tf-hero"><div class="tf-bolt" aria-hidden="true">⚡</div><h2>Think Fast</h2><p>Say it before you think it. The faster you start, the more you score.</p></header>
     <section class="tf-card tf-rank" aria-label="Your rank">
@@ -107,15 +109,16 @@ function lobbyHtml() {
     </section>
     <h3 class="tf-h">Pick your game</h3>
     <div class="tf-modes" role="radiogroup" aria-label="Game mode">${modes}</div>
+    ${how}
     <section class="tf-card tf-setup">
       <div class="tf-field"><span class="tf-label">Time for each prompt</span><div class="tf-opts" role="radiogroup" aria-label="Time per prompt">${times}</div></div>
       <div class="tf-field"><span class="tf-label">Number of prompts</span><div class="tf-opts" role="radiogroup" aria-label="Number of prompts">${counts}</div></div>
       <div class="tf-listen">
         <label class="tf-switch"><input type="checkbox" id="tfListen" ${s.listen ? 'checked' : ''}><span class="tf-track"></span>
-          <span class="tf-switch-text"><b>Hear me</b><i>${call ? 'Listens to your students through the meeting audio and times how fast each one starts.' : 'Listens through your microphone and times how fast you start. Nothing is recorded.'}</i></span></label>
-        <div class="tf-source" id="tfSource"></div>
+          <span class="tf-switch-text"><b>Hear me</b><i>${call ? 'Meeting audio is on, so it times how fast your students start speaking.' : 'Times how fast you start speaking, using your microphone. Nothing is recorded.'}</i></span></label>
       </div>
     </section>
+    ${callNote}
     ${notice ? `<p class="tf-notice" role="status">${esc(notice)}</p>` : ''}
     <p class="tf-cue">“${esc(cue)}”</p>
     <button type="button" class="tf-start" data-act="start"><span aria-hidden="true">▶</span> Start ${esc(mode.name)}</button>
@@ -149,6 +152,7 @@ function roundHtml() {
       <div class="tf-lead">${esc(prompt.lead)}</div>
       <div class="tf-prompt">${promptHtml(prompt)}</div>
       <div class="tf-tail">${esc(prompt.tail)}</div>
+      <div class="tf-hint">${esc(modeById(prompt.kind).hint)}</div>
       <div class="tf-clock" aria-hidden="true">
         <svg viewBox="0 0 120 120" class="tf-ring"><circle class="tf-ring-bg" cx="60" cy="60" r="54"/><circle class="tf-ring-fg" id="tfRing" cx="60" cy="60" r="54" stroke-dasharray="${RING.toFixed(2)}" stroke-dashoffset="0"/></svg>
         <div class="tf-count" id="tfCount">${session.limit}</div>
@@ -166,6 +170,7 @@ function countdownHtml(n) {
   return `<div class="tf tf-play"><div class="tf-stage tf-ready" data-state="ready">
     <div class="tf-lead">${mode.icon} ${esc(mode.name)}</div>
     <div class="tf-bignum" id="tfBig" key="${n}">${n === 0 ? 'GO!' : n}</div>
+    <p class="tf-readyhint">${esc(mode.hint || 'Anything can come next. Start talking the moment it appears.')}</p>
     <p class="tf-readytext">${session.listening ? (session.call ? 'Getting ready to hear the meeting audio…' : 'Stay quiet for a moment while I learn your room…') : 'Practice run: speak out loud, there is no timing.'}</p>
     ${session.listening ? '<div class="tf-voice"><span class="tf-voice-bar"><i id="tfLevel"></i></span><span>Listening</span></div>' : ''}
   </div></div>`;
@@ -202,10 +207,6 @@ let lastPainted = '';
 function paint() {
   const root = $('#thinkFastRoot'); if (!root) return;
   root.innerHTML = view === 'lobby' ? lobbyHtml() : view === 'countdown' ? countdownHtml(session.count) : view === 'round' ? roundHtml() : resultsHtml();
-  if (view === 'lobby') {
-    const slot = $('#tfSource');
-    if (slot && meeting()?.mountPanel) meeting().mountPanel(slot, { compact: true });
-  }
   // fade a screen in when it changes, but never between prompts: every millisecond of the round counts
   if (view !== lastPainted && view !== 'round') root.querySelector('.tf')?.classList.add('tf-in');
   lastPainted = view;
@@ -341,6 +342,7 @@ function onClick(event) {
   else if (act === 'lobby') { view = 'lobby'; notice = ''; cue = CUES[Math.floor(Math.random() * CUES.length)]; paint(); }
   else if (act === 'next') { if (session?.phase === 'round') finishRound(session, 'skip'); }
   else if (act === 'end') { if (session) finishSession(session, false); }
+  else if (act === 'settings') { window.navigateToPage?.('settings'); }
   else if (act === 'mute') { s.muted = !s.muted; saveProfile(); target.textContent = s.muted ? '🔇' : '🔊'; }
 }
 function onChange(event) {

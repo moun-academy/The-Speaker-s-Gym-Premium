@@ -1,5 +1,5 @@
 // Service Worker for The Speaker's Gym
-const CACHE_NAME = 'speakers-gym-v34-spot-arena';
+const CACHE_NAME = 'speakers-gym-v35-settings-meet';
 const ASSETS = [
   '/',
   '/index.html',

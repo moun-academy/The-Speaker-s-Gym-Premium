@@ -4869,10 +4869,10 @@
         <div class="spot-controls spot-controls-center">
           <button class="spot-btn primary spot-start" id="spotStartBtn">▶ Start Challenge</button>
         </div>
-        <details class="spot-meeting" id="spotMeetingBox">
-          <summary>📞 Playing in a video call? Let the game hear your students</summary>
-          <div id="spotMeetingPanel" style="margin-top: 8px;"></div>
-        </details>
+        <p class="spot-callnote" id="spotCallNote" role="status" hidden>
+          <span aria-hidden="true">📞</span><span>Meeting audio is on, so this game listens to your students through the call. You can change this in Settings.</span>
+          <button type="button" class="spot-mini" id="spotCallSettingsBtn">Settings</button>
+        </p>
       </div>
 
       <div class="spot-phase" id="spotThinkPhase">
@@ -5827,7 +5827,11 @@
       </p>
     </div>
 
-    <!-- One shared meeting-audio control, also used by the games. -->
+    <!-- The one meeting-audio control. Turn it on here once and every game that listens uses it. -->
+    <div class="settings-section" style="margin-bottom: 12px;">
+      <h3>📞 Play with students on Google Meet</h3>
+      <p style="color: #9ca3af; font-size: 13.5px; line-height: 1.55;">Off by default: the games listen to your microphone. Switch it on here once and Think Fast, Speak on the Spot, Vocal Variety and the recorder all hear your students through your Google Meet call instead. The games themselves show no call controls.</p>
+    </div>
     <div id="meetingAudioPanel" style="margin-bottom: 24px;"></div>
 
     <!-- Daily Notifications Section -->
@@ -9110,19 +9114,15 @@
     };
     // Settings and the games all use the same connection and microphone choice.
     window.addEventListener('meetingaudio:enabled', event => {
-      const spotBox = document.getElementById('spotMeetingBox');
-      if (spotBox) spotBox.open = event.detail;
+      window.updateSpotCallNote?.(event.detail);
       if (callAudioMode === event.detail) return;
       callAudioMode = event.detail;
       applyCallAudioMode();
     });
     const mountMeetingAudioPanel = () => {
-      for (const id of ['meetingAudioPanel', 'spotMeetingPanel']) {
-        const panel = document.getElementById(id);
-        if (panel && window.MeetingAudio && !panel.dataset.mounted) { panel.dataset.mounted = '1'; window.MeetingAudio.mountPanel(panel, { compact: id === 'spotMeetingPanel' }); }
-      }
-      const spotBox = document.getElementById('spotMeetingBox');
-      if (spotBox && window.MeetingAudio) spotBox.open = window.MeetingAudio.enabled();
+      const panel = document.getElementById('meetingAudioPanel');
+      if (panel && window.MeetingAudio && !panel.dataset.mounted) { panel.dataset.mounted = '1'; window.MeetingAudio.mountPanel(panel); }
+      window.updateSpotCallNote?.();
     };
     window.addEventListener('meetingaudio:ready', mountMeetingAudioPanel);
     mountMeetingAudioPanel();
@@ -12150,6 +12150,12 @@
       spotEl('spotPreviewQuestion').textContent = spotNextQuestion;
     }
 
+    function updateSpotCallNote(forced) {
+      const note = document.getElementById('spotCallNote'); if (!note) return;
+      note.hidden = !(forced !== undefined ? forced : Boolean(window.MeetingAudio?.enabled?.()));
+    }
+    window.updateSpotCallNote = updateSpotCallNote;
+
     function refreshSpotSettingsDefaults() {
       const core = spotCore(), profile = getSpotProfile();
       if (core && profile && !refreshSpotSettingsDefaults.done) {          // first visit: bring back the last chosen preset
@@ -12158,6 +12164,7 @@
       }
       renderSpotPresets();
       renderSpotRank();
+      updateSpotCallNote();
       if (!spotOwnOpen || !spotEl('spotOwnQuestion').value.trim()) shuffleSpotQuestion();
     }
 
@@ -12198,6 +12205,7 @@
       spotEl('spotPlayAgainBtn').addEventListener('click', () => { spotNextQuestion = ''; spotEl('spotOwnQuestion').value = ''; startSpotChallenge(); });
       spotEl('spotChangeBtn').addEventListener('click', () => { setSpotPhase('spotSetupPhase'); refreshSpotSettingsDefaults(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
       spotEl('spotViewRecordingBtn').addEventListener('click', viewSpotRecording);
+      spotEl('spotCallSettingsBtn').addEventListener('click', () => navigateToPage('settings'));
       window.addEventListener('spotcore:ready', () => { refreshSpotSettingsDefaults(); });
     }
 

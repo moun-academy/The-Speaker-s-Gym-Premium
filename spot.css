@@ -206,3 +206,7 @@
 @media (prefers-reduced-motion: reduce) {
   #spotChallengePage *, #spotChallengePage *::before, #spotChallengePage *::after { animation: none !important; transition: none !important; }
 }
+
+#spotChallengePage .spot-callnote { display: flex; align-items: center; gap: 12px; margin: 18px 0 0; padding: 12px 14px; border-radius: 14px; background: rgba(34, 211, 238, 0.08); border: 1px solid rgba(34, 211, 238, 0.3); color: #cffafe; font-size: 14px; line-height: 1.45; text-align: left; }
+#spotChallengePage .spot-callnote[hidden] { display: none; }
+#spotChallengePage .spot-callnote .spot-mini { margin-left: auto; flex: none; }
