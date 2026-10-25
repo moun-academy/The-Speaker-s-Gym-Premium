@@ -514,6 +514,7 @@ function mount() {
       </section>
       ${goals.length ? `<ul class="vv-goals" id="vvGoals">${goals.map(goal => `<li data-goal="${goal.id}"><span aria-hidden="true"></span>${esc(goal.label)}</li>`).join('')}</ul>` : ''}
       <p class="vv-status" id="vvReading" aria-live="off">Waiting for speech.</p>
+      ${stage.dim === 'pace' || stage.dim === 'all' ? '<p class="vv-status vv-pace-status" id="vvPaceStatus" aria-live="off"></p>' : ''}
       <p class="vv-status" id="vvLiveStatus" role="status">Get ready…</p>
     </div>`;
   }
@@ -521,7 +522,7 @@ function mount() {
     const plan = stage.plan, roundScale = zonesNow(calibration);
     round = {
       mic, plan, guided: stage.kind === 'guided', mode: 'countdown', t0: 0, frames: [], scale: roundScale, call: callOn(), tracker: new VoiceTracker(roundScale), tick: 0, lastMidi: null,
-      wantsPace: stage.dim === 'pace' || stage.dim === 'all', paceSource: 'speech', speech: null, paceError: '', finishing: false,
+      wantsPace: stage.dim === 'pace' || stage.dim === 'all', paceSource: 'speech', speech: null, paceError: '', paceHealth: 'ok', finishing: false,
       live: { t: 0, volume: null, pitch: null, pace: null, wpm: null, active: false, db: -90 }, display: { volume: -0.1, pitch: -0.1, pace: -0.1 },
       particles: [], timers: [], recorder: null, chunks: [], lastHud: 0, lastScore: 0, phaseKey: -1
     };
@@ -565,7 +566,7 @@ function mount() {
   // moment the words were spoken. Never turn sound peaks into pretend words when recognition fails.
   function startSpeech(r) {
     const transcriber = new ChunkTranscriber(r.mic.stream, {
-      chunkMs: 3000, voicedDb: Math.max(-70, r.scale.noiseFloor + 6),
+      chunkMs: 3000, overlapMs: 800, voicedDb: Math.max(-70, r.scale.noiseFloor + 6),
       onResult: res => paceResult(r, res), onFail: fail => paceFailed(r, fail)
     });
     r.speech = { transcriber, pace: new WordPaceTracker() };
@@ -586,12 +587,14 @@ function mount() {
   }
   function paceResult(r, res) {
     if (round !== r || !r.speech) return;
+    r.paceHealth = 'ok';
     r.speech.pace.add(res);
     backfillPace(r, 0, r.frames.length * FRAME_DT);
   }
   function paceFailed(r, fail) {
     if (round !== r) return;
-    if (fail.failures >= 2 || [401, 403, 404, 405, 500, 501].includes(fail.status)) {
+    r.paceHealth = [401, 403].includes(fail.status) ? 'signin' : 'retrying';
+    if (fail.failures >= 4 || [401, 403, 404, 405, 501].includes(fail.status)) {
       r.paceSource = 'unavailable';
       r.speech?.transcriber.stop(0);
       r.paceError = fail.status === 401 || fail.status === 403
@@ -655,6 +658,22 @@ function mount() {
     if (now - r.lastHud > 100) { r.lastHud = now; updateHud(r, now); }
     drawStageFrame();
   }
+  // One plain line that says whether words are being counted, so a bad reading can be told from a missing one.
+  function paceStatusText(r, t) {
+    if (r.paceSource === 'unavailable') return r.paceHealth === 'signin' ? 'Speech service: sign in again, then retry.' : 'Speech service: unavailable.';
+    if (r.paceHealth === 'signin') return 'Speech service: signing in again…';
+    if (r.paceHealth === 'retrying') return `Speech service is slow, still trying… (${r.speech?.transcriber.failures || 1} clips missed)`;
+    const stats = r.speech?.pace.stats(t);
+    if (!stats || !stats.words) return t < 7 ? 'Listening for words…' : 'No words heard yet. Is the student unmuted, and is the Meet tab the one being shared?';
+    if (stats.behind > 12) return `No new words for ${Math.round(stats.behind)} seconds. Is the student still speaking?`;
+    return `Counting words: ${stats.words} heard so far.`;
+  }
+  function paceStatus(r, t) {
+    const el = $('#vvPaceStatus'); if (!el || !r.wantsPace || r.mode !== 'live') return;
+    const text = paceStatusText(r, t);
+    if (el.textContent !== text) el.textContent = text;
+    el.dataset.state = r.paceSource === 'unavailable' ? 'down' : r.paceHealth !== 'ok' ? 'warn' : /^No (words|new)/.test(text) ? 'warn' : 'ok';
+  }
   function updateHud(r, now) {
     const t = r.mode === 'live' ? r.live.t : 0, plan = r.plan;
     const clockEl = $('#vvClock'); if (!clockEl) return;
@@ -666,6 +685,7 @@ function mount() {
       ? Number.isFinite(r.live.wpm) ? `Pace: ${Math.round(r.live.wpm)} WPM. Measured at ${clock(r.live.paceAt)}.`
         : r.paceSource === 'unavailable' ? 'Pace unavailable.' : 'Pace: waiting for enough recognized words.'
       : Number.isFinite(r.live[stage.dim]) ? `${DIMENSIONS[stage.dim].name}: ${zoneLabel(stage.dim, zoneOf(r.live[stage.dim]))}.` : 'No speech detected.';
+    paceStatus(r, t);
     $('#vvTimeFill').style.width = `${clamp(t / plan.duration, 0, 1) * 100}%`;
     if (stage.dim === 'all') {
       DIM_ORDER.forEach((dim, i) => { $(`#vvHud${i + 1}`).textContent = String(countSwings(r.frames.map(f => ({ t: f.t, level: f[dim] }))).swings); });

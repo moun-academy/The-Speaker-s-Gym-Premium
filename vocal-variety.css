@@ -366,3 +366,8 @@ html:has(#varietyPage.active){background:#0a0f1e}
 .vv-source-slot{margin:14px 0 16px}
 .vv-miccheck.set .vv-mic-dot{background:var(--gold);box-shadow:0 0 10px var(--gold)}
 .vv-miccheck.set{color:var(--gold-soft)}
+
+.vv-pace-status{font-size:13px;color:#94a3b8}
+.vv-pace-status[data-state="ok"]{color:#a7f3d0}
+.vv-pace-status[data-state="warn"]{color:#fed7aa}
+.vv-pace-status[data-state="down"]{color:#fecaca}

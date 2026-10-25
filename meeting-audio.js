@@ -227,8 +227,10 @@ export const MeetingAudio = {
 // ---------------------------------------------------------------------------------------------
 export class ChunkTranscriber {
   // `getPrompt` may return a few words the speaker is likely to say; the service then spells them right.
-  constructor(stream, { chunkMs = 3000, endpoint = '/api/transcribe', language = 'en', voicedDb = -58, minVoicedMs = 400, getPrompt, getToken = () => window.getSpeechAuthToken?.(), onResult, onFail } = {}) {
-    Object.assign(this, { stream, chunkMs, endpoint, language, voicedDb, minVoicedMs, getPrompt, getToken, onResult, onFail });
+  // `overlapMs` makes each clip run that much past the start of the next one, so a word cut by one clip's edge is whole in the next.
+  constructor(stream, { chunkMs = 3000, overlapMs = 0, endpoint = '/api/transcribe', language = 'en', voicedDb = -58, minVoicedMs = 400, getPrompt, getToken = force => window.getSpeechAuthToken?.(force), onResult, onFail } = {}) {
+    Object.assign(this, { stream, chunkMs, overlapMs, endpoint, language, voicedDb, minVoicedMs, getPrompt, getToken, onResult, onFail });
+    this.active = new Set();
     this.alive = false; this.index = 0; this.pending = 0; this.failures = 0; this.chunk = null; this.recorder = null;
     this.controllers = new Set(); this.acceptResults = true; this.stopping = null;
   }
@@ -242,10 +244,10 @@ export class ChunkTranscriber {
       this.source = this.context.createMediaStreamSource(this.stream); this.source.connect(this.analyser);
       this.buffer = new Float32Array(this.analyser.fftSize);
       this.sampler = setInterval(() => {
-        if (!this.chunk) return;
+        if (!this.active.size) return;
         this.analyser.getFloatTimeDomainData(this.buffer);
         let energy = 0; for (const sample of this.buffer) energy += sample * sample;
-        if (20 * Math.log10(Math.max(Math.sqrt(energy / this.buffer.length), 1e-5)) > this.voicedDb) this.chunk.voiced++;
+        if (20 * Math.log10(Math.max(Math.sqrt(energy / this.buffer.length), 1e-5)) > this.voicedDb) for (const running of this.active) running.voiced++;
       }, 50);
     }
     this.cycle();
@@ -253,7 +255,6 @@ export class ChunkTranscriber {
   }
   cycle() {
     if (!this.alive) return;
-    const previous = this.recorder;
     const chunk = { index: this.index++, startedAt: performance.now(), parts: [], voiced: 0 };
     let recorder;
     try { recorder = new MediaRecorder(this.stream); } catch {
@@ -264,11 +265,13 @@ export class ChunkTranscriber {
       return;
     }
     recorder.ondataavailable = event => { if (event.data?.size) chunk.parts.push(event.data); };
-    recorder.onstop = () => { chunk.endedAt = performance.now(); this.finish(chunk, recorder.mimeType); chunk.resolveStopped?.(); };
+    recorder.onstop = () => { chunk.endedAt = performance.now(); this.active.delete(chunk); this.finish(chunk, recorder.mimeType); chunk.resolveStopped?.(); };
     recorder.start();
+    chunk.recorder = recorder; this.active.add(chunk);
     this.chunk = chunk; this.recorder = recorder;
-    // The next recorder is already running before the last one stops, so no word falls in a gap.
-    if (previous && previous.state === 'recording') previous.stop();
+    // The next recorder is already running before this one stops, so no word falls in a gap; with an overlap it keeps
+    // going a little longer, so the words at the join are heard whole in two clips.
+    chunk.stopTimer = setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, this.chunkMs + this.overlapMs);
     this.timer = setTimeout(() => this.cycle(), this.chunkMs);
   }
   seconds(chunk, offset = 0) { return (chunk.startedAt - this.t0) / 1000 + offset; }
@@ -280,18 +283,33 @@ export class ChunkTranscriber {
     const extension = /mp4/.test(blob.type) ? 'mp4' : /ogg/.test(blob.type) ? 'ogg' : 'webm';
     const body = new FormData(); body.append('audio', blob, `chunk.${extension}`); body.append('language', this.language);
     const prompt = this.getPrompt?.(); if (prompt) body.append('prompt', String(prompt).slice(0, 300));
+    body.append('voicedMs', String(Math.round(chunk.voiced * 50)));
     this.pending++;
-    const controller = new AbortController(), abort = setTimeout(() => controller.abort(), 15000);
-    this.controllers.add(controller);
-    try {
+    const attempt = async force => {
       let token = null;
-      try { token = await this.getToken?.(); } catch { /* not signed in: the server answers 401 */ }
-      if (!this.acceptResults) return;
-      const response = await fetch(this.endpoint, { method: 'POST', body, headers: token ? { Authorization: `Bearer ${token}` } : {}, signal: controller.signal });
-      if (!response.ok) throw Object.assign(new Error(`HTTP ${response.status}`), { status: response.status });
-      const data = await response.json();
-      if (!this.acceptResults) return;
-      this.failures = 0;
+      try { token = await this.getToken?.(force); } catch { /* not signed in: the server answers 401 */ }
+      if (!this.acceptResults) return null;
+      const controller = new AbortController(), abort = setTimeout(() => controller.abort(), 15000);
+      this.controllers.add(controller);
+      try {
+        const response = await fetch(this.endpoint, { method: 'POST', body, headers: token ? { Authorization: `Bearer ${token}` } : {}, signal: controller.signal });
+        if (!response.ok) throw Object.assign(new Error(`HTTP ${response.status}`), { status: response.status });
+        return await response.json();
+      } finally { clearTimeout(abort); this.controllers.delete(controller); }
+    };
+    try {
+      let data;
+      try { data = await attempt(false); } catch (error) {
+        if (!this.acceptResults) return;
+        if (error.status === 401) data = await attempt(true);                       // the login may just have expired: refresh it and try once more
+        else if (!error.status || error.status === 429 || (error.status >= 500 && error.status !== 501)) {   // a network blip or a busy service: try once more
+          await new Promise(resolve => setTimeout(resolve, 400));
+          if (!this.acceptResults) return;
+          data = await attempt(false);
+        } else throw error;
+      }
+      if (!this.acceptResults || !data) return;
+      this.failures = 0; this.lastOkAt = performance.now();
       const words = (data.words || []).map(word => ({ word: String(word.word), start: this.seconds(chunk, Number(word.start)), end: this.seconds(chunk, Number(word.end)) }));
       this.onResult?.({ ...base, text: String(data.text || ''), words, silent: false });
     } catch (error) {
@@ -300,7 +318,7 @@ export class ChunkTranscriber {
         this.onFail?.({ ...base, status: error.status || 0, failures: this.failures, message: String(error.message || error) });
       }
     } finally {
-      clearTimeout(abort); this.controllers.delete(controller); this.pending--;
+      this.pending--;
     }
   }
   // Stops recording and waits (up to `waitMs`) for the last chunks to come back.
@@ -312,14 +330,12 @@ export class ChunkTranscriber {
   async drain(waitMs) {
     this.alive = false; clearTimeout(this.timer); clearInterval(this.sampler);
     if (!waitMs) this.acceptResults = false;
-    const stopped = new Promise(resolve => {
-      if (this.recorder?.state === 'recording') this.chunk.resolveStopped = resolve;
-      else resolve();
-    });
-    if (this.recorder?.state === 'recording') this.recorder.stop();
+    const running = [...this.active];
+    const stopped = Promise.all(running.map(chunk => new Promise(resolve => { chunk.resolveStopped = resolve; })));
+    running.forEach(chunk => { clearTimeout(chunk.stopTimer); if (chunk.recorder.state === 'recording') chunk.recorder.stop(); });
     const until = Date.now() + waitMs;
     await Promise.race([stopped, new Promise(resolve => setTimeout(resolve, Math.max(0, waitMs)))]);
-    await new Promise(resolve => { const check = () => (this.pending === 0 && !(this.recorder && this.recorder.state === 'recording')) || Date.now() > until ? resolve() : setTimeout(check, 100); setTimeout(check, 250); });
+    await new Promise(resolve => { const check = () => (this.pending === 0 && this.active.size === 0) || Date.now() > until ? resolve() : setTimeout(check, 100); setTimeout(check, 250); });
     this.acceptResults = false;
     this.controllers.forEach(controller => controller.abort()); this.controllers.clear();
     try { this.source?.disconnect(); } catch { /* already disconnected */ }

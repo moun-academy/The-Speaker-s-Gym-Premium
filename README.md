@@ -23,6 +23,15 @@ game shows the speaker's voice live.
 Steady is 110 to 139, Fast is 140 or more** (pauses count as slowing down; the ribbon aims at
 100, 125 and 150). Common published figures put conversation at roughly 120 to 150 and
 presentations at roughly 100 to 160, so 140 is an ordinary quick pace, not a strain.
+How the number is made steadier over a call: clips overlap by 0.8 seconds and each stretch of speech is counted from one clip
+only, so a word at a join is neither cut nor counted twice. The reading looks at about 8 seconds, and a long thinking pause counts
+for little more than an ordinary gap (a really slow speaker still reads slow). Words the speech service invents from silence or
+noise (it reports its own confidence, and "thank you" over almost no sound is a known invention) are removed on the server, and
+stretched or looping words are dropped in the browser. A failed clip is retried once, an expired sign-in is refreshed, and only a
+real refusal (404, 405, 501, a login that stays invalid, or four clips in a row failing) ends pace counting. A line under the pace
+reading says what is happening: how many words have been heard, or that the service is slow, or that no words have been heard
+(is the student unmuted, and is the Meet tab the shared one?).
+
 Words are counted from the speech itself: a few seconds of audio at a time go to
 `/api/transcribe` (Whisper, the same service the AI feedback uses), which returns the words
 with their times. Readings appear a few seconds late on screen but are filed at the moment

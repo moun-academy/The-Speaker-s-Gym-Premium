@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
-import { createHandler, parseMultipart } from '../api/transcribe.js';
+import { createHandler, parseMultipart, cleanTranscription } from '../api/transcribe.js';
 
 function multipart(parts, boundary = 'xBOUNDARYx') {
   const chunks = [];
@@ -36,10 +36,10 @@ test('the transcription endpoint returns the words with timestamps for a chunk o
   const res = response();
   await handler(request({ body, contentType }), res);
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.body, { text: 'Hello there', words: [{ word: 'Hello', start: 0.2, end: 0.6 }, { word: 'there', start: 0.7, end: 1.1 }], duration: 2.4 });
+  assert.deepEqual(res.body, { text: 'Hello there', words: [{ word: 'Hello', start: 0.2, end: 0.6 }, { word: 'there', start: 0.7, end: 1.1 }], dropped: 0, duration: 2.4 });
   assert.equal(calls[0].model, 'whisper-1');
   assert.equal(calls[0].language, 'en');
-  assert.deepEqual(calls[0].timestamp_granularities, ['word']);
+  assert.deepEqual(calls[0].timestamp_granularities, ['word', 'segment'], 'segments carry the confidence figures used to drop invented words');
   assert.equal(res.headers['Access-Control-Allow-Origin'], '*');
 });
 
@@ -103,4 +103,35 @@ test('only signed-in users can use it, and nothing is spent otherwise', async ()
   res = response(); await unconfigured(request({ body, contentType }), res);
   assert.equal(res.statusCode, 500, 'a missing login setup fails closed');
   assert.match(res.headers['Access-Control-Allow-Headers'], /Authorization/);
+});
+
+const wordAt = (word, start) => ({ word, start, end: start + 0.3 });
+
+test('words the speech service invents from silence or noise are removed before they can count as speed', () => {
+  // a real sentence next to a segment the service itself doubts
+  const raw = { text: 'I like coffee thank you', words: [wordAt('I', 0.2), wordAt('like', 0.5), wordAt('coffee', 0.9), wordAt('thank', 4), wordAt('you', 4.3)],
+    segments: [{ start: 0, end: 1.5, no_speech_prob: 0.02, avg_logprob: -0.3, compression_ratio: 1.2 }, { start: 3.8, end: 4.8, no_speech_prob: 0.9, avg_logprob: -1.6, compression_ratio: 1.1 }] };
+  const cleaned = cleanTranscription(raw);
+  assert.deepEqual(cleaned.words.map(w => w.word), ['I', 'like', 'coffee']);
+  assert.equal(cleaned.dropped, 2);
+  // looping repetition
+  const loop = cleanTranscription({ text: 'a a a a a a', words: [wordAt('a', 0.1), wordAt('a', 0.5), wordAt('a', 0.9)], segments: [{ start: 0, end: 2, no_speech_prob: 0.1, avg_logprob: -0.5, compression_ratio: 3.1 }] });
+  assert.equal(loop.words.length, 0); assert.equal(loop.text, '');
+  // a sentence that is only a stock phantom phrase, over barely any voiced sound
+  assert.equal(cleanTranscription({ text: 'Thank you.', words: [wordAt('Thank', 0.2), wordAt('you.', 0.5)], segments: [] }, { voicedMs: 600 }).words.length, 0);
+  assert.equal(cleanTranscription({ text: 'Thank you.', words: [wordAt('Thank', 0.2), wordAt('you.', 0.5)], segments: [] }, { voicedMs: 2800 }).words.length, 2, 'said over real speech it is a real sentence');
+  assert.equal(cleanTranscription({ text: '[Music]', words: [wordAt('[Music]', 0)], segments: [] }).words.length, 0);
+  // normal speech is untouched, with or without segment data
+  assert.equal(cleanTranscription({ text: 'Hello there', words: [wordAt('Hello', 0), wordAt('there', 0.4)] }).words.length, 2);
+  assert.equal(cleanTranscription(null).words.length, 0);
+});
+
+test('the endpoint passes the clip\'s voiced time to the filter and reports what it dropped', async () => {
+  const handler = createHandler(() => fakeClient({ text: 'Thank you.', duration: 2, words: [wordAt('Thank', 0.2), wordAt('you.', 0.5)], segments: [] }), allowed);
+  const quiet = multipart([{ name: 'voicedMs', value: '500' }, { name: 'audio', filename: 'chunk.webm', value: Buffer.from([1, 2, 3]) }]);
+  let res = response(); await handler(request({ body: quiet.body, contentType: quiet.contentType }), res);
+  assert.equal(res.statusCode, 200); assert.deepEqual(res.body.words, []); assert.equal(res.body.dropped, 2); assert.equal(res.body.text, '');
+  const loud = multipart([{ name: 'voicedMs', value: '2900' }, { name: 'audio', filename: 'chunk.webm', value: Buffer.from([1, 2, 3]) }]);
+  res = response(); await handler(request({ body: loud.body, contentType: loud.contentType }), res);
+  assert.equal(res.body.words.length, 2);
 });

@@ -214,3 +214,47 @@ test('leaving a game cancels transcription and prevents late updates to the next
   await request;
   assert.equal(callbacks, 0);
 });
+
+test('a clip that fails once is retried, and an expired sign-in is refreshed before giving up', async () => {
+  const f = fixture(); recorderFixture(f);
+  const tokens = [], statuses = [401, 200];
+  f.sandbox.fetch = async () => { const status = statuses.shift() ?? 200; return status === 200 ? { ok: true, json: async () => ({ text: 'hello there', words: [{ word: 'hello', start: 0, end: 0.2 }] }) } : { ok: false, status }; };
+  const results = [], fails = [];
+  const transcriber = new f.ChunkTranscriber(new f.Stream([new f.Track('audio')]), { getToken: async force => { tokens.push(Boolean(force)); return force ? 'fresh' : 'stale'; }, onResult: r => results.push(r), onFail: x => fails.push(x) });
+  transcriber.start(); transcriber.chunk.voiced = 10;
+  await transcriber.stop(1500);
+  assert.deepEqual(tokens, [false, true], 'the second try asked for a freshly refreshed token');
+  assert.equal(results.length, 1); assert.equal(fails.length, 0);
+
+  const g = fixture(); recorderFixture(g);
+  let calls = 0;
+  g.sandbox.fetch = async () => { calls++; if (calls === 1) throw new Error('network blip'); return { ok: true, json: async () => ({ text: 'ok', words: [{ word: 'ok', start: 0, end: 0.1 }] }) }; };
+  const blips = [], failed = [];
+  const second = new g.ChunkTranscriber(new g.Stream([new g.Track('audio')]), { getToken: async () => 'test', onResult: r => blips.push(r), onFail: x => failed.push(x) });
+  second.start(); second.chunk.voiced = 10;
+  await second.stop(2000);
+  assert.equal(calls, 2); assert.equal(blips.length, 1); assert.equal(failed.length, 0, 'one blip is not reported as a failure');
+
+  const h = fixture(); recorderFixture(h);
+  let refused = 0;
+  h.sandbox.fetch = async () => { refused++; return { ok: false, status: 404 }; };
+  const gone = [];
+  const third = new h.ChunkTranscriber(new h.Stream([new h.Track('audio')]), { getToken: async () => 'test', onFail: x => gone.push(x) });
+  third.start(); third.chunk.voiced = 10;
+  await third.stop(1500);
+  assert.equal(refused, 1, 'a missing endpoint is not retried'); assert.equal(gone[0].status, 404);
+});
+
+test('overlapping clips: each recorder runs past the next one\'s start, and every one is stopped and counted', async () => {
+  const f = fixture(); recorderFixture(f);
+  const results = [];
+  f.sandbox.fetch = async (_url, options) => ({ ok: true, json: async () => ({ text: 'words', words: [{ word: 'words', start: 0, end: 0.1 }], sent: options.body.get('voicedMs') }) });
+  const transcriber = new f.ChunkTranscriber(new f.Stream([new f.Track('audio')]), { chunkMs: 60, overlapMs: 50, getToken: async () => 'test', onResult: r => results.push(r) });
+  transcriber.start();
+  await new Promise(resolve => setTimeout(resolve, 140));
+  assert.ok(transcriber.active.size >= 2, 'two recorders run together during an overlap');
+  for (const chunk of transcriber.active) chunk.voiced = 10;
+  await transcriber.stop(1000);
+  assert.equal(transcriber.active.size, 0);
+  assert.equal(transcriber.pending, 0);
+});

@@ -41,6 +41,30 @@ export function parseMultipart(buffer, contentType) {
   return result;
 }
 
+// Speech-to-text invents words from near-silence and noise (“thank you”, “thanks for watching”, repeated words). Those
+// phantom words would count as speed, so they are removed here using the service's own confidence figures.
+const PHANTOM_PHRASES = new Set([
+  "thank you", "thank you very much", "thanks", "thanks for watching", "thank you for watching", "thank you for watching and i will see you in the next video",
+  "please subscribe", "like and subscribe", "bye", "bye bye", "goodbye", "you", "so", "okay", "oh", "uh", "um", "hmm", "mm", "mhm", "the end",
+  "subtitles by the amara org community", "music", "applause", "silence", "laughter"
+]);
+const plain = text => String(text || "").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+
+export function cleanTranscription(raw, { voicedMs = Infinity } = {}) {
+  const segments = Array.isArray(raw?.segments) ? raw.segments : [];
+  const unreliable = segments.filter(segment =>
+    (Number(segment.no_speech_prob) > 0.6 && Number(segment.avg_logprob) < -1) || Number(segment.compression_ratio) > 2.4);
+  const inUnreliable = word => unreliable.some(segment => word.start >= Number(segment.start) - 0.05 && word.start < Number(segment.end) + 0.05);
+  const original = Array.isArray(raw?.words) ? raw.words : [];
+  let words = original.filter(word => !inUnreliable(word) && !/^[\[(].*[\])]$/.test(String(word.word).trim()));
+  const phantom = PHANTOM_PHRASES.has(plain(raw?.text)) && (voicedMs < 2000 || segments.some(segment => Number(segment.no_speech_prob) > 0.5));
+  if (phantom) words = [];
+  const dropped = original.length - words.length;
+  // when words were removed the text is rebuilt from the ones that stayed, so a dropped phantom cannot leak back in through it
+  const text = dropped ? words.map(word => String(word.word).trim()).join(" ") : String(raw?.text || "").trim();
+  return { text, words, dropped };
+}
+
 // Only signed-in users may spend speech-to-text money. The browser sends its Firebase ID token as
 // "Authorization: Bearer <token>", the same login the rest of the app uses.
 function bearerToken(req) {
@@ -93,11 +117,14 @@ export function createHandler(getClient, verifyUser = verifyFirebaseUser) {
         temperature: 0,
         ...(prompt ? { prompt } : {}),
         response_format: "verbose_json",
-        timestamp_granularities: ["word"]
+        timestamp_granularities: ["word", "segment"]
       });
+      const voicedMs = Number(fields.voicedMs);
+      const cleaned = cleanTranscription(transcription, { voicedMs: Number.isFinite(voicedMs) ? voicedMs : Infinity });
       return res.status(200).json({
-        text: String(transcription.text || "").trim(),
-        words: (transcription.words || []).map(word => ({ word: String(word.word).trim(), start: Number(word.start), end: Number(word.end) })),
+        text: cleaned.text,
+        words: cleaned.words.map(word => ({ word: String(word.word).trim(), start: Number(word.start), end: Number(word.end) })),
+        dropped: cleaned.dropped,
         duration: Number(transcription.duration) || 0
       });
     } catch (error) {
