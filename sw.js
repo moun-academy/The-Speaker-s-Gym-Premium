@@ -1,5 +1,5 @@
 // Service Worker for The Speaker's Gym
-const CACHE_NAME = 'speakers-gym-v37-settings';
+const CACHE_NAME = 'speakers-gym-v38-favicon';
 const ASSETS = [
   '/',
   '/index.html',
@@ -14,7 +14,10 @@ const ASSETS = [
   '/spot-core.js',
   '/spot.css',
   '/tracker.css',
-  '/settings.css'
+  '/settings.css',
+  '/favicon.ico',
+  '/favicon-32.png',
+  '/favicon-48.png'
 ];
 
 // Motivational messages for notifications
