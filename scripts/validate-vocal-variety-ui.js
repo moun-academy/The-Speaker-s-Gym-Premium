@@ -132,16 +132,16 @@ async (page) => {
   check(await page.locator('#callAudioToggle').count() === 0, 'the duplicate Settings switch must be removed');
   check(await panel.getByRole('button', { name: 'Use meeting audio', exact: true }).count() === 0, 'connecting must not need an enable step');
   await page.evaluate(() => { const real = navigator.mediaDevices.getDisplayMedia; navigator.mediaDevices.getDisplayMedia = async () => { window.fixture.picks++; throw new DOMException('Denied', 'NotAllowedError'); }; window.realDisplay = real; });
-  await panel.getByRole('button', { name: 'Connect meeting audio' }).click();
+  await panel.locator('[data-ma="toggle"]').check();
   check((await panel.locator('.ma-error').innerText()).includes('cancelled'), 'a cancelled picker should say so');
   check(await page.evaluate(() => !window.MeetingAudio.enabled()), 'cancelling a first connection must keep the microphone selected');
   await page.evaluate(() => { navigator.mediaDevices.getDisplayMedia = window.realDisplay; window.fixture.picks = 0; });
-  await panel.getByRole('button', { name: 'Connect meeting audio' }).click();
+  await panel.locator('[data-ma="toggle"]').check();
   await page.waitForTimeout(300);
   check(await page.evaluate(() => window.MeetingAudio.isConnected()), 'meeting audio should connect');
   check(await page.evaluate(() => window.MeetingAudio.enabled()), 'connecting must select meeting audio automatically');
   await page.evaluate(() => { window.fixture.amp = 0.06; });
-  await page.waitForFunction(() => document.querySelector('#meetingAudioPanel .ma-state')?.textContent === 'Hearing the call', null, { timeout: 4000 });
+  await page.waitForFunction(() => document.querySelector('#meetingAudioPanel .ma-state')?.textContent === 'ON: hearing the call.', null, { timeout: 4000 });
 
   // 7. Speak on the Spot hears the call: words come from the speech service, with no second picker.
   await page.evaluate(() => {
@@ -185,7 +185,7 @@ async (page) => {
 
   // 9. Disconnect releases the call, and the preview stays web-only.
   await page.evaluate(() => { window.navigateToPage('settings'); });
-  await panel.getByRole('button', { name: 'Disconnect' }).click();
+  await panel.locator('[data-ma="toggle"]').uncheck();
   check(await page.evaluate(() => !window.MeetingAudio.isConnected()), 'disconnect should end the meeting audio');
   await page.evaluate(() => localStorage.setItem('callAudioMode', 'false'));
   const nativePage = await page.context().newPage();

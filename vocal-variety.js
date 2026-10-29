@@ -198,7 +198,7 @@ function mount() {
     let stream;
     if (callOn()) {
       if (!MeetingAudio.supported() || !Ctx) throw Object.assign(new Error('unsupported'), { name: 'UnsupportedCall' });
-      if (!MeetingAudio.isConnected()) await MeetingAudio.connect();      // opens the share picker (needs the click that started this)
+      if (!MeetingAudio.isConnected()) throw Object.assign(new Error('not connected'), { name: 'CallNotConnected' });   // only the Settings switch opens the chooser
       stream = MeetingAudio.clone();                                       // a copy: stopping it leaves the call connected
       if (!stream) throw Object.assign(new Error('no audio'), { name: 'NoCallAudio' });
     } else {
@@ -400,7 +400,7 @@ function mount() {
         </label>`).join('')}</div>
       <div class="vv-prep-bottom">
         <div class="vv-miccheck" id="vvMicCheck" aria-live="polite"><span class="vv-mic-dot" aria-hidden="true"></span><span id="vvMicText">${callOn() ? 'Connecting the meeting audio…' : 'Connecting your microphone…'}</span><span class="vv-mic-meter" aria-hidden="true"><i id="vvMicLevel"></i></span></div>
-        <div class="vv-prep-actions">${callOn() ? '<button type="button" class="vv-ghost" data-act="reconnect-call" id="vvReconnect" hidden>Reconnect call</button>' : ''}<button type="button" class="vv-ghost" data-act="prep-more" aria-label="Add 30 seconds">+30s</button><button type="button" class="vv-primary" data-act="prep-ready" id="vvReady">I’m ready: start speaking →</button></div>
+        <div class="vv-prep-actions"><button type="button" class="vv-ghost" data-act="prep-more" aria-label="Add 30 seconds">+30s</button><button type="button" class="vv-primary" data-act="prep-ready" id="vvReady">I’m ready: start speaking →</button></div>
       </div>
     </div>`;
   }
@@ -451,8 +451,7 @@ function mount() {
       // Nothing heard for a while: say what to try.
       const quiet = (performance.now() - state.openedAt) / 1000;
       if (state.call && !state.captured && quiet > 8) {
-        $('#vvMicText').textContent = MeetingAudio.status().hearing ? SOUND_CHECK.call : 'We cannot hear the call yet. Ask a student to say hello. If the bar stays flat, press Reconnect call and pick your Google Meet tab (or Entire Screen with system audio).';
-        $('#vvReconnect')?.removeAttribute('hidden');
+        $('#vvMicText').textContent = MeetingAudio.status().hearing ? SOUND_CHECK.call : 'We cannot hear the call yet. Ask a student to say hello. If nothing changes, open Settings, switch Google Meet audio off and on again, and pick your Google Meet tab (or Entire Screen with system audio).';
       }
     }
     if (left <= 0 && state.mic) beginRound();
@@ -464,7 +463,6 @@ function mount() {
       $('#vvMicText').textContent = state.call
         ? 'Ask the speaker to unmute and speak normally for a few seconds. We need their voice, not background noise, to set the volume scale.'
         : 'Speak normally for a few seconds first. We need your voice, not background noise, to set the volume scale.';
-      if (state.call) $('#vvReconnect')?.removeAttribute('hidden');
       return;
     }
     const mic = state.mic;
@@ -473,20 +471,6 @@ function mount() {
     root.scrollIntoView({ block: 'start', behavior: 'instant' });
     startRound(mic, calibration);
   }
-  // After a wrong pick: connect again from this click, then carry on with a fresh microphone for the check.
-  async function reconnectCall() {
-    const state = prep; if (!state) return;
-    state.reconnecting = true;
-    try { await MeetingAudio.connect(); } catch (error) { notice = micMessage(error); go('brief', { quiet: true }); return; }
-    if (prep !== state) return;
-    closeMic(state.mic); state.mic = null; state.captured = false; state.calibration = new VoiceCalibration();
-    const token = micToken;
-    const mic = await openMic(token).catch(() => null);
-    if (!mic || token !== micToken || prep !== state) return;
-    state.mic = mic; state.openedAt = performance.now(); state.reconnecting = false; state.endsAt = performance.now() + state.total * 1000;
-    $('#vvMicText').textContent = SOUND_CHECK.call; $('#vvReconnect')?.setAttribute('hidden', '');
-  }
-
   // ----- LIVE ------------------------------------------------------------------------------
   function liveHtml() {
     const plan = stage.plan, guided = stage.kind === 'guided', first = plan.phases[0];
@@ -1100,7 +1084,6 @@ function mount() {
       case 'sound': muted = !muted; write(MUTE_KEY, muted); render(); if (!muted) chime([660], 0.1, 0.08); break;
       case 'open-stage': openStage(target.dataset.stage); break;
       case 'example': showExample(); break;
-      case 'reconnect-call': reconnectCall(); break;
       case 'swap': questionIndex = (questionIndex + 1) % QUESTIONS.length; clearNotes(); window.speechSynthesis?.cancel(); render(); viewEl.querySelector('[data-focus]')?.focus({ preventScroll: true }); break;
       case 'speak': if ('speechSynthesis' in window) { speechSynthesis.cancel(); speechSynthesis.speak(Object.assign(new SpeechSynthesisUtterance(question()), { rate: 0.95 })); } break;
       case 'speech-time': speechSeconds = Number(target.dataset.seconds); write(SPEECH_KEY, speechSeconds); stage = scaleStage(stageById(stage.id), speechSeconds); render(); viewEl.querySelector(`[data-act="speech-time"][data-seconds="${speechSeconds}"]`)?.focus(); break;
@@ -1134,7 +1117,7 @@ function mount() {
     const state = round || prep;
     if (!state?.call || !state.mic || state.reconnecting) return;
     if (!status.connected || state.mic.sourceId !== status.sourceId) {
-      notice = 'Meeting audio stopped or changed. This round was not scored. Reconnect the meeting, check that the bar moves, and start the same question again.';
+      notice = 'Google Meet audio stopped or changed, so this round was not scored. Open Settings, switch Google Meet audio on again, and start the same question again.';
       go('brief', { quiet: true });
     }
   });

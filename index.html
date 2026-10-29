@@ -5858,20 +5858,20 @@
         <div class="set-meter" aria-hidden="true"><i id="micTestBar"></i></div>
         <p class="set-hint" id="micTestText" role="status">Say a few words.</p>
       </div>
+      <div class="settings-row" style="margin-top: 12px;">
+        <span class="settings-row-label">Time my reactions in Think Fast<small>Hear me: the game listens to how fast you start speaking. It uses the microphone, or the Google Meet call when that is switched on. Nothing is recorded.</small></span>
+        <label class="notification-toggle">
+          <input type="checkbox" id="thinkFastListenToggle" checked aria-label="Time my reactions in Think Fast">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     </div>
 
     <!-- The one meeting-audio control. Turn it on here once and every game that listens uses it. -->
     <div class="settings-section" id="setMeet">
-      <h3>📞 Play with students on Google Meet</h3>
-      <p class="set-intro">Off by default, so the games listen to your microphone. Switch it on here once and Think Fast, Speak on the Spot, Vocal Variety and the recorder all hear your students through your Google Meet call instead. The games themselves show no call controls.</p>
-      <div id="meetingAudioPanel" style="margin-bottom: 14px;"></div>
-      <div class="settings-row">
-        <span class="settings-row-label">Hear me in Think Fast<small>Times how fast each speaker starts talking (microphone, or the meeting when it is on). Nothing is recorded.</small></span>
-        <label class="notification-toggle">
-          <input type="checkbox" id="thinkFastListenToggle" checked aria-label="Hear me in Think Fast">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
+      <h3>📞 Google Meet audio</h3>
+      <p class="set-intro">Off every time you open the app, until you turn it on yourself. Switch it on only when you are running a class on Google Meet: Think Fast, Speak on the Spot, Vocal Variety and the recorder will then all listen to your Google Meet call instead of your microphone. This is the only Google Meet control in the whole app, and no game has its own.</p>
+      <div id="meetingAudioPanel"></div>
     </div>
 
     <!-- Daily Notifications Section -->
@@ -6646,7 +6646,9 @@
     let selectedAudioDeviceLabel = localStorage.getItem('selectedAudioDeviceLabel') || 'Default Microphone';
 
     // Call Audio Capture state
-    let callAudioMode = localStorage.getItem('callAudioMode') === 'true';
+    // Google Meet audio is never remembered: it is off every time the app opens, until the one switch in Settings is turned on
+    try { localStorage.removeItem('callAudioMode'); } catch { /* storage unavailable */ }
+    let callAudioMode = false;
     let callAudioStream = null; // separate stream from getDisplayMedia
 
     // Elements
@@ -8307,7 +8309,7 @@
     async function captureCallAudio() {
       if (window.MeetingAudio) {
         try {
-          if (!window.MeetingAudio.isConnected()) await window.MeetingAudio.connect();
+          if (!window.MeetingAudio.isConnected()) throw Object.assign(new Error('not connected'), { name: 'CallNotConnected' });   // only the Settings switch opens the chooser
           const shared = window.MeetingAudio.clone();           // a copy: stopping it leaves the call connected
           if (!shared) throw Object.assign(new Error('no audio'), { name: 'NoCallAudio' });
           shared.getAudioTracks()[0].addEventListener('ended', () => {
@@ -12409,7 +12411,7 @@
       const live = document.getElementById('spotLiveTranscript');
       if (live) live.textContent = 'Listening to the call...';
       spotCallStream = window.MeetingAudio.clone();
-      if (!spotCallStream) { if (live) live.textContent = 'ℹ️ The call audio is not connected. Open Meeting audio and press Connect meeting audio.'; return; }
+      if (!spotCallStream) { if (live) live.textContent = 'ℹ️ The call audio is not connected. In Settings, switch Google Meet audio off and on again.'; return; }
       const transcriber = new window.ChunkTranscriber(spotCallStream, {
         chunkMs: 3000,
         getPrompt: () => (spotSession?.words || []).map(item => item.word).join(', '),   // helps the service spell the target words
@@ -12693,8 +12695,8 @@
       try {
         hardResetSpotRuntime();
         if (spotCall()) {
-          // The share picker only opens from a click, so connect before anything else is awaited.
-          try { await window.MeetingAudio.ensure(); } catch (error) { showAchievement(window.MeetingAudio.describeError(error)); setSpotPhase('spotSetupPhase'); return; }
+          // The chooser is opened only by the Google Meet switch in Settings; a game never opens it.
+          if (!window.MeetingAudio.isConnected()) { showAchievement(window.MeetingAudio.describeError({ name: 'CallNotConnected' })); setSpotPhase('spotSetupPhase'); return; }
         }
         await stopSpotRecording();
         spotSession = null;
@@ -13139,8 +13141,8 @@
       const time = document.getElementById('notificationTime')?.value || '';
       const items = [
         ['🎙️', 'Microphone', selectedAudioDeviceLabel || 'Default Microphone', 'setAudio', true],
-        ['📞', 'Google Meet', meet ? (ma.isConnected() ? 'Connected' : 'On, not connected') : 'Off', 'setMeet', meet],
-        ['👂', 'Hear me', hear ? 'On' : 'Off', 'setMeet', hear],
+        ['📞', 'Google Meet audio', meet ? (ma.isConnected() ? 'On: listening to the call' : 'On, not connected') : 'Off', 'setMeet', meet],
+        ['👂', 'Hear me', hear ? 'On' : 'Off', 'setAudio', hear],
         ['🔔', 'Reminders', remindersOn ? `Daily at ${time}` : 'Off', 'setReminders', remindersOn],
         ['👤', 'Account', currentUser ? (currentUser.email || 'Signed in') : 'Not signed in', 'setAccount', Boolean(currentUser)]
       ];

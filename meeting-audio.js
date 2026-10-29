@@ -1,13 +1,17 @@
 // Meeting audio: lets the games hear the people in a video call while the coach shares their screen.
 //
-// The coach connects ONCE ("Connect meeting audio"): the browser's own share picker opens and the
-// coach picks the Google Meet tab (or the entire screen with system audio). From then on every game
-// that listens (Speak on the Spot, the home-page recorder, the vocal variety games) takes its audio
-// from that connection instead of the microphone, until it is disconnected or the share stops.
+// ONE switch in Settings controls it for every game. It is OFF every time the app opens and is never remembered. Turning it
+// on opens the browser's own share picker: the coach picks the Google Meet tab (or the entire screen with system audio).
+// From then on every game that listens (Think Fast, Speak on the Spot, the home-page recorder, the vocal variety games)
+// takes its audio from that connection instead of the microphone, until the switch is turned off or the share stops
+// (which also turns the switch off).
 // Web only: the native app does not load this file.
 
-const SETTING_KEY = 'callAudioMode';       // one audio-source choice, shared by Settings and the games
-const HOST_KEY = 'meetingAudioIncludeHost';
+let enabledNow = false;                    // the one switch; in memory only, so every launch starts with it off
+let hostNow = false;                       // mixing the coach's microphone in has no control in the app, so it is always off
+let stopNotice = '';
+// older versions remembered the choice: forget it, so nothing is ever switched on by an old setting
+for (const key of ['callAudioMode', 'meetingAudioIncludeHost']) { try { localStorage.removeItem(key); } catch { /* storage unavailable */ } }
 const HEARING_DB = -62;                    // above this is "sound"; below is silence or faint noise
 const listeners = new Set();
 let connection = null;                     // { stream, surface }
@@ -25,7 +29,7 @@ function releaseConnection(value) {
   value.context?.close().catch(() => {});
 }
 
-const read = () => { try { return localStorage.getItem(SETTING_KEY) === 'true'; } catch { return false; } };
+const read = () => enabledNow;
 const notify = () => { for (const fn of [...listeners]) { try { fn(MeetingAudio.status()); } catch { /* a listener failed */ } } };
 
 function surfaceName(surface) {
@@ -64,13 +68,10 @@ function stopMonitor() {
 export const MeetingAudio = {
   supported: () => Boolean(navigator.mediaDevices?.getDisplayMedia),
   enabled: read,
-  includeHost: () => { try { return localStorage.getItem(HOST_KEY) === 'true'; } catch { return false; } },
-  setIncludeHost(value) {
-    try { localStorage.setItem(HOST_KEY, value ? 'true' : 'false'); } catch { /* storage unavailable */ }
-    notify();
-  },
-  setEnabled(value) {
-    try { localStorage.setItem(SETTING_KEY, value ? 'true' : 'false'); } catch { /* storage unavailable */ }
+  includeHost: () => hostNow,
+  setIncludeHost(value) { hostNow = Boolean(value); notify(); },
+  setEnabled(value, notice = '') {
+    enabledNow = Boolean(value); stopNotice = value ? '' : notice;
     window.dispatchEvent(new CustomEvent('meetingaudio:enabled', { detail: Boolean(value) }));
     if (!value) this.disconnect();
     notify();
@@ -81,7 +82,7 @@ export const MeetingAudio = {
     return {
       enabled: read(), supported: this.supported(), connected, surface: connection?.surface || null, level: connected ? level : -100,
       hearing: connected && lastSound > 0 && Date.now() - lastSound < 6000, silentSeconds: connected && lastSound ? Math.round((Date.now() - lastSound) / 1000) : null,
-      sourceId: connected ? connection.id : null, includeHost: Boolean(connected && connection.microphone), hostError: connected ? connection.hostError : ''
+      notice: stopNotice, sourceId: connected ? connection.id : null, includeHost: Boolean(connected && connection.microphone), hostError: connected ? connection.hostError : ''
     };
   },
   onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
@@ -132,7 +133,8 @@ export const MeetingAudio = {
       connection = next; lastSound = 0;
       // Retain Stop sharing and source-ended events. Games receive audio only.
       display.getVideoTracks().forEach(track => { track.enabled = false; });
-      const ended = () => { if (connection === next) this.disconnect(); };
+      // the share ended (Stop sharing, or the tab closed): the switch goes back off, so the games are plainly on the microphone again
+      const ended = () => { if (connection === next) this.setEnabled(false, 'The share ended, so Google Meet audio is off and the games are using your microphone again. Switch it on to share again.'); };
       display.getTracks().forEach(track => track.addEventListener('ended', ended));
       next.microphone?.getTracks().forEach(track => track.addEventListener('ended', ended));
       startMonitor(connection.stream);
@@ -163,50 +165,57 @@ export const MeetingAudio = {
   // A short plain-language message for a failed connection.
   describeError(error) {
     const name = error?.name;
-    if (name === 'NotAllowedError' || name === 'AbortError') return 'Sharing was cancelled. Press “Connect meeting audio” again, then choose your Google Meet tab or the entire screen.';
+    if (name === 'NotAllowedError' || name === 'AbortError') return 'Sharing was cancelled, so Google Meet audio stayed off. Switch it on again, then choose your Google Meet tab or the entire screen.';
     if (name === 'NoCallAudio') {
       if (error.surface === 'window') return 'A shared window cannot include sound. Choose “Chrome Tab” (your Google Meet tab), or “Entire Screen” and tick “Also share system audio”.';
       if (error.surface === 'monitor') return 'The screen was shared without sound. Choose “Entire Screen” again and tick “Also share system audio” (Windows), or share the Meet tab instead.';
       return 'The tab was shared without sound. Choose your Google Meet tab again and tick “Also share tab audio”.';
     }
-    if (name === 'UnsupportedCall') return 'Meeting audio needs Chrome or Edge on a computer. In Safari, Firefox or on a phone, turn it off to use the microphone.';
-    return 'Could not connect to the meeting audio. Press “Connect meeting audio” to try again.';
+    if (name === 'CallNotConnected') return 'Google Meet audio is on but not connected. In Settings, switch it off and on again, then choose your Google Meet tab.';
+    if (name === 'UnsupportedCall') return 'Meeting audio needs Chrome or Edge on a computer. In Safari, Firefox or on a phone, leave it off and use the microphone.';
+    return 'Could not connect to the meeting audio. Switch it on again to try once more.';
   },
 
-  // The control shown in Settings and on the games' home screen.
-  mountPanel(element, { compact = false } = {}) {
+  // The one control, shown in Settings and nowhere else: a single switch. Off every time the app opens; on only when the
+  // coach turns it on. Turning it on opens the browser's chooser for the Google Meet tab; turning it off lets go of the call.
+  mountPanel(element) {
     if (!element) return () => {};
     injectStyle();
     let message = '', busy = false;
     const draw = () => {
       const status = MeetingAudio.status();
-      element.className = `ma-panel ${compact ? 'compact' : ''} ${status.connected ? 'on' : ''}`;
+      const on = status.enabled || busy;
+      element.className = `ma-panel ${status.connected ? 'on' : ''}`;
+      const stateText = !status.supported ? 'Not available in this browser.'
+        : busy ? 'Choose your Google Meet tab in the box your browser shows, and tick “Also share tab audio”.'
+        : status.connected ? (status.hearing ? 'ON: hearing the call.' : status.silentSeconds !== null ? 'ON: connected, quiet right now.' : 'ON: connected. Nothing heard yet, so ask a student to say hello.')
+        : status.enabled ? 'ON, but not connected. Switch it off and on again to choose the Meet tab.'
+        : 'OFF: every game listens to your microphone.';
+      const stateClass = status.connected ? (status.hearing || status.silentSeconds !== null ? 'good' : 'wait') : busy || status.enabled ? 'wait' : 'off';
       element.innerHTML = `
-        <div class="ma-head"><strong>📞 Meeting audio</strong><span class="ma-state ${status.connected ? (status.hearing || status.silentSeconds !== null ? 'good' : 'wait') : 'off'}">${status.connected ? (status.hearing ? 'Hearing the call' : status.silentSeconds !== null ? 'Connected, quiet right now' : 'Connected, no sound yet') : status.enabled ? 'Not connected' : 'Using microphone'}</span></div>
-        ${!status.supported ? '<p class="ma-text">This browser cannot capture call audio. Use Chrome or Edge on a computer.</p>' : ''}
-        ${status.supported ? `<details class="ma-guide"><summary>How to play together on Google Meet</summary><ol><li>In Meet, present the <b>Speaker’s Gym tab</b>. Leave presentation audio off to prevent echo.</li><li>Here, connect to the separate <b>Google Meet tab</b> and turn on <b>Also share tab audio</b>.</li><li>Return to the game and take turns. Everyone except the speaker stays muted.</li></ol><p class="ma-text">Use Chrome or Edge on a computer. Headphones help prevent echo.${/Windows/.test(navigator.userAgent) ? ' If tab audio is unavailable, choose Entire Screen with system audio.' : ''} Meet can smooth loudness, so feedback reflects the sound received from the call.</p></details>` : ''}
-        ${status.supported && !status.connected ? `<p class="ma-text">Choose your call tab and turn on <b>Also share tab audio</b>. Connect once for all games.</p>
-          <div class="ma-actions"><button type="button" class="ma-btn primary" data-ma="connect" ${busy ? 'disabled' : ''}>${busy ? 'Waiting for you to choose…' : 'Connect meeting audio'}</button>${status.enabled ? '<button type="button" class="ma-btn" data-ma="disable">Use the microphone instead</button>' : ''}</div>` : ''}
-        ${status.supported ? `<label class="ma-host"><input type="checkbox" data-ma="host" ${MeetingAudio.includeHost() ? 'checked' : ''}> Include my microphone so I can take a turn too</label>${status.connected && MeetingAudio.includeHost() !== status.includeHost ? '<p class="ma-text">Press Reconnect to apply the microphone choice.</p>' : ''}<p class="ma-text">Pitch and volume stay on this computer. Pace games send short clips for word counting. Let participants know before connecting.</p>` : ''}
+        <label class="ma-switch">
+          <input type="checkbox" role="switch" data-ma="toggle" ${on ? 'checked' : ''} ${busy || !status.supported ? 'disabled' : ''} aria-describedby="maState">
+          <span class="ma-track" aria-hidden="true"></span>
+          <span class="ma-switch-text"><strong>Use Google Meet audio in every game</strong><span>Off: the games listen to your microphone. On: they listen to your Google Meet call instead.</span></span>
+        </label>
+        <p class="ma-state ${stateClass}" id="maState" role="status">${stateText}</p>
+        ${!status.supported ? '<p class="ma-text">Google Meet audio needs Chrome or Edge on a computer.</p>' : ''}
         ${status.connected ? `<div class="ma-meter" aria-hidden="true"><i data-ma-meter></i></div>
-          <p class="ma-text" id="maHear">${status.hearing || status.silentSeconds !== null ? `Connected to ${surfaceName(status.surface)}. The bar moves when someone speaks in the call.` : `Connected to ${surfaceName(status.surface)}, but nothing has been heard yet. Ask a student to say hello. If the bar stays flat, press Reconnect and pick the Google Meet tab${/Windows/.test(navigator.userAgent) ? ' (or Entire Screen with system audio)' : ''}. Picking the game’s own tab will stay silent.`}</p>
-          <div class="ma-actions"><button type="button" class="ma-btn" data-ma="connect">Reconnect</button><button type="button" class="ma-btn" data-ma="disconnect">Disconnect</button><button type="button" class="ma-btn" data-ma="disable">Use the microphone instead</button></div>` : ''}
+          <p class="ma-text" id="maHear">${status.hearing || status.silentSeconds !== null ? `Listening to ${surfaceName(status.surface)}. The bar moves when someone speaks in the call.` : `Listening to ${surfaceName(status.surface)}, but nothing has been heard yet. If the bar stays flat, switch this off and on again and pick the Google Meet tab${/Windows/.test(navigator.userAgent) ? ' (or Entire Screen with system audio)' : ''}. Picking the game’s own tab stays silent.`}</p>` : ''}
+        ${status.supported ? `<details class="ma-guide"><summary>How to use it on Google Meet</summary><ol><li>In Meet, present the <b>Speaker’s Gym tab</b>. Leave presentation audio off to prevent echo.</li><li>Turn the switch on, then choose the separate <b>Google Meet tab</b> and tick <b>Also share tab audio</b>.</li><li>Take turns in any game. Everyone except the speaker stays muted.</li><li>To pick a different tab, or to go back to your microphone, turn the switch off.</li></ol><p class="ma-text">Use Chrome or Edge on a computer. Headphones help prevent echo.${/Windows/.test(navigator.userAgent) ? ' If tab audio is unavailable, choose Entire Screen with system audio.' : ''} Pitch and volume stay on this computer; the pace games send short clips for word counting. Tell participants before you switch it on.</p></details>` : ''}
+        ${status.notice ? `<p class="ma-text">${status.notice}</p>` : ''}
         ${status.hostError ? `<p class="ma-error" role="alert">${status.hostError}</p>` : ''}
         ${message ? `<p class="ma-error" role="alert">${message}</p>` : ''}`;
     };
-    const onClick = async event => {
-      const act = event.target.closest('[data-ma]')?.dataset.ma; if (!act) return;
-      if (busy) return;
-      if (act === 'host') { MeetingAudio.setIncludeHost(event.target.checked); }
-      else if (act === 'disable') { message = ''; MeetingAudio.setEnabled(false); }
-      else if (act === 'disconnect') { MeetingAudio.disconnect(); }
-      else if (act === 'connect') {
-        message = ''; busy = true; draw();
-        try { await MeetingAudio.connect(); } catch (error) { message = MeetingAudio.describeError(error); }
-        busy = false; draw();
-      }
+    const onChange = async event => {
+      if (event.target?.dataset?.ma !== 'toggle' || busy) return;
+      message = '';
+      if (!event.target.checked) { MeetingAudio.setEnabled(false); draw(); return; }
+      busy = true; draw();
+      try { await MeetingAudio.connect(); } catch (error) { message = MeetingAudio.describeError(error); }
+      busy = false; draw();
     };
-    element.addEventListener('click', onClick);
+    element.addEventListener('change', onChange);
     const off = MeetingAudio.onChange(draw);
     const meter = setInterval(() => {
       const bar = element.querySelector('[data-ma-meter]'); if (!bar) return;
@@ -216,7 +225,7 @@ export const MeetingAudio = {
       if (element.dataset.phase !== phase) { element.dataset.phase = phase; draw(); }
     }, 150);
     draw();
-    return () => { off(); clearInterval(meter); element.removeEventListener('click', onClick); };
+    return () => { off(); clearInterval(meter); element.removeEventListener('change', onChange); };
   }
 };
 
@@ -356,26 +365,28 @@ function injectStyle() {
   if (styled) return; styled = true;
   const style = document.createElement('style'); style.id = 'maStyle';
   style.textContent = `
-  .ma-panel{border:1px solid rgba(148,163,184,.22);border-radius:16px;padding:14px 16px;background:rgba(15,23,42,.6);color:#e5e7eb;text-align:left;font-family:inherit}
+  .ma-panel{border:1px solid rgba(148,163,184,.22);border-radius:18px;padding:16px 18px;background:rgba(15,23,42,.6);color:#e5e7eb;text-align:left;font-family:inherit}
   .ma-panel.on{border-color:rgba(45,212,191,.5);background:linear-gradient(135deg,rgba(45,212,191,.08),rgba(167,139,250,.05))}
-  #meetingAudioPanel{padding:20px;border-radius:20px}#meetingAudioPanel .ma-head strong{font-size:18px;color:#facc15}
-  .ma-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px}
-  .ma-head strong{font-size:15px}
-  .ma-state{font-size:11px;font-weight:800;letter-spacing:.06em;padding:4px 10px;border-radius:99px;border:1px solid rgba(148,163,184,.3);color:#94a3b8}
+  .ma-switch{display:flex;align-items:center;gap:14px;cursor:pointer;margin:0 0 10px}
+  .ma-switch input{position:absolute;opacity:0;width:0;height:0}
+  .ma-track{flex:none;position:relative;width:58px;height:34px;border-radius:99px;background:#334155;border:1px solid rgba(148,163,184,.3);transition:background .25s}
+  .ma-track::after{content:'';position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.4);transition:transform .25s}
+  .ma-switch input:checked+.ma-track{background:linear-gradient(135deg,#2dd4bf,#22d3ee);border-color:transparent;box-shadow:0 0 16px rgba(45,212,191,.4)}
+  .ma-switch input:checked+.ma-track::after{transform:translateX(24px)}
+  .ma-switch input:focus-visible+.ma-track{outline:3px solid #fde047;outline-offset:3px}
+  .ma-switch input:disabled+.ma-track{opacity:.6}
+  .ma-switch-text{display:flex;flex-direction:column;gap:3px}
+  .ma-switch-text strong{font-size:16px;color:#f8fafc}
+  .ma-switch-text span{font-size:13px;line-height:1.45;color:#94a3b8}
+  .ma-state{font-size:13px;font-weight:800;margin:0 0 10px;padding:8px 12px;border-radius:12px;border:1px solid rgba(148,163,184,.3);color:#94a3b8;background:rgba(8,13,26,.4)}
   .ma-state.good{color:#5eead4;border-color:rgba(94,234,212,.5);background:rgba(94,234,212,.1)}
   .ma-state.wait{color:#fde68a;border-color:rgba(253,230,138,.5);background:rgba(253,230,138,.08)}
   .ma-text{font-size:13px;line-height:1.6;color:#a3b2c8;margin:0 0 10px}
   .ma-text b{color:#e5e7eb}
-  .ma-guide{font-size:13px;line-height:1.6;margin-bottom:12px}.ma-guide summary{cursor:pointer;color:#fde68a;font-weight:700}.ma-guide ol{padding-left:22px}.ma-guide li{margin:7px 0}.ma-host{display:flex;align-items:flex-start;gap:8px;font-size:13px;margin:10px 0}.ma-host input{margin-top:3px;accent-color:#facc15}
+  .ma-guide{font-size:13px;line-height:1.6;margin-bottom:6px}.ma-guide summary{cursor:pointer;color:#fde68a;font-weight:700}.ma-guide ol{padding-left:22px}.ma-guide li{margin:7px 0}
   .ma-error{font-size:13px;line-height:1.55;color:#ffd3da;background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.35);border-radius:10px;padding:10px 12px;margin:10px 0 0}
   .ma-meter{height:8px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin:4px 0 10px}
-  .ma-meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#a78bfa,#2dd4bf,#fbbf24);transition:width .12s linear}
-  .ma-actions{display:flex;flex-wrap:wrap;gap:8px}
-  .ma-panel .ma-btn{font:inherit;font-size:13px;font-weight:700;border-radius:10px;padding:10px 14px;min-height:42px;cursor:pointer;color:#e5e7eb;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);box-shadow:none;transform:none}
-  .ma-panel .ma-btn:hover{background:rgba(255,255,255,.1);transform:none;box-shadow:none}
-  .ma-panel .ma-btn.primary{color:#1c1503;background:linear-gradient(135deg,#fde68a,#facc15 55%,#f59e0b);border-color:transparent}
-  .ma-panel .ma-btn:disabled{opacity:.6;cursor:wait}
-  .ma-panel.compact{padding:12px 14px}`;
+  .ma-meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#a78bfa,#2dd4bf,#fbbf24);transition:width .12s linear}`;
   document.head.append(style);
 }
 

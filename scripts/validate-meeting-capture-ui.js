@@ -31,7 +31,7 @@ async (page) => {
   });
   await page.bringToFront();
   await page.evaluate(() => window.navigateToPage('settings'));
-  await page.locator('#meetingAudioPanel').getByRole('button', { name: 'Connect meeting audio', exact: true }).click();
+  await page.locator('#meetingAudioPanel [data-ma="toggle"]').check();
   await page.waitForFunction(() => window.MeetingAudio.status().hearing, null, { timeout: 15000 });
   await page.evaluate(() => window.navigateToPage('variety'));
   const initial = await page.evaluate(() => ({ ...window.MeetingAudio.status(), micRequests: window.micRequests }));

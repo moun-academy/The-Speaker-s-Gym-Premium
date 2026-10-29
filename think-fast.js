@@ -53,7 +53,7 @@ async function openMic() {
   if (callOn()) {
     const ma = meeting();
     if (!ma.supported() || !Ctx) throw Object.assign(new Error('unsupported'), { name: 'UnsupportedCall' });
-    if (!ma.isConnected()) await ma.connect();
+    if (!ma.isConnected()) throw Object.assign(new Error('not connected'), { name: 'CallNotConnected' });   // only the Settings switch opens the chooser
     stream = ma.clone();
     if (!stream) throw Object.assign(new Error('no audio'), { name: 'NoCallAudio' });
   } else {

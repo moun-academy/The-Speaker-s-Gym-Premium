@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const source = readFileSync(new URL('../meeting-audio.js', import.meta.url), 'utf8');
 
-function fixture() {
+function fixture(saved = {}) {
   class Track extends EventTarget {
     constructor(kind) { super(); this.kind = kind; this.readyState = 'live'; this.enabled = true; }
     stop() { this.readyState = 'ended'; }
@@ -19,7 +19,7 @@ function fixture() {
     getAudioTracks() { return this.tracks.filter(t => t.kind === 'audio'); }
     getVideoTracks() { return this.tracks.filter(t => t.kind === 'video'); }
   }
-  const contexts = [], store = new Map(), captures = [], microphones = [], options = [];
+  const contexts = [], store = new Map(Object.entries(saved)), captures = [], microphones = [], options = [];
   class Context {
     constructor() { this.state = 'running'; this.destination = {}; this.outputs = []; contexts.push(this); }
     resume() { return Promise.resolve(); }
@@ -39,56 +39,94 @@ function fixture() {
   const sandbox = {
     window, navigator: { mediaDevices }, MediaStream: Stream, Event, CustomEvent,
     Audio: class { play() { return Promise.resolve(); } }, Date, performance, Float32Array,
-    localStorage: { getItem: key => store.get(key), setItem: (key, value) => store.set(key, value) },
+    localStorage: { getItem: key => store.get(key), setItem: (key, value) => store.set(key, value), removeItem: key => store.delete(key) },
     setInterval: () => 1, clearInterval() {}, setTimeout, clearTimeout, Blob, FormData, AbortController
   };
   const exports = vm.runInNewContext(source.replaceAll('export ', '') + '\n;({MeetingAudio, ChunkTranscriber})', sandbox);
-  return { ...exports, mediaDevices, Track, Stream, captures, microphones, contexts, options, sandbox };
+  return { ...exports, mediaDevices, Track, Stream, captures, microphones, contexts, options, sandbox, store };
 }
 
 function panelFixture(f) {
   f.sandbox.document = { createElement: () => ({}), head: { append() {} } };
   const panel = { dataset: {}, innerHTML: '', handlers: {}, querySelector: () => null,
     addEventListener(name, fn) { this.handlers[name] = fn; }, removeEventListener(name) { delete this.handlers[name]; } };
-  const click = (act, checked = false) => panel.handlers.click({ target: { checked, closest: () => ({ dataset: { ma: act } }) } });
+  const flip = checked => panel.handlers.change({ target: { checked, dataset: { ma: 'toggle' } } });
   const unmount = f.MeetingAudio.mountPanel(panel);
-  return { panel, click, unmount };
+  return { panel, flip, unmount };
 }
 
-test('one meeting panel connects directly, selects the shared source and switches back to the microphone', async () => {
-  const f = fixture(), { panel, click, unmount } = panelFixture(f);
-  assert.match(panel.innerHTML, /Using microphone/);
-  assert.match(panel.innerHTML, /data-ma="connect"[^>]*>Connect meeting audio/);
-  assert.doesNotMatch(panel.innerHTML, /data-ma="enable"|>Use meeting audio</);
-  assert.match(panel.innerHTML, /data-ma="host"/, 'host microphone choice is available before connecting');
-  await click('host', true);
-  await click('connect');
-  assert.equal(f.options.length, 1, 'one click opens one capture chooser');
+test('Google Meet audio is off whenever the app opens, even if an older version saved it as on', () => {
+  const f = fixture({ callAudioMode: 'true', meetingAudioIncludeHost: 'true' });
+  assert.equal(f.MeetingAudio.enabled(), false, 'a saved "on" must be ignored');
+  assert.equal(f.MeetingAudio.includeHost(), false, 'mixing in the coach microphone is never on by itself');
+  assert.equal(f.MeetingAudio.isConnected(), false);
+  assert.equal(f.store.has('callAudioMode'), false, 'the old saved value is erased');
+  f.MeetingAudio.setEnabled(true);
+  assert.equal(f.store.has('callAudioMode'), false, 'and nothing is saved for next time');
+});
+
+test('the meeting control is a single switch: one choice, off to start, on opens one chooser, off lets go', async () => {
+  const f = fixture(), { panel, flip, unmount } = panelFixture(f);
+  assert.equal((panel.innerHTML.match(/data-ma="/g) || []).length, 1, 'one control and nothing else to press');
+  assert.doesNotMatch(panel.innerHTML, /<button/);
+  assert.match(panel.innerHTML, /role="switch"/);
+  assert.doesNotMatch(panel.innerHTML, / checked/, 'off to start');
+  assert.match(panel.innerHTML, /OFF: every game listens to your microphone/);
+  await flip(true);
+  assert.equal(f.options.length, 1, 'turning it on opens one capture chooser');
   assert.equal(f.MeetingAudio.enabled(), true);
   assert.equal(f.MeetingAudio.isConnected(), true);
-  assert.equal(f.microphones.length, 1);
-  assert.match(panel.innerHTML, /data-ma="disconnect"/);
-  await click('disable');
+  assert.match(panel.innerHTML, / checked/);
+  assert.match(panel.innerHTML, /ON: /);
+  assert.doesNotMatch(panel.innerHTML, /<button/, 'no reconnect, disconnect or microphone buttons while it is on');
+  await flip(false);
   assert.equal(f.MeetingAudio.enabled(), false);
   assert.equal(f.MeetingAudio.isConnected(), false);
-  assert.ok([...f.captures[0].getTracks(), ...f.microphones[0].getTracks()].every(t => t.readyState === 'ended'));
-  assert.match(panel.innerHTML, /Using microphone/);
+  assert.ok(f.captures[0].getTracks().every(t => t.readyState === 'ended'));
+  assert.match(panel.innerHTML, /OFF: every game listens to your microphone/);
   unmount();
 });
 
-test('cancelling a first connection leaves the microphone selected and allows retry', async () => {
-  const f = fixture(), { panel, click, unmount } = panelFixture(f);
+test('cancelling the chooser leaves the switch off with a plain message, and it can be tried again', async () => {
+  const f = fixture(), { panel, flip, unmount } = panelFixture(f);
   const capture = f.mediaDevices.getDisplayMedia;
   f.mediaDevices.getDisplayMedia = async () => { throw Object.assign(new Error('cancel'), { name: 'NotAllowedError' }); };
-  await click('connect');
-  assert.equal(f.MeetingAudio.enabled(), false);
+  await flip(true);
+  assert.equal(f.MeetingAudio.enabled(), false, 'cancelled means still off');
   assert.equal(f.MeetingAudio.isConnected(), false);
-  assert.match(panel.innerHTML, /Sharing was cancelled/);
+  assert.match(panel.innerHTML, /Sharing was cancelled, so Google Meet audio stayed off/);
+  assert.doesNotMatch(panel.innerHTML, / checked/);
   f.mediaDevices.getDisplayMedia = capture;
-  await click('connect');
+  await flip(true);
   assert.equal(f.MeetingAudio.isConnected(), true);
   assert.doesNotMatch(panel.innerHTML, /Sharing was cancelled/);
-  f.MeetingAudio.disconnect(); unmount();
+  f.MeetingAudio.setEnabled(false); unmount();
+});
+
+test('when the share ends (Stop sharing, or the Meet tab closes) the switch turns itself off and says so', async () => {
+  const f = fixture(), { panel, flip, unmount } = panelFixture(f);
+  await flip(true);
+  const copy = f.MeetingAudio.clone();
+  f.captures[0].getVideoTracks()[0].end();
+  assert.equal(f.MeetingAudio.enabled(), false, 'the games are back on the microphone, and the switch shows it');
+  assert.equal(f.MeetingAudio.isConnected(), false);
+  assert.ok(copy.getTracks().every(t => t.readyState === 'ended'));
+  assert.match(panel.innerHTML, /The share ended, so Google Meet audio is off/);
+  assert.doesNotMatch(panel.innerHTML, / checked/);
+  unmount();
+});
+
+test('no game has its own meeting control: only Settings mounts the panel', () => {
+  const read = name => readFileSync(new URL('../' + name, import.meta.url), 'utf8');
+  for (const name of ['think-fast.js', 'vocal-variety.js', 'spot-core.js', 'spot.css', 'think-fast.css']) {
+    assert.doesNotMatch(read(name), /mountPanel|MeetingAudio\.(connect|setEnabled|disconnect)\(|Reconnect call|reconnect-call/, name + ' must not control the meeting');
+  }
+  const html = read('index.html');
+  assert.equal((html.match(/\.mountPanel\(/g) || []).length, 1, 'one place builds the control');
+  assert.doesNotMatch(html, /Connect meeting audio|Use the microphone instead|spotMeeting|spotCallNote/);
+  assert.match(html, /id="meetingAudioPanel"/);
+  assert.match(html, /try \{ localStorage\.removeItem\('callAudioMode'\)/, 'the app never starts with an old saved choice');
+  assert.match(html, /let callAudioMode = false;/);
 });
 
 test('settings contains a single meeting control without the old switch or duplicate introduction modal', () => {

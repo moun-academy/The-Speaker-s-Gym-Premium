@@ -71,7 +71,7 @@ Pick **Analogy Blitz** ("A battery is like a jacuzzi, because…"), **Hot Take**
 (pitch a strange product) or **Wild Mix** (all three). Choose 2 to 5 seconds a prompt and 5 to 20 prompts. All modes are
 open from the start. A 3-2-1 countdown, then each prompt shows a draining ring; start talking at once.
 
-**Hear me** (a switch in Settings, on by default; the games have no listening controls of their own) listens through the microphone, or through the meeting audio when that is on, and times
+**Hear me** (a switch in Settings under Microphone, on by default; the games have no listening controls of their own) listens through the microphone, or through the meeting audio when that is on, and times
 how long it takes to start speaking. It learns the room's quiet during the countdown, so nobody is tuned or asked to shout.
 Each prompt scores up to 100: up to 80 for a fast start (full marks within 0.6 s, falling to 25 at the buzzer) and up to
 20 for talking through the rest of the time. Answer 35 points or more to keep a combo going; the session score is the
@@ -110,7 +110,7 @@ offers and a Sign in button. Styles are in `tracker.css`; every number still com
 
 One place for everything you set up: a row of "your setup at a glance" chips (microphone, Google Meet, Hear me, reminders,
 account) that jump to each section, then **Microphone** (device picker and a **Test my microphone** level meter),
-**Google Meet** (the only place meeting audio is controlled, plus the Think Fast Hear me switch), **Daily reminders**,
+**Google Meet audio** (one switch, the only place the meeting is controlled), **Daily reminders**,
 **Account and sync**, and **About**. Styles are in `settings.css`.
 
 ## Playing over a video call (every game)
@@ -118,20 +118,22 @@ account) that jump to each section, then **Microphone** (device picker and a **T
 The coach shares their screen in a Google Meet and students speak from their own laptops. The
 games listen to the call instead of the microphone:
 
-1. Turn on **Meeting audio** in **Settings** ("Play with students on Google Meet"). It is off by default, it lives only
-   there, and once it is on every game that listens uses it: the games show a short note instead of their own controls.
-2. Press **Connect meeting audio** once. In the box the browser shows, choose your **Google Meet
-   tab** and tick **Also share tab audio**, or (Windows) choose **Entire Screen** and tick
-   **Also share system audio**, which also works when the call is in another window or app.
-3. A live meter says **Hearing the call** when a student speaks. If it stays flat, the panel
-   says what to try (picked the wrong tab, shared without sound, a window, and so on).
-4. Every game now uses that one connection until it is disconnected or the share stops:
+1. In **Settings**, turn on the one switch **Use Google Meet audio in every game**. It is **off every time the app
+   opens** and is never remembered, so it only ever listens to the call when you have just switched it on. It is the only
+   meeting control in the whole app: no game has its own, and there are no connect, reconnect or disconnect buttons.
+2. Turning it on opens the browser's box. Choose your **Google Meet tab** and tick **Also share tab audio**, or (Windows)
+   choose **Entire Screen** and tick **Also share system audio**, which also works when the call is in another window or
+   app. If you cancel, the switch stays off. To pick a different tab, or to go back to your microphone, turn it off.
+3. A live meter says **ON: hearing the call.** when a student speaks. If it stays flat, the panel says what to try
+   (picked the wrong tab, shared without sound, a window, and so on). If the share ends (Stop sharing, or the Meet tab
+   closes) the switch turns itself off and says so, and the games are on your microphone again.
+4. While it is on, every game uses that one connection:
    - **Speak on the Spot** sends a few seconds of the call's audio at a time to `/api/transcribe`
      (with the target words as a spelling hint) and runs its existing word detection on the text.
    - **Home-page recorder** records the call without asking for the tab each time.
    - **Vocal variety** reads loudness and pitch from the call audio and counts words a minute
      for the pace games.
-   - **Think Fast** listens through its "Hear me" switch (the Think Fast section above) and times how fast each student starts.
+   - **Think Fast** times how fast each student starts, listening to the call (its Hear me switch in Settings decides whether it listens at all).
    - **Warm Up** does not listen to anyone, so it needs nothing.
 
 Chrome or Edge on a computer only. The coach stays on the game tab (a round stops if the tab is
