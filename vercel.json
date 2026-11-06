@@ -4,6 +4,10 @@
       "maxDuration": 60,
       "memory": 1024
     },
+    "api/story-score.js": {
+      "maxDuration": 30,
+      "memory": 512
+    },
     "api/transcribe.js": {
       "maxDuration": 20,
       "memory": 512

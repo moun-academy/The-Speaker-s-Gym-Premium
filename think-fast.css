@@ -219,3 +219,5 @@
 #thinkFastRoot .tf-hint { max-width: 36ch; font-size: 14px; line-height: 1.4; font-weight: 700; color: #cbd5e1; }
 #thinkFastRoot .tf-hint:empty { display: none; }
 #thinkFastRoot .tf-readyhint { max-width: 34ch; font-size: 17px; font-weight: 800; line-height: 1.4; color: #f1f5f9; }
+
+#thinkFastRoot .tf-fixed { margin: 0; padding: 12px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; color: #cbd5e1; background: rgba(8, 13, 26, 0.55); border: 1px solid var(--line); }

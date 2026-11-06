@@ -4804,7 +4804,7 @@
     <div class="spot-header">
       <div class="spot-hero-icon" aria-hidden="true">🎯</div>
       <h2>Speak on the Spot</h2>
-      <p>Get a question, think for a moment, then answer it while surprise words appear one by one. Work each word into what you are saying before its timer runs out.</p>
+      <p>Get a question, think for a moment, then tell one story that answers it. New words appear as you speak: connect each one into your story so it keeps flowing. The longer and better connected your story, the higher your score. Speed does not matter.</p>
     </div>
 
     <section class="spot-rank" id="spotRankCard" aria-label="Your rank"></section>
@@ -4884,7 +4884,7 @@
           <div class="spot-think-count" id="spotThinkCountdown">5</div>
         </div>
         <div class="spot-go" id="spotGoText">5...4...3...2...1...GO!</div>
-        <p class="spot-think-tip">Plan your answer: say what you think, give a reason, then use the words as your examples.</p>
+        <p class="spot-think-tip">Plan a story: a character, a place and a problem. New words will appear as you speak. Use each one to move the story forward, and keep talking.</p>
       </div>
 
       <div class="spot-phase" id="spotSpeakPhase">
@@ -4897,12 +4897,12 @@
             <div class="spot-question spot-question-small" id="spotQuestionSpeakText">Question</div>
             <div class="spot-hud-row">
               <span class="spot-pill">Words <b id="spotWordsProgress">0/6</b></span>
-              <span class="spot-pill streak" id="spotStreakPill" data-on="0">🔥 ×0</span>
+              <span class="spot-pill streak" id="spotStreakPill" data-on="0">📖 0 words</span>
             </div>
           </div>
         </div>
         <div class="spot-word-card" id="spotWordCard">
-          <div class="spot-word-title">Work this word into your answer</div>
+          <div class="spot-word-title">Add this word to your story</div>
           <div class="spot-word-value" id="spotCurrentWord">READY</div>
           <div class="spot-word-bar" aria-hidden="true"><i id="spotWordBar"></i></div>
           <div class="spot-word-timer" id="spotWordTimerInline">10s to use this word</div>
@@ -4931,14 +4931,14 @@
         <div class="spot-results-grid">
           <div class="spot-result-card"><div class="v" id="spotWordsUsedValue">0/0</div><div class="l">Words used</div></div>
           <div class="spot-result-card"><div class="v" id="spotTimeValue">0s</div><div class="l">Time</div></div>
-          <div class="spot-result-card"><div class="v" id="spotStreakValue">×0</div><div class="l">Best streak</div></div>
+          <div class="spot-result-card"><div class="v" id="spotStreakValue">0</div><div class="l">Words spoken</div></div>
         </div>
         <div class="spot-word-list">
           <h4>Word by word</h4>
           <div id="spotWordResultsList"></div>
         </div>
         <div class="spot-word-list spot-breakdown">
-          <h4>How your score adds up</h4>
+          <h4>How your whole story was scored</h4>
           <div id="spotBreakdown"></div>
         </div>
         <div id="spotNewBadges"></div>
@@ -10548,9 +10548,9 @@
     });
 
     // Back buttons
-    document.getElementById('rapidFireBackBtn').addEventListener('click', () => navigateToPage('main'));
+    document.getElementById('rapidFireBackBtn').addEventListener('click', () => { if (!window.ThinkFast?.back?.()) navigateToPage('main'); });
     document.getElementById('warmUpBackBtn').addEventListener('click', () => navigateToPage('main'));
-    document.getElementById('spotBackBtn').addEventListener('click', () => navigateToPage('main'));
+    document.getElementById('spotBackBtn').addEventListener('click', () => { if (!window.spotBackOneStep?.()) navigateToPage('main'); });
     document.getElementById('settingsBackBtn').addEventListener('click', () => navigateToPage('main'));
     document.getElementById('analyticsBackBtn').addEventListener('click', () => navigateToPage('main'));
     document.getElementById('vocabBackBtn').addEventListener('click', () => navigateToPage('main'));
@@ -12266,7 +12266,16 @@
       window.addEventListener('spotcore:ready', () => { refreshSpotSettingsDefaults(); });
     }
 
+    // One step back: from the think, speak or results screens to the Speak on the Spot menu; only from the menu does the app go Home.
+    window.spotBackOneStep = () => {
+      const inGame = ['spotThinkPhase', 'spotSpeakPhase', 'spotResultsPhase'].some(id => spotEl(id).classList.contains('active'));
+      if (!inGame) return false;
+      stopSpotChallenge(true); refreshSpotSettingsDefaults(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      return true;
+    };
+
     function setSpotPhase(phaseId) {
+      { const back = document.getElementById('spotBackBtn'); if (back) back.textContent = phaseId === 'spotSetupPhase' ? '← Back to Home' : '← Back to Speak on the Spot'; }
       ['spotSetupPhase', 'spotThinkPhase', 'spotSpeakPhase', 'spotResultsPhase'].forEach(id => {
         document.getElementById(id).classList.toggle('active', id === phaseId);
       });
@@ -12573,28 +12582,37 @@
       document.getElementById('spotGameShell').classList.remove('spot-border-danger');
     }
 
+    function spotHits(text, word) {
+      const core = spotCore();
+      return core ? core.countWordHits(text, word) : (spotTranscriptMatchesWord(text, word) ? 1 : 0);
+    }
+
     function renderSpotWords() {
       if (!spotSession) return;
       const words = spotSession.words;
       const used = words.filter(w => w.used).length;
       spotEl('spotWordsProgress').textContent = `${used}/${words.length}`;
       spotEl('spotWordDots').innerHTML = words.map((w, idx) =>
-        `<i class="spot-dot${w.used ? ' used' : w.missed ? ' missed' : idx === spotSession.currentWordIndex ? ' now' : ''}"></i>`).join('');
-      spotEl('spotUsedWordsList').innerHTML = words.filter(w => w.used).map(w => `<span class="spot-chip used">✓ ${spotEsc(w.word)}</span>`).join('');
+        `<i class="spot-dot${w.used ? ' used' : idx === spotSession.currentWordIndex ? ' now' : ''}"></i>`).join('');
+      // every word shown so far stays on the board until it is worked into the story
+      spotEl('spotUsedWordsList').innerHTML = words.slice(0, spotSession.currentWordIndex + 1)
+        .map(w => `<span class="spot-chip ${w.used ? 'used' : 'waiting'}">${w.used ? '✓' : '○'} ${spotEsc(w.word)}</span>`).join('');
+      const core = spotCore(), spoken = core ? core.countWords(spotTranscript) : 0;
       const pill = spotEl('spotStreakPill');
-      pill.textContent = `🔥 ×${spotSession.streak || 0}`;
-      pill.dataset.on = (spotSession.streak || 0) >= 2 ? '1' : '0';
+      pill.textContent = `📖 ${spoken} words`;
+      pill.dataset.on = spoken > 0 ? '1' : '0';
     }
 
+    // A new word is shown every few seconds whether or not the last one has been used: the goal is one connected
+    // story that works them all in, not speed. Earlier words stay on the board and can be used at any time.
     function showSpotWord(index) {
-      if (!spotSession) return;
-      if (index >= spotSession.words.length) return finishSpotChallenge();
+      if (!spotSession || index >= spotSession.words.length) return;
       spotSession.currentWordIndex = index;
       spotSession.wordTimeLeft = spotSession.settings.wordInterval;
       const item = spotSession.words[index];
+      item.revealedAt = Date.now();
+      item.baseHits = spotHits(spotMatchTranscript || spotTranscript, item.word);   // saying it before it appeared does not count
       spotEl('spotCurrentWord').textContent = item.word.toUpperCase();
-      spotEl('spotWordTimer').textContent = String(spotSession.wordTimeLeft);
-      spotEl('spotWordTimerInline').textContent = `${spotSession.wordTimeLeft}s to use this word`;
       const card = spotEl('spotWordCard');
       card.style.animation = 'none';
       card.classList.remove('hurry');
@@ -12635,7 +12653,7 @@
 
     function showSpotPop(item) {
       const pop = spotEl('spotWordPop'); if (!pop) return;
-      pop.innerHTML = `<b>✓ ${spotEsc(item.word.toUpperCase())}</b><span>in ${item.detectedAt}s</span>`;
+      pop.innerHTML = `<b>✓ ${spotEsc(item.word.toUpperCase())}</b><span>added to your story</span>`;
       pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show');
       const shell = spotEl('spotGameShell');
       shell.classList.remove('spot-hit'); void shell.offsetWidth; shell.classList.add('spot-hit');
@@ -12643,18 +12661,19 @@
       showSpotPop.timer = setTimeout(() => { pop.classList.remove('show'); shell.classList.remove('spot-hit'); }, 1500);
     }
 
+    // Any word that has appeared and is not yet used is checked against the whole story so far.
     function detectSpotCurrentWord() {
       if (!spotSession) return;
-      const i = spotSession.currentWordIndex;
-      const item = spotSession.words[i];
-      if (!item || item.used || item.missed) return;
-      if (!spotTranscriptMatchesWord(spotMatchTranscript || spotTranscript, item.word)) return;
-      item.used = true;
-      item.detectedAt = spotSession.settings.wordInterval - spotSession.wordTimeLeft;
-      spotSession.streak = (spotSession.streak || 0) + 1;
-      spotSession.longestStreak = Math.max(spotSession.longestStreak || 0, spotSession.streak);
-      showSpotPop(item);
-      showSpotWord(i + 1);
+      const haystack = spotMatchTranscript || spotTranscript;
+      let changed = false;
+      spotSession.words.forEach((item, i) => {
+        if (i > spotSession.currentWordIndex || item.used) return;
+        if (spotHits(haystack, item.word) <= (item.baseHits || 0)) return;
+        item.used = true;
+        item.detectedAt = Math.round((Date.now() - (item.revealedAt || Date.now())) / 1000);
+        showSpotPop(item); changed = true;
+      });
+      if (changed) renderSpotWords();
     }
 
     function updateSpotTimersUI() {
@@ -12664,12 +12683,14 @@
       const ring = spotEl('spotMainRing');
       ring.style.strokeDashoffset = (SPOT_MAIN_RING * (1 - clamp01(spotSession.mainTimeLeft / total))).toFixed(2);
       spotEl('spotWordTimer').textContent = String(spotSession.wordTimeLeft);
-      const inline = spotEl('spotWordTimerInline');
-      inline.textContent = `${spotSession.wordTimeLeft}s to use this word`;
-      inline.classList.toggle('danger', spotSession.wordTimeLeft <= 3);
-      spotEl('spotWordCard').classList.toggle('hurry', spotSession.wordTimeLeft <= 3);
-      spotEl('spotWordBar').style.width = `${clamp01((spotSession.wordTimeLeft - 1) / spotSession.settings.wordInterval) * 100}%`;
+      const inline = spotEl('spotWordTimerInline'), last = spotSession.currentWordIndex >= spotSession.words.length - 1;
+      inline.textContent = spotSession.allShown ? 'That was the last word. Keep your story going to the end.' : last && spotSession.wordTimeLeft <= 0 ? 'That was the last word.' : `Next word in ${spotSession.wordTimeLeft}s. Keep the story moving.`;
+      inline.classList.remove('danger');
+      spotEl('spotWordCard').classList.remove('hurry');
+      spotEl('spotWordBar').style.width = spotSession.allShown ? '0%' : `${clamp01((spotSession.wordTimeLeft - 1) / spotSession.settings.wordInterval) * 100}%`;
       spotEl('spotGameShell').classList.toggle('spot-border-danger', spotSession.mainTimeLeft <= 10);
+      const core = spotCore(), pill = spotEl('spotStreakPill');
+      if (core && pill) { const spoken = core.countWords(spotTranscript); pill.textContent = `📖 ${spoken} words`; pill.dataset.on = spoken > 0 ? '1' : '0'; }
     }
     const clamp01 = value => Math.min(1, Math.max(0, value));
 
@@ -12772,8 +12793,7 @@
             spotSession.wordTimeLeft -= 1;
             if (spotSession.wordTimeLeft <= 0) {
               const idx = spotSession.currentWordIndex;
-              if (spotSession.words[idx] && !spotSession.words[idx].used) { spotSession.words[idx].missed = true; spotSession.streak = 0; }
-              showSpotWord(idx + 1);
+              if (idx + 1 < spotSession.words.length) showSpotWord(idx + 1); else { spotSession.allShown = true; spotSession.wordTimeLeft = 0; }
             }
             updateSpotTimersUI();
           }, 1000);
@@ -12789,12 +12809,26 @@
     function calculateSpotScore(session) {
       const core = spotCore();
       if (core) return core.scoreSession(session).score;
-      const used = session.words.filter(w => w.used).length;       // the module did not load: keep the original maths
-      const missed = session.words.filter(w => w.missed).length;
-      const fullTimeBonus = session.mainTimeLeft <= 0 && !session.earlyStopped ? 10 : 0;
-      const earlyPenalty = session.earlyStopped ? 5 : 0;
-      const raw = (used * 15) + session.bonus + fullTimeBonus - (missed * 10) - earlyPenalty;
-      return Math.max(0, Math.min(100, Math.round(raw)));
+      const total = session.words.length;                          // the module did not load: just the share of words worked in
+      return total ? Math.round(session.words.filter(w => w.used).length / total * 100) : 0;
+    }
+
+    // The whole story goes to the AI once, at the end, to rate how well the words are woven into one connected story.
+    async function fetchStoryConnection(session, transcript) {
+      const core = spotCore();
+      if (!core || core.countWords(transcript) < 12) return null;
+      const controller = new AbortController(), abort = setTimeout(() => controller.abort(), 12000);
+      try {
+        let token = null; try { token = await window.getSpeechAuthToken?.(); } catch { /* the server answers 401 */ }
+        const response = await fetch(`${API_BASE}/api/story-score`, {
+          method: 'POST', signal: controller.signal,
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ question: session.question, words: session.words.map(w => w.word), transcript: transcript.slice(0, 5000) })
+        });
+        if (!response.ok) return null;
+        const data = await response.json();
+        return Number.isFinite(data.connection) ? { score: data.connection, flow: data.flow, feedback: String(data.feedback || '') } : null;
+      } catch { return null; } finally { clearTimeout(abort); }
     }
 
     function renderSpotResults(session, elapsed) {
@@ -12806,13 +12840,10 @@
       spotEl('spotDial').style.setProperty('--p', score);
       spotEl('spotWordsUsedValue').textContent = `${used}/${session.words.length}`;
       spotEl('spotTimeValue').textContent = `${elapsed}s`;
-      spotEl('spotStreakValue').textContent = `×${result ? result.longestStreak : (session.longestStreak || 0)}`;
-      const interval = session.settings.wordInterval;
-      spotEl('spotWordResultsList').innerHTML = session.words.map(w => {
-        const fast = w.used ? clamp01(1 - w.detectedAt / interval) : 0;
-        return `<div class="spot-wrow ${w.used ? 'used' : 'missed'}"><span class="spot-wi">${w.used ? '✓' : '✗'}</span><span class="spot-ww">${spotEsc(w.word)}</span>
-          <span class="spot-wbar"><i style="width:${w.used ? Math.max(8, fast * 100) : 0}%"></i></span><span class="spot-wt">${w.used ? `${w.detectedAt}s` : 'missed'}</span></div>`;
-      }).join('');
+      spotEl('spotStreakValue').textContent = result ? `${result.spokenWords}` : '–';
+      spotEl('spotWordResultsList').innerHTML = session.words.map(w =>
+        `<div class="spot-wrow ${w.used ? 'used' : 'missed'}"><span class="spot-wi">${w.used ? '✓' : '○'}</span><span class="spot-ww">${spotEsc(w.word)}</span>
+          <span class="spot-wbar"><i style="width:${w.used ? 100 : 0}%"></i></span><span class="spot-wt">${w.used ? 'in story' : 'left out'}</span></div>`).join('');
       const gradeBox = spotEl('spotGrade'), starsBox = spotEl('spotStars');
       if (!core) { gradeBox.textContent = ''; starsBox.textContent = ''; spotEl('spotXpLine').textContent = ''; spotEl('spotBreakdown').textContent = ''; spotEl('spotNewBadges').textContent = ''; spotEl('spotTip').textContent = ''; return; }
 
@@ -12830,18 +12861,17 @@
 
       const line = (label, value, tone) => `<div class="spot-brow ${tone || ''}"><span>${label}</span><b>${value}</b></div>`;
       spotEl('spotBreakdown').innerHTML = [
-        line(`Words used (${result.used} × ${core.WORD_POINTS})`, `+${result.wordPoints}`, 'plus'),
-        line('Speed bonus (faster = more)', `+${result.speed}`, 'plus'),
-        result.finish ? line('Finished the challenge', `+${result.finish}`, 'plus') : '',
-        result.missed ? line(`Missed words (${result.missed} × ${core.MISS_PENALTY})`, `−${result.missPoints}`, 'minus') : '',
-        result.early ? line('Stopped early', `−${result.early}`, 'minus') : '',
-        line(`Out of ${result.max} possible`, `${score} / 100`, 'total')
+        line(`Words woven into the story (${result.used} of ${result.total})`, `+${result.wordPoints} / ${core.STORY_WEIGHTS.words}`, 'plus'),
+        line(`Story length (${result.spokenWords} of ${result.targetWords} words)`, `+${result.lengthPoints} / ${core.STORY_WEIGHTS.length}`, 'plus'),
+        line(`How well it connects${result.connectionEstimated ? ' (estimated)' : ''}`, `+${result.connectionPoints} / ${core.STORY_WEIGHTS.connection}`, 'plus'),
+        line('Total', `${score} / 100`, 'total')
       ].join('');
 
       spotEl('spotNewBadges').innerHTML = outcome.earned.length
         ? `<h4 class="spot-h flat">New badges</h4><ul class="spot-badges">${outcome.earned.map(b => `<li class="spot-badge on new"><span aria-hidden="true">${b.icon}</span><b>${spotEsc(b.name)}</b><i>${spotEsc(b.hint)}</i></li>`).join('')}</ul>` : '';
       if (outcome.earned.length) showAchievement(`${outcome.earned[0].icon} Badge earned: ${outcome.earned[0].name}`);
-      spotEl('spotTip').innerHTML = `<b>Coach:</b> ${spotEsc(core.coachingTip(result, session, spotRecogDiag.apiSupported ? 'on' : 'off'))}`;
+      const feedback = session.connection?.feedback ? ` <i>${spotEsc(session.connection.feedback)}</i>` : '';
+      spotEl('spotTip').innerHTML = `<b>Coach:</b> ${spotEsc(core.coachingTip(result, session, spotRecogDiag.apiSupported ? 'on' : 'off'))}${feedback}`;
     }
 
     async function finishSpotChallenge() {
@@ -12853,6 +12883,9 @@
       stopSpotRecognition();
       await stopSpotRecording();
 
+      spotSession.transcript = spotTranscript;
+      { const live = document.getElementById('spotLiveTranscript'); if (live) live.textContent = 'Scoring your whole story…'; }
+      spotSession.connection = await fetchStoryConnection(spotSession, spotTranscript);
       spotSession.endTime = Date.now();
       const elapsed = spotSession.startTime ? Math.round((spotSession.endTime - spotSession.startTime) / 1000) : 0;
       const used = spotSession.words.filter(w => w.used).length;

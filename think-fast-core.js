@@ -10,11 +10,11 @@ export const MODES = [
     hint: 'Say “…because” and finish the thought out loud.',
     how: ['Two random things appear in a sentence, like “A BATTERY IS LIKE A JACUZZI”.', 'Start talking straight away: say “because…” and give any reason that comes to mind.', 'Keep going until the buzzer. Silly answers are welcome. Silence is the only way to lose.'] },
   { id: 'hottake', icon: '🔥', name: 'Hot Take', blurb: 'Pick a side in one breath and defend it.', lead: 'Agree or disagree', tail: 'AGREE OR DISAGREE, AND WHY?', example: 'Homework should be banned.',
-    hint: 'Pick a side now, then give one reason.',
-    how: ['A bold statement appears, like “Homework should be banned.”', 'Pick a side at once: “I agree because…” or “I disagree because…”.', 'Give a reason, then keep talking until the buzzer. Either side scores the same.'] },
+    hint: 'Pick a side, say why, add an example, then repeat your point.',
+    how: ['A statement appears, as in Toastmasters Table Topics: “Homework should be banned.” You have 30 seconds.', 'Read it, then pick a side and say it: “I think… because…”. Either side scores the same.', 'Use PREP: Point, Reason, Example, then Point again. Keep talking until the timer ends.'] },
   { id: 'sellit', icon: '🎤', name: 'Sell It', blurb: 'A strange product appears. Pitch it out loud like a salesperson.', lead: 'Pitch this now', tail: 'SELL IT IN ONE BREATH!', example: 'A pen that never runs out',
-    hint: 'Say what it is, who needs it, and why it is amazing.',
-    how: ['A strange product appears, like “A pen that never runs out”.', 'Start pitching immediately, as if you were selling it to a stranger: say what it is, who needs it and why it is amazing.', 'Keep selling until the buzzer. Big claims and silly details are the whole point.'] },
+    hint: 'Who needs it? What problem does it solve? Feature, benefit, then ask.',
+    how: ['A product appears, like “A pen that never runs out”: the classic “sell me this pen” test. You have 30 seconds.', 'Sell the buyer’s problem, not the object: say who needs it, then one feature and the benefit it gives them.', 'Finish by asking for the sale (“Shall I wrap one up?”). Keep talking until the timer ends.'] },
   { id: 'mix', icon: '🎲', name: 'Wild Mix', blurb: 'All three, shuffled. You never know what is next.', lead: '', tail: '', example: 'Anything can come next',
     hint: '',
     how: ['Every prompt is a surprise: an analogy, a hot take or a product to sell.', 'The small label above the prompt tells you which one it is.', 'Start talking at once and keep going until the buzzer.'] }
@@ -91,6 +91,9 @@ export const ROUND_OPTIONS = [
 ];
 
 // ---------------------------------------------------------------- listening
+// Hot Take and Sell It are real answers, not reflexes: 30 seconds each, with a few seconds allowed for reading the prompt.
+export const ANSWER_SECONDS = 30;
+export const limitFor = (kind, setting) => (kind === 'analogy' ? setting : ANSWER_SECONDS);
 export const MIN_REACTION_MS = 350;   // nobody reads and answers faster; also hides the game's own chime
 const RUN_MS = 180, GAP_MS = 70, FRAME_CAP_MS = 60;
 
@@ -139,7 +142,8 @@ export const COMBO_MIN = 35;         // points that keep a combo alive
 
 export function scoreRound({ onsetMs, talkShare }, limitMs) {
   if (onsetMs === null || onsetMs === undefined) return { points: 0, grade: 'miss' };
-  const speed = onsetMs <= 600 ? 80 : clamp(80 - 55 * (onsetMs - 600) / Math.max(1, limitMs - 600), 25, 80);
+  const full = limitMs >= 10000 ? 4000 : 600;     // a long answer allows a few seconds to read the prompt before the speed points start to fall
+  const speed = onsetMs <= full ? 80 : clamp(80 - 55 * (onsetMs - full) / Math.max(1, limitMs - full), 25, 80);
   const flow = 20 * clamp(talkShare / 0.7, 0, 1);
   const points = Math.round(speed + flow);
   return { points, grade: gradeOf(points).id };

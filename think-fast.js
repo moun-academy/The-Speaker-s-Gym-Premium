@@ -1,7 +1,7 @@
 // Think Fast: the screen. Rules, scoring and prompts live in think-fast-core.js.
 import {
   MODES, TIME_OPTIONS, ROUND_OPTIONS, BADGES, GRADES, CUES, COMBO_MIN, MIN_REACTION_MS,
-  modeById, makeDeck, estimateFloorDb, analyseRound, scoreRound, summarize, rankFor, applyResult,
+  limitFor, modeById, makeDeck, estimateFloorDb, analyseRound, scoreRound, summarize, rankFor, applyResult,
   normalizeProfile, coachingTip, clamp
 } from './think-fast-core.js';
 
@@ -109,7 +109,8 @@ function lobbyHtml() {
     <div class="tf-modes" role="radiogroup" aria-label="Game mode">${modes}</div>
     ${how}
     <section class="tf-card tf-setup">
-      <div class="tf-field"><span class="tf-label">Time for each prompt</span><div class="tf-opts" role="radiogroup" aria-label="Time per prompt">${times}</div></div>
+      ${s.mode === 'hottake' || s.mode === 'sellit' ? `<div class="tf-field"><span class="tf-label">Time for each prompt</span><p class="tf-fixed">30 seconds: time to read it, pick your line and give a proper answer.</p></div>`
+        : `<div class="tf-field"><span class="tf-label">Time for each ${s.mode === 'mix' ? 'analogy (Hot Take and Sell It get 30 seconds)' : 'prompt'}</span><div class="tf-opts" role="radiogroup" aria-label="Time per prompt">${times}</div></div>`}
       <div class="tf-field"><span class="tf-label">Number of prompts</span><div class="tf-opts" role="radiogroup" aria-label="Number of prompts">${counts}</div></div>
     </section>
     ${notice ? `<p class="tf-notice" role="status">${esc(notice)}</p>` : ''}
@@ -148,7 +149,7 @@ function roundHtml() {
       <div class="tf-hint">${esc(modeById(prompt.kind).hint)}</div>
       <div class="tf-clock" aria-hidden="true">
         <svg viewBox="0 0 120 120" class="tf-ring"><circle class="tf-ring-bg" cx="60" cy="60" r="54"/><circle class="tf-ring-fg" id="tfRing" cx="60" cy="60" r="54" stroke-dasharray="${RING.toFixed(2)}" stroke-dashoffset="0"/></svg>
-        <div class="tf-count" id="tfCount">${session.limit}</div>
+        <div class="tf-count" id="tfCount">${session.cur}</div>
       </div>
       ${session.listening ? '<div class="tf-voice" id="tfVoice"><span class="tf-voice-bar"><i id="tfLevel"></i></span><span id="tfVoiceText">Waiting for your voice…</span></div>' : '<div class="tf-voice off">Practice run: just say it out loud.</div>'}
       <div class="tf-reveal" id="tfReveal" role="status" aria-live="polite"></div>
@@ -180,7 +181,7 @@ function resultsHtml() {
   const badges = earned.map(b => `<li class="tf-badge on new"><span aria-hidden="true">${b.icon}</span><b>${esc(b.name)}</b><i>${esc(b.hint)}</i></li>`).join('');
   const stat = (label, value) => `<div class="tf-chipstat"><b>${value}</b><span>${label}</span></div>`;
   return `<div class="tf tf-results">
-    <header class="tf-hero small"><h2>${summary.completed ? 'Session complete' : 'Session ended early'}</h2><p>${esc(modeById(lastResult.mode).name)} · ${lastResult.limit}s a prompt</p></header>
+    <header class="tf-hero small"><h2>${summary.completed ? 'Session complete' : 'Session ended early'}</h2><p>${esc(modeById(lastResult.mode).name)} · ${limitText(lastResult.mode, lastResult.limit)}</p></header>
     <section class="tf-card tf-score">
       ${listening ? `<div class="tf-dial" style="--p:${summary.score}"><b>${summary.score}</b><span>score</span></div>
         <div class="tf-stars" aria-label="${summary.stars} of 3 stars">${stars}</div>` : `<div class="tf-dial practice"><b>${summary.rounds}</b><span>prompts spoken</span></div>`}
@@ -191,18 +192,21 @@ function resultsHtml() {
     ${lastResult.note ? `<p class="tf-notice">${esc(lastResult.note)}</p>` : ''}
     <section class="tf-card"><h3 class="tf-h flat">Prompt by prompt</h3><ol class="tf-strip">${strip}</ol></section>
     ${earned.length ? `<h3 class="tf-h">New badges</h3><ul class="tf-badges">${badges}</ul>` : ''}
-    <p class="tf-tip"><b>Coach:</b> ${esc(coachingTip(summary, lastResult.limit))}</p>
+    <p class="tf-tip"><b>Coach:</b> ${esc(coachingTip(summary, lastResult.mode === 'hottake' || lastResult.mode === 'sellit' ? 30 : lastResult.limit))}</p>
     <div class="tf-actions col"><button type="button" class="tf-start" data-act="again"><span aria-hidden="true">↻</span> Play again</button><button type="button" class="tf-ghost" data-act="lobby">Change game or settings</button></div>
   </div>`;
 }
 
 let lastPainted = '';
+const limitText = (mode, limit) => (mode === 'analogy' ? `${limit}s a prompt` : mode === 'mix' ? `analogies ${limit}s, the rest 30s` : '30s a prompt');
+
 function paint() {
   const root = $('#thinkFastRoot'); if (!root) return;
   root.innerHTML = view === 'lobby' ? lobbyHtml() : view === 'countdown' ? countdownHtml(session.count) : view === 'round' ? roundHtml() : resultsHtml();
   // fade a screen in when it changes, but never between prompts: every millisecond of the round counts
   if (view !== lastPainted && view !== 'round') root.querySelector('.tf')?.classList.add('tf-in');
   lastPainted = view;
+  const back = $('#rapidFireBackBtn'); if (back) back.textContent = view === 'lobby' ? '← Back to Home' : '← Back to Think Fast';
 }
 
 // ---------------------------------------------------------------- session flow
@@ -258,15 +262,15 @@ function sample(mine) {
 
 function runRound(mine) {
   if (session !== mine) return;
-  mine.phase = 'round'; mine.frames = []; mine.heard = false; mine.shown = mine.limit;
+  mine.phase = 'round'; mine.frames = []; mine.heard = false; mine.cur = limitFor(mine.deck[mine.index].kind, mine.limit); mine.shown = mine.cur;
   view = 'round'; paint();
   mine.roundStart = performance.now();
   // a plain interval, not requestAnimationFrame: the round must still end if the tab is in the background
   const frame = () => {
     if (session !== mine || mine.phase !== 'round') return;
-    const elapsed = performance.now() - mine.roundStart, left = mine.limit * 1000 - elapsed;
+    const elapsed = performance.now() - mine.roundStart, left = mine.cur * 1000 - elapsed;
     const ring = $('#tfRing'), count = $('#tfCount'), stage = $('#tfStage');
-    if (ring) ring.style.strokeDashoffset = (RING * (1 - clamp(left / (mine.limit * 1000), 0, 1))).toFixed(2);
+    if (ring) ring.style.strokeDashoffset = (RING * (1 - clamp(left / (mine.cur * 1000), 0, 1))).toFixed(2);
     const whole = Math.max(Math.ceil(left / 1000), 0);
     if (count && mine.shown !== whole) { mine.shown = whole; count.textContent = whole; if (whole <= 1 && stage) stage.dataset.state = 'hurry'; }
     if (left <= 0) finishRound(mine, 'time');
@@ -277,12 +281,12 @@ function runRound(mine) {
 function finishRound(mine, reason) {
   if (session !== mine || mine.phase !== 'round') return;
   clearInterval(mine.clock);
-  const elapsed = Math.min(performance.now() - mine.roundStart, mine.limit * 1000);
+  const elapsed = Math.min(performance.now() - mine.roundStart, mine.cur * 1000);
   mine.phase = 'reveal';
   let result;
   if (mine.listening) {
     const heard = analyseRound(mine.frames, { limitMs: Math.max(elapsed, MIN_REACTION_MS + 300), floorDb: mine.floorDb });
-    const scored = scoreRound(heard, mine.limit * 1000);
+    const scored = scoreRound(heard, mine.cur * 1000);
     result = { ...heard, ...scored };
   } else result = { points: null, onsetMs: null, grade: 'steady', talkShare: 0 };
   mine.results.push(result);
@@ -364,6 +368,8 @@ function mount() {
 
 // "Hear me" is a Settings option, not a game option: the app's Settings page reads and writes it here.
 window.ThinkFast = {
+  // One step back: from a round or the results to the game menu; only from the menu does the app go to Home. Returns true if it handled it.
+  back() { if (view === 'lobby') return false; endSession(); view = 'lobby'; notice = ''; paint(); return true; },
   getListen: () => profile.settings.listen,
   setListen(value) { profile.settings.listen = Boolean(value); saveProfile(); },
   render() { endSession(); view = 'lobby'; notice = ''; cue = CUES[Math.floor(Math.random() * CUES.length)]; paint(); },

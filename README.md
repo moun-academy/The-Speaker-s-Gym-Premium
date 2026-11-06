@@ -69,7 +69,7 @@ and the levelling a video call applies.
 
 Pick **Analogy Blitz** ("A battery is like a jacuzzi, because…"), **Hot Take** (agree or disagree, and why), **Sell It**
 (pitch a strange product) or **Wild Mix** (all three). Choose 2 to 5 seconds a prompt and 5 to 20 prompts. All modes are
-open from the start. A 3-2-1 countdown, then each prompt shows a draining ring; start talking at once.
+open from the start. **Hot Take** (Toastmasters Table Topics style: pick a side, then Point, Reason, Example, Point) and **Sell It** (the classic "sell me this pen" test: who needs it, the problem it solves, a feature and its benefit, then ask for the sale) give **30 seconds** a prompt, with a few seconds allowed for reading before the speed points start to fall; only Analogy Blitz uses the 2 to 5 second choice. **Back** goes one step: from a round or the results to the Think Fast menu, and only from the menu to Home. A 3-2-1 countdown, then each prompt shows a draining ring; start talking at once.
 
 **Hear me** (a switch in Settings under Microphone, on by default; the games have no listening controls of their own) listens through the microphone, or through the meeting audio when that is on, and times
 how long it takes to start speaking. It learns the room's quiet during the countdown, so nobody is tuned or asked to shout.
@@ -85,33 +85,18 @@ sync. Files: `think-fast-core.js` (prompts, listening maths, scoring, ranks, bad
 
 ## Speak on the Spot
 
-Answer a question while surprise words appear one at a time; work each word into what you are saying before its timer
-runs out. Pick **Quick Spark** (30 s, 4 words), **Classic** (60 s, 6 words), **Pressure** (8 words, 6 s each),
-**Endurance** (90 s, 10 words) or **Custom**. The question can be shuffled or typed in ("Write my own"), which suits a
-coach running a session. Words are detected with the browser's speech recognition, or through the meeting audio when it
-is on (see below); detection, call mode and recording are unchanged.
+Get a question, think for a moment, then tell **one story** that answers it. New words appear every few seconds
+(whether or not you have used the last one) and stay on the board until you have worked them in; connect each into the
+story so it keeps flowing. Pick **Quick Spark** (30 s, 4 words), **Classic** (60 s, 6 words), **Pressure** (a new word every
+6 s), **Endurance** (90 s, 10 words) or **Custom**. The question can be shuffled or typed in ("Write my own").
 
-The score is out of 100 for every challenge: 15 points a word, up to 10 more for using it quickly, 10 for finishing, minus
-10 for each missed word (and 5 for stopping early), all divided by what a perfect run could earn, so a 4-word spark can
-reach 100 like a 10-word marathon. The results screen shows the score, grade (S to D), stars, a word-by-word timeline, and
-a line-by-line breakdown. XP builds ranks (Newcomer to Spotlight Star) and eight badges, saved in this browser
-(`sg-spot-v1`). The old Games, Best Score, Avg Words and Fastest counters keep counting. Rules and scoring live in
-`spot-core.js` (tested by `tests/spot-core.test.js`) with the look in `spot.css`.
-
-## Performance Tracker
-
-Opens with a score hero (the speaking score ring and its two ingredients), four numbers at a glance (speeches, day streak,
-time spoken, average words a minute) and jump chips to the AI review, progress, charts and milestones. The sections below
-are unchanged in what they measure: the AI vocal and verbal review with history, weekly insight, track record by week or
-month, practice patterns, personal records, three trend charts and milestone badges. Signed-out visitors see what the page
-offers and a Sign in button. Styles are in `tracker.css`; every number still comes from the same speech records.
-
-## Settings
-
-One place for everything you set up: a row of "your setup at a glance" chips (microphone, Google Meet, Hear me, reminders,
-account) that jump to each section, then **Microphone** (device picker and a **Test my microphone** level meter),
-**Google Meet audio** (one switch, the only place the meeting is controlled), **Daily reminders**,
-**Account and sync**, and **About**. Styles are in `settings.css`.
+**Speed is not scored.** The score is out of 100 for the whole story: 45 points for how many of the words ended up in it
+(at any moment, even right at the end), 25 for how long it is (a full telling is about 90 words a minute of speech) and
+30 for how well it connects. The connection is rated once, at the end, by the AI (`api/story-score.js`, signed-in
+users only); if it cannot be reached the connection is a capped estimate from joining words (because, so, then, but) and
+the results say "estimated". Saying a word before it appears does not count. Words are detected as before (the browser's
+speech recognition, or the call audio when Google Meet audio is on). Ranks, XP and eight badges are kept in this browser
+(`sg-spot-v1`). Rules live in `spot-core.js` (tested by `tests/spot-core.test.js`), the look in `spot.css`.
 
 ## Playing over a video call (every game)
 

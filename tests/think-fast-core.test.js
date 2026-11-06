@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  MODES, modeById, makeDeck, analogyText, estimateFloorDb, voicedThresholdDb, analyseRound, scoreRound, gradeOf,
+  MODES, modeById, limitFor, makeDeck, analogyText, estimateFloorDb, voicedThresholdDb, analyseRound, scoreRound, gradeOf,
   summarize, rankFor, RANKS, applyResult, newProfile, normalizeProfile, coachingTip, MIN_REACTION_MS
 } from '../think-fast-core.js';
 import { WORDS } from '../think-fast-words.js';
@@ -17,10 +17,10 @@ function frames(totalMs, speech) {
 test('every mode explains itself in three short steps, and the single modes give a one-line hint', () => {
   MODES.forEach(mode => {
     assert.equal(mode.how.length, 3, `${mode.id} needs three steps`);
-    mode.how.forEach(step => assert.ok(step.length > 20 && step.length < 160, `${mode.id} step reads well`));
+    mode.how.forEach(step => assert.ok(step.length > 20 && step.length < 200, `${mode.id} step reads well`));
     if (mode.id !== 'mix') assert.ok(mode.hint.length > 10, `${mode.id} needs a hint`);
   });
-  assert.match(MODES.find(m => m.id === 'sellit').how.join(' '), /pitch/i);
+  assert.match(MODES.find(m => m.id === 'sellit').how.join(' '), /sell me this pen/i);
   assert.ok(makeDeck('sellit', 3, () => 0.3).every(prompt => modeById(prompt.kind).hint), 'every prompt can show its hint');
 });
 
@@ -156,4 +156,11 @@ test('coaching tips match what happened', () => {
   assert.match(coachingTip(listening(10, { avgReactionMs: 2200, score: 50 }), 3), /first word/);
   assert.match(coachingTip(listening(10, { score: 92 }), 3), /2 seconds/);
   assert.match(coachingTip(listening(10, { score: 92 }), 2), /Wild Mix/);
+});
+
+test('Hot Take and Sell It get 30 seconds, and reading time does not cost speed points', () => {
+  assert.equal(limitFor('hottake', 3), 30); assert.equal(limitFor('sellit', 2), 30); assert.equal(limitFor('analogy', 3), 3);
+  assert.equal(scoreRound({ onsetMs: 3500, talkShare: 1 }, 30000).grade, 'lightning', 'starting after reading for 3.5 s is still full speed marks');
+  assert.ok(scoreRound({ onsetMs: 15000, talkShare: 1 }, 30000).points < scoreRound({ onsetMs: 5000, talkShare: 1 }, 30000).points);
+  assert.ok(scoreRound({ onsetMs: 29000, talkShare: 1 }, 30000).points >= 40, 'even a late start that keeps going earns something');
 });

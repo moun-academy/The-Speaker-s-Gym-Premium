@@ -207,3 +207,4 @@
   #spotChallengePage *, #spotChallengePage *::before, #spotChallengePage *::after { animation: none !important; transition: none !important; }
 }
 
+#spotChallengePage .spot-chip.waiting { background: rgba(148, 163, 184, 0.14); color: #cbd5e1; border: 1px dashed rgba(148, 163, 184, 0.4); }
