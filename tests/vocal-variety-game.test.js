@@ -4,7 +4,7 @@ import { PaceMeter, PitchSmoother } from '../vocal-variety-core.js';
 import {
   BADGES, DEFAULT_NATURAL, DEFAULT_SCALE, DEFAULT_SPEECH, DIM_ORDER, SPEECH_LENGTHS, lengthLabel, scaleStage, FRAME_DT, PREP_PARTS, QUESTIONS, STAGES,
   EnvelopeTracker, VoiceTracker, VoiceCalibration, WPM_FAST_FROM, WPM_SLOW_BELOW, activeThreshold, applyRound, coachingTip, countSwings, emptyProgress, learnPitchCenter,
-  learnVoiceLevel, levelOf, normalizeScale, paceLevel, paceZoneOfWpm, phaseAt, pitchLevel, prepBreakdown, questionIndexFor, rankFor, rangeLabel,
+  learnVoiceLevel, levelOf, normalizeScale, paceLevel, paceZoneOfWpm, phaseAt, pitchLevel, prepBreakdown, questionIndexFor, rankFor, rangeLabel, ribbonCredit, stageById, swingsOf,
   sanitizeProgress, scoreRound, starsFor, targetAt, voiceScale, wpmOfLevel, zoneHint, zoneLabel, zoneOf
 } from '../vocal-variety-game.js';
 
@@ -407,4 +407,30 @@ test('saved progress is sanitized so a damaged save cannot break the game', () =
   assert.deepEqual(cleaned.streak, { count: 0, last: null });
   assert.ok(!('tuned' in cleaned), 'the old tuning flag is dropped from saved progress');
   assert.equal(new Set(BADGES.map(badge => badge.id)).size, BADGES.length);
+});
+
+test('pace cues are open-ended: faster than Fast and slower than Slow are still on the ribbon', () => {
+  const plan = stageById('pace-ribbon').plan, fastAt = 24, slowAt = 3;
+  for (const wpm of [150, 170, 200]) assert.equal(ribbonCredit('pace', paceLevel(wpm), plan, fastAt), 1, `${wpm} in the Fast part`);
+  for (const wpm of [100, 80, 60]) assert.equal(ribbonCredit('pace', paceLevel(wpm), plan, slowAt), 1, `${wpm} in the Slow part`);
+  assert.ok(ribbonCredit('pace', paceLevel(100), plan, fastAt) < 0.1, 'slow in the Fast part misses');
+  assert.ok(ribbonCredit('pace', paceLevel(165), plan, slowAt) < 0.1, 'fast in the Slow part misses');
+  assert.ok(ribbonCredit('pace', paceLevel(180), plan, 13) < 0.1, 'the Steady part is still a band on both sides');
+  assert.ok(ribbonCredit('pace', paceLevel(70), plan, 13) < 0.1);
+  assert.equal(ribbonCredit('volume', 1.2, stageById('volume-ribbon').plan, 3) < 1, true, 'other dimensions keep their band');
+});
+
+test('a steady speaker wobbling around a zone edge makes no pace swings; a held change does', () => {
+  const wobble = Array.from({ length: 1200 }, (_, i) => ({ t: i * 0.05, level: paceLevel(110 + 6 * Math.sin(i * 0.05 * 1.5)) }));
+  assert.equal(swingsOf('pace', wobble).swings, 0);
+  const change = Array.from({ length: 800 }, (_, i) => ({ t: i * 0.05, level: paceLevel(i * 0.05 < 20 ? 100 : 150) }));
+  assert.equal(swingsOf('pace', change).swings, 2, 'slow to fast is a two-zone jump');
+});
+
+test('a longer round never asks for more swings than its ribbon has', () => {
+  for (const id of ['pace-ribbon', 'volume-ribbon', 'pitch-ribbon']) for (const seconds of SPEECH_LENGTHS) {
+    const scaled = scaleStage(stageById(id), seconds), frames = [];
+    for (let t = 0; t < seconds; t += 0.25) frames.push({ t, level: targetAt(scaled.plan, t) });
+    assert.ok(scaled.plan.goalSwings <= Math.max(stageById(id).plan.goalSwings, countSwings(frames).swings), `${id} at ${seconds}s asks for ${scaled.plan.goalSwings}`);
+  }
 });

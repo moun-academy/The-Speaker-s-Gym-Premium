@@ -1,13 +1,18 @@
 // Pace uses recognized, timestamped words, never sound peaks converted into invented WPM.
 // Responses may arrive out of order. A missing clip is unknown, not a silent/slow speaker.
 //
-// Words a minute is read over a window of WINDOW seconds either side of a moment. Inside the window a long
-// pause counts for only a little more than an ordinary gap between words, so thinking for two seconds does not
-// make a fast speaker read as slow; a speaker who really is slow still reads slow.
+// Words a minute is read over a window of WINDOW seconds either side of a moment. The ordinary pauses between
+// phrases are part of a speaker's pace and count in full, so someone who slows down by pausing reads slow. Only a
+// long silence is cut down to PAUSE_CAP: thinking for three seconds does not turn a fast speaker into a slow one.
 const WINDOW = 4;                 // seconds either side: about 8 seconds, enough words to steady the reading
 const MAX_WORD_SECONDS = 2;       // a "word" that lasts longer than this is a timestamp glitch
 const MAX_REPEAT = 3;             // more identical words in a row than this is the speech service looping
 const NEAR_SECONDS = 0.45;        // a word this close to one in the neighbouring clip is the same word, however it was spelled
+const SAME_WORD_SECONDS = 0.7;    // the same word this close in an overlapping clip is one word heard twice
+const SAME_SPOT_SECONDS = 0.2;    // two words this close in overlapping clips are one sound, however each clip spelled it
+const PAUSE_CAP = 1.5;            // seconds from one word's start to the next: anything longer is a silence, and counts as this
+const LIVE_BACK = 2.5;            // the live reading is taken this far before the newest words, so its window is mostly full
+const LIVE_HOLD = 7;              // through a pause the last reading stays up this long after the last word
 
 const key = word => String(word).toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
 const median = list => { const sorted = [...list].sort((a, b) => a - b), mid = sorted.length >> 1; return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2; };
@@ -16,7 +21,7 @@ const median = list => { const sorted = [...list].sort((a, b) => a - b), mid = s
 export function speakingSeconds(starts) {
   if (starts.length < 2) return 0;
   const gaps = starts.slice(1).map((start, i) => start - starts[i]);
-  const allowance = Math.max(0.8, 1.6 * median(gaps));
+  const allowance = Math.max(PAUSE_CAP, 1.6 * median(gaps));
   return gaps.reduce((sum, gap) => sum + Math.min(gap, allowance), 0);
 }
 
@@ -41,7 +46,6 @@ export class WordPaceTracker {
     // counted from one clip only: the one that heard it farther from its edge (the midpoint of the overlap is the crossover).
     // A word is only dropped if the clip that owns that stretch also has a word right there, so a missed word is not lost.
     const overlaps = (c, d) => Math.max(c.start, d.start) < Math.min(c.end, d.end) - 0.05;
-    const near = (c, w) => c.words.some(o => Math.abs(o.start - w.start) < NEAR_SECONDS);
     const kept = [];
     for (const c of clips) {
       for (const w of c.words) {
@@ -50,13 +54,20 @@ export class WordPaceTracker {
           if (d === c || !overlaps(c, d)) return true;
           const cFirst = c.start < d.start || (c.start === d.start && c.index < d.index);
           const crossover = ((cFirst ? d.start : c.start) + (cFirst ? c.end : d.end)) / 2;
-          const theirs = cFirst ? mid >= crossover : mid < crossover;
-          return !(theirs && near(d, w));
+          const theirs = m => cFirst ? m >= crossover : m < crossover;
+          return !(theirs(mid) && d.words.some(o => theirs((o.start + o.end) / 2) && Math.abs(o.start - w.start) < NEAR_SECONDS));
         });
         if (owned) kept.push({ ...w, key: key(w.word), clip: c.index });
       }
     }
-    this.words = kept.sort((a, b) => a.start - b.start);
+    // Timestamps wobble, so one word can land either side of the crossover and be kept by both clips. Seen once here.
+    const once = [];
+    for (const w of kept.sort((a, b) => a.start - b.start)) {
+      const twice = once.slice(-3).some(o => o.clip !== w.clip && overlaps(this.clips.get(o.clip), this.clips.get(w.clip))
+        && (Math.abs(o.start - w.start) < SAME_SPOT_SECONDS || (o.key === w.key && Math.abs(o.start - w.start) < SAME_WORD_SECONDS)));
+      if (!twice) once.push(w);
+    }
+    this.words = once;
   }
   at(t) {
     const range = this.ranges.find(r => t >= r.start && t <= r.end);
@@ -71,10 +82,15 @@ export class WordPaceTracker {
     const seconds = speakingSeconds(words.map(w => w.start));
     return seconds > 0 ? (words.length - 1) * 60 / seconds : null;
   }
+  // Was anyone speaking at moment t? Recognized words are direct evidence, whatever the loudness meter made of them.
+  speakingAt(t) { return this.words.some(w => t >= w.start - 0.35 && t <= w.end + 0.35); }
+  // The newest reading. It is taken at the newest speech, not the newest audio, so a pause keeps the last reading on screen.
   latest(now) {
-    const range = this.ranges.at(-1);
-    if (!range || now - range.end > 8 || !this.words.length || this.words.at(-1).end < range.end - 1.5) return null;
-    const at = Math.max(range.start, range.end - WINDOW), wpm = this.at(at);
+    const range = this.ranges.at(-1), last = this.words.at(-1);
+    if (!range || !last) return null;
+    const anchor = Math.min(range.end, last.end);
+    if (now - anchor > LIVE_HOLD || last.end < range.start) return null;
+    const at = Math.max(range.start, anchor - LIVE_BACK), wpm = this.at(at);
     return Number.isFinite(wpm) ? { at, wpm, countedTo: range.end } : null;
   }
   // What the live status line shows: how many words have been recognized and how far behind the newest one is.

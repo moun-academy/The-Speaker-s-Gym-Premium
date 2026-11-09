@@ -39,7 +39,9 @@ test('speed changes move up and down, and silence, stale data and invalid timest
   assert.ok(Math.abs(pace.at(23) - 90) < 0.01);
   assert.equal(pace.latest(40), null, 'old recognition cannot masquerade as current speed');
   pace.add({ index: 3, start: 27, end: 30, text: '', words: [], silent: true });
-  assert.equal(pace.latest(30), null, 'silence is not a slow voice');
+  const held = pace.latest(30);
+  assert.ok(held.at < 26, 'through a pause the last reading stays, filed at the speech it measured');
+  assert.equal(pace.latest(36), null, 'silence is not a slow voice: after a while the reading goes');
   const invalid = new WordPaceTracker();
   invalid.add({ index: 0, start: 0, end: 3, text: 'bad', words: [{ word: 'bad', start: NaN, end: 1 }] });
   assert.equal(invalid.at(1.5), null);
@@ -61,16 +63,16 @@ const talk = (wpm, count, { from = 0, after = -1, pause = 0, index = 0, clipStar
   return { index, start: clipStart, end: clipEnd ?? (words.at(-1).end + 0.1), text: 'speech', words };
 };
 
-test('a long thinking pause barely changes the reading, but a speaker who is really slow still reads slow', () => {
+test('a long thinking pause only dents the reading, but a speaker who is really slow still reads slow', () => {
   const steady = new WordPaceTracker(); steady.add(talk(150, 24));
   const paused = new WordPaceTracker(); paused.add(talk(150, 24, { after: 11, pause: 2.5 }));
   const slow = new WordPaceTracker(); slow.add(talk(80, 14));
   const mid = steady.words[12].start;
   assert.ok(Math.abs(steady.at(mid) - 150) < 0.5);
-  assert.ok(paused.at(paused.words[12].start) > 125, `a two-and-a-half second pause read ${paused.at(paused.words[12].start)}`);
+  assert.ok(paused.at(paused.words[12].start) > 115, `a fast speaker never reads Slow because of one pause: a two-and-a-half second pause read ${paused.at(paused.words[12].start)}`);
   assert.ok(paused.at(paused.words[12].start) < 150, 'a long pause still shows a little');
   assert.ok(Math.abs(slow.at(slow.words[7].start) - 80) < 0.5, 'a slow, steady speaker is not sped up');
-  assert.equal(speakingSeconds([0, 0.4, 0.8, 5.8, 6.2]).toFixed(1), '2.0', 'five seconds of silence count as 0.8');
+  assert.equal(speakingSeconds([0, 0.4, 0.8, 5.8, 6.2]).toFixed(1), '2.7', 'five seconds of silence count as 1.5');
   assert.equal(speakingSeconds([1]), 0);
 });
 
@@ -104,6 +106,44 @@ test('invented words do not count: stretched timestamps and looping repeats are 
   const word = (text, start, length = 0.2) => ({ word: text, start, end: start + length });
   pace.add({ index: 0, start: 0, end: 6, text: 'x', words: [word('thanks', 0.5, 4.5), word('you', 1), word('you', 1.3), word('you', 1.6), word('you', 1.9), word('you', 2.2), word('real', 2.6)] });
   assert.deepEqual(pace.words.map(w => w.word), ['you', 'you', 'you', 'real'], 'a 4.5 second word and the fourth repeat are gone');
+});
+
+test('a speaker who slows down by pausing between phrases reads slow', () => {
+  // phrases of four quick words (0.3 s apart), then a pause: about 89 words a minute overall
+  const words = [];
+  for (let phrase = 0, t = 0; phrase < 8; phrase++) { for (let i = 0; i < 4; i++) { words.push({ word: `w${phrase}${i}`, start: t, end: t + 0.2 }); t += 0.3; } t += 1.5; }
+  const pace = new WordPaceTracker();
+  pace.add({ index: 0, start: 0, end: words.at(-1).end + 0.1, text: 'speech', words });
+  assert.ok(pace.at(10) < 110, `phrased speech read ${pace.at(10)}`);
+});
+
+test('one word heard by both overlapping clips is counted once, even when the timing puts it either side of the join', () => {
+  const word = (text, start) => ({ word: text, start, end: start + 0.2 });
+  // the crossover is 3.4: clip 0 puts "three" just before it and clip 1 just after, or the other way round
+  for (const [a, b] of [[3.15, 3.32], [3.32, 3.15]]) {
+    const pace = new WordPaceTracker();
+    pace.add({ index: 0, start: 0, end: 3.8, text: 'a', words: [word('one', 1), word('three', a)] });
+    pace.add({ index: 1, start: 3, end: 6.8, text: 'b', words: [word('three', b), word('five', 5)] });
+    assert.deepEqual(pace.words.map(w => w.word), ['one', 'three', 'five'], `${a} and ${b}`);
+  }
+});
+
+test('a short pause keeps the live reading, and the reading stays close to the newest speech', () => {
+  const pace = new WordPaceTracker();
+  pace.add(talk(120, 40, { clipStart: 0, clipEnd: 20 }));
+  pace.add({ index: 1, start: 20, end: 23, text: '', words: [], silent: true });
+  const lastWord = pace.words.at(-1).end, reading = pace.latest(23);
+  assert.ok(Math.abs(reading.wpm - 120) < 3);
+  assert.ok(lastWord - reading.at <= 2.5, 'measured close to the newest words');
+});
+
+test('words recognized count as speaking, even if the loudness meter stayed quiet', () => {
+  const source = readFileSync(new URL('../vocal-variety.js', import.meta.url), 'utf8');
+  assert.match(source, /speakingAt\(frame\.t\)/);
+  const pace = new WordPaceTracker();
+  pace.add(talk(120, 10));
+  assert.equal(pace.speakingAt(pace.words[3].start), true);
+  assert.equal(pace.speakingAt(pace.words.at(-1).end + 3), false);
 });
 
 test('the status line has what it needs: how many words, and how far behind the newest one is', () => {

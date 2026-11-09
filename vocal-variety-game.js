@@ -13,11 +13,13 @@ const mean = values => values.length ? values.reduce((sum, value) => sum + value
 // Each dimension maps its measurement to the same 0..1 "level", so one engine scores them all.
 // `band` is how far from the ribbon still counts as a hit. `lag` is kept at 0: pace readings arrive
 // a few seconds late while speech is being transcribed, but each reading is filed under the moment
-// the words were spoken, so scoring needs no allowance.
+// the words were spoken. `grace` (pace only) is how early or late a change may be: a reading covers about eight
+// seconds of words, so even a perfect change of speed shows as a slope around the moment it happened. `swing` says what
+// counts as a real change of zone: pace readings wobble a few words a minute, so a swing has to clear the edge and hold.
 export const DIMENSIONS = {
   volume: { id: 'volume', name: 'Volume', zones: { soft: 'Whisper', natural: 'Steady', strong: 'Boom' }, hints: null, band: 0.2, lag: 0 },
   pitch: { id: 'pitch', name: 'Pitch', zones: { soft: 'Low', natural: 'Mid', strong: 'High' }, hints: null, band: 0.22, lag: 0.3 },
-  pace: { id: 'pace', name: 'Pace', zones: { soft: 'Slow', natural: 'Steady', strong: 'Fast' }, hints: { soft: 'under 110 words a minute', natural: '110 to 139 words a minute', strong: '140 words a minute or more' }, band: 0.2, lag: 0 }
+  pace: { id: 'pace', name: 'Pace', zones: { soft: 'Slow', natural: 'Steady', strong: 'Fast' }, hints: { soft: 'under 110 words a minute', natural: '110 to 139 words a minute', strong: '140 words a minute or more' }, band: 0.2, lag: 0, grace: 2.5, swing: { dwell: 2, hysteresis: 0.06 } }
 };
 export const DIM_ORDER = ['volume', 'pitch', 'pace'];
 export const ZONE_ORDER = ['soft', 'natural', 'strong'];
@@ -112,7 +114,7 @@ export const pitchLevel = (midi, center) => Number.isFinite(midi) && Number.isFi
 // in the right zones: 109 is Slow, 110 and 139 are Steady, 140 is Fast.
 export const WPM_SLOW_BELOW = 110;
 export const WPM_FAST_FROM = 140;
-const WPM_CENTER = 124.5, WPM_SLOPE = 0.0147;
+const WPM_CENTER = 124.5, WPM_SLOPE = 0.0147, PACE_SLOW_HOLD = 0.2, PACE_FAST_HOLD = 0.8;
 export const paceLevel = wpm => Number.isFinite(wpm) && wpm >= 0 ? clamp(0.5 + (Math.round(wpm) - WPM_CENTER) * WPM_SLOPE, -0.3, 1.3) : null;
 export const wpmOfLevel = level => WPM_CENTER + (level - 0.5) / WPM_SLOPE;
 export const paceZoneOfWpm = wpm => wpm < WPM_SLOW_BELOW ? 'soft' : wpm >= WPM_FAST_FROM ? 'strong' : 'natural';
@@ -285,7 +287,9 @@ export function scaleStage(stage, seconds) {
       return [Math.min(mapped, seconds), value];
     });
   }
-  const goalSwings = Math.max(stage.plan.goalSwings, Math.round(stage.plan.goalSwings * (1 + (k - 1) * 0.5)));
+  // A longer speech asks for more swings, but never more than the ribbon itself contains.
+  const wanted = Math.max(stage.plan.goalSwings, Math.round(stage.plan.goalSwings * (1 + (k - 1) * 0.5)));
+  const goalSwings = keys ? Math.min(wanted, Math.max(stage.plan.goalSwings, ribbonSwings({ keys, duration: seconds }))) : wanted;
   return { ...stage, plan: { ...stage.plan, duration: seconds, goalSwings, phases, ...(keys ? { keys } : {}) } };
 }
 
@@ -325,8 +329,7 @@ export const starsFor = (score, kind) => STAR_CUTS[kind].filter(cut => score >= 
 
 // Counts zone changes. A jump from the low zone to the high zone counts as two swings.
 // Short dips are ignored (dwell) and edges have hysteresis so a wobble on a border is not a swing.
-export function countSwings(frames, dwell = 0.4) {
-  const hysteresis = 0.04;
+export function countSwings(frames, dwell = 0.4, hysteresis = 0.04) {
   let current = null, candidate = null, since = 0, swings = 0;
   const moments = [];
   const classify = level => {
@@ -350,11 +353,31 @@ export function countSwings(frames, dwell = 0.4) {
   return { swings, moments };
 }
 
+// How many swings following a ribbon perfectly would make.
+function ribbonSwings(plan) {
+  const frames = [];
+  for (let t = 0; t <= plan.duration; t += 0.25) frames.push({ t, level: targetAt(plan, t) });
+  return countSwings(frames).swings;
+}
+// Swings for one dimension, with that dimension's own idea of a real change.
+export const swingsOf = (dim, frames) => countSwings(frames, DIMENSIONS[dim].swing?.dwell, DIMENSIONS[dim].swing?.hysteresis);
+
+// The stretch of the lane that counts as on the ribbon. Pace cues are open-ended ("under 110", "140 or more"),
+// so while the ribbon holds Slow or Fast, going further in that direction is still on it.
+export function ribbonEdges(dim, target) {
+  const band = DIMENSIONS[dim].band;
+  return { low: dim === 'pace' && target <= PACE_SLOW_HOLD ? -Infinity : target - band, high: dim === 'pace' && target >= PACE_FAST_HOLD ? Infinity : target + band };
+}
+const creditFor = (dim, level, target) => {
+  const { low, high } = ribbonEdges(dim, target), distance = level < low ? low - level : level > high ? level - high : 0;
+  return distance === 0 ? 1 : Math.max(0, 1 - distance / 0.15);
+};
 // 1 inside the ribbon, fading to 0 just outside it. Shared by live scoring and final scoring.
 export function ribbonCredit(dim, level, plan, t) {
-  const cfg = DIMENSIONS[dim];
-  const distance = Math.abs(level - targetAt(plan, Math.max(0, t - cfg.lag)));
-  return distance <= cfg.band ? 1 : Math.max(0, 1 - (distance - cfg.band) / 0.15);
+  const cfg = DIMENSIONS[dim], at = Math.max(0, t - cfg.lag);
+  let credit = creditFor(dim, level, targetAt(plan, at));
+  if (cfg.grace) for (const shift of [-cfg.grace, cfg.grace]) credit = Math.max(credit, creditFor(dim, level, targetAt(plan, Math.max(0, at + shift))));
+  return credit;
 }
 
 // Statistics for one dimension of a take. `guided` adds how closely the ribbon was followed.
@@ -369,7 +392,7 @@ export function dimensionStats(frames, dim, plan, guided, scale) {
   const total = shown.length * FRAME_DT || 1;
   const shares = { soft: seconds.soft / total, natural: seconds.natural / total, strong: seconds.strong / total };
   const balance = (Math.min(1, shares.soft / 0.15) + Math.min(1, shares.natural / 0.25) + Math.min(1, shares.strong / 0.15)) / 3;
-  const { swings, moments } = countSwings(frames.map(frame => ({ t: frame.t, level: Number.isFinite(frame[dim]) ? frame[dim] : null })));
+  const { swings, moments } = swingsOf(dim, frames.map(frame => ({ t: frame.t, level: Number.isFinite(frame[dim]) ? frame[dim] : null })));
   const swingGoal = plan.goalSwings;
   const varietyFraction = 0.45 * rangeScore + 0.35 * clamp(swings / swingGoal, 0, 1) + 0.2 * balance;
 
@@ -423,10 +446,13 @@ export function dimensionStats(frames, dim, plan, guided, scale) {
 }
 const signedNumber = (value, digits = 0) => `${value >= 0 ? '+' : '−'}${Math.abs(value).toFixed(digits)}`;
 
+// Loud enough for the meter, or heard as words: a quiet voice on a call can be recognized without moving the meter.
+const isTalking = frame => Number.isFinite(frame.volume) || Number.isFinite(frame.pace);
+
 export function scoreRound({ frames, stage, scale }) {
   const plan = stage.plan, guided = stage.kind === 'guided';
   const elapsed = Math.max(FRAME_DT, frames.at(-1)?.t ?? 0);
-  const talking = frames.filter(frame => Number.isFinite(frame.volume));
+  const talking = frames.filter(isTalking);
   const activeFraction = frames.length ? talking.length / frames.length : 0;
   const coverage = clamp(activeFraction / 0.5, 0, 1);
   const completion = clamp(elapsed / (plan.duration * 0.8), 0, 1);
@@ -464,7 +490,7 @@ export function prepBreakdown(frames, stage) {
   const dims = stage.dim === 'all' ? DIM_ORDER : [stage.dim];
   return stage.plan.phases.map(phase => {
     const inPart = frames.filter(frame => frame.t >= phase.from && frame.t < phase.to);
-    const talking = inPart.length ? inPart.filter(frame => Number.isFinite(frame.volume)).length / inPart.length : 0;
+    const talking = inPart.length ? inPart.filter(isTalking).length / inPart.length : 0;
     const byDim = Object.fromEntries(dims.map(dim => {
       const voiced = inPart.filter(frame => Number.isFinite(frame[dim]));
       const counts = { soft: 0, natural: 0, strong: 0 };

@@ -24,8 +24,8 @@ Steady is 110 to 139, Fast is 140 or more** (pauses count as slowing down; the r
 100, 125 and 150). Common published figures put conversation at roughly 120 to 150 and
 presentations at roughly 100 to 160, so 140 is an ordinary quick pace, not a strain.
 How the number is made steadier over a call: clips overlap by 0.8 seconds and each stretch of speech is counted from one clip
-only, so a word at a join is neither cut nor counted twice. The reading looks at about 8 seconds, and a long thinking pause counts
-for little more than an ordinary gap (a really slow speaker still reads slow). Words the speech service invents from silence or
+only, so a word at a join is neither cut nor counted twice. The reading looks at about 8 seconds, ordinary pauses between phrases count in full (so
+pausing really does slow your pace), and only silences beyond about a second are cut down. Words the speech service invents from silence or
 noise (it reports its own confidence, and "thank you" over almost no sound is a known invention) are removed on the server, and
 stretched or looping words are dropped in the browser. A failed clip is retried once, an expired sign-in is refreshed, and only a
 real refusal (404, 405, 501, a login that stays invalid, or four clips in a row failing) ends pace counting. A line under the pace
@@ -35,11 +35,11 @@ reading says what is happening: how many words have been heard, or that the serv
 Words are counted from the speech itself: a few seconds of audio at a time go to
 `/api/transcribe` (Whisper, the same service the AI feedback uses), which returns the words
 with their times. Readings appear a few seconds late on screen but are filed at the moment
-the words were spoken, so scoring is exact. If the service cannot be reached, pace falls back
-to an estimate from the sound alone (peaks in the vowel energy, `wpmFromSound`, fitted to
-recordings of known speed) and the results say so. Measured against recordings from 60 to
-320 WPM, the sound-only estimate separates Slow, Steady and Fast only roughly, which is why
-words are counted whenever the service is available.
+the words were spoken. Ordinary pauses between phrases count as part of the pace; only silences
+beyond about a second are cut down, so one long think does not make a fast speaker read slow.
+While the ribbon holds Slow or Fast, going further that way is still on it ("under 110", "140 or
+more"), and a change of zone counts as a swing only once it clears the edge and holds for 2 seconds.
+If the service cannot be reached there is no guessed number: the round is not scored and says why.
 
 **A round:**
 1. Read the question (swap it or have it read aloud) and pick the **speech length: 1 minute,

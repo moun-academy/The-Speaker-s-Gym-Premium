@@ -253,10 +253,11 @@ export class ChunkTranscriber {
       this.source = this.context.createMediaStreamSource(this.stream); this.source.connect(this.analyser);
       this.buffer = new Float32Array(this.analyser.fftSize);
       this.sampler = setInterval(() => {
-        if (!this.active.size) return;
+        if (!this.active.size || this.context.state !== 'running') return;   // a suspended meter hears nothing: it proves nothing either
         this.analyser.getFloatTimeDomainData(this.buffer);
         let energy = 0; for (const sample of this.buffer) energy += sample * sample;
-        if (20 * Math.log10(Math.max(Math.sqrt(energy / this.buffer.length), 1e-5)) > this.voicedDb) for (const running of this.active) running.voiced++;
+        const voiced = 20 * Math.log10(Math.max(Math.sqrt(energy / this.buffer.length), 1e-5)) > this.voicedDb;
+        for (const running of this.active) { running.samples++; if (voiced) running.voiced++; }
       }, 50);
     }
     this.cycle();
@@ -264,7 +265,7 @@ export class ChunkTranscriber {
   }
   cycle() {
     if (!this.alive) return;
-    const chunk = { index: this.index++, startedAt: performance.now(), parts: [], voiced: 0 };
+    const chunk = { index: this.index++, startedAt: performance.now(), parts: [], voiced: 0, samples: 0 };
     let recorder;
     try { recorder = new MediaRecorder(this.stream); } catch {
       this.alive = false; clearInterval(this.sampler);
@@ -287,12 +288,14 @@ export class ChunkTranscriber {
   async finish(chunk, mime) {
     if (!this.acceptResults) return;
     const base = { index: chunk.index, start: this.seconds(chunk), end: (chunk.endedAt - this.t0) / 1000 };
-    if (chunk.voiced * 50 < this.minVoicedMs || !chunk.parts.length) { this.onResult?.({ ...base, text: '', words: [], silent: true }); return; }
+    // Only skip a clip as silent if the meter really listened: on some phones it stays suspended and would skip every clip.
+    const measured = chunk.samples * 50 >= this.minVoicedMs * 2;
+    if ((measured && chunk.voiced * 50 < this.minVoicedMs) || !chunk.parts.length) { this.onResult?.({ ...base, text: '', words: [], silent: true }); return; }
     const blob = new Blob(chunk.parts, { type: mime || 'audio/webm' });
     const extension = /mp4/.test(blob.type) ? 'mp4' : /ogg/.test(blob.type) ? 'ogg' : 'webm';
     const body = new FormData(); body.append('audio', blob, `chunk.${extension}`); body.append('language', this.language);
     const prompt = this.getPrompt?.(); if (prompt) body.append('prompt', String(prompt).slice(0, 300));
-    body.append('voicedMs', String(Math.round(chunk.voiced * 50)));
+    if (measured) body.append('voicedMs', String(Math.round(chunk.voiced * 50)));
     this.pending++;
     const attempt = async force => {
       let token = null;

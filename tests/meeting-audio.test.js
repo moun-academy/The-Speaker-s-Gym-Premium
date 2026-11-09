@@ -234,6 +234,20 @@ test('finishing waits for the final recorder data before completing the transcri
   assert.ok(f.contexts.every(c => c.state === 'closed'));
 });
 
+test('a clip is skipped as silent only when the level meter really listened', async () => {
+  const f = fixture(); recorderFixture(f);
+  const results = []; let sent = 0;
+  f.sandbox.fetch = async () => { sent++; return { ok: true, json: async () => ({ text: 'hello there', words: [{ word: 'hello', start: 0, end: 0.1 }] }) }; };
+  const suspended = new f.ChunkTranscriber(new f.Stream([new f.Track('audio')]), { getToken: async () => 'test', onResult: r => results.push(r) });
+  suspended.start();                                     // on some phones the meter never runs: no samples, so the clip must still be sent
+  await suspended.stop(1000);
+  assert.equal(sent, 1); assert.equal(results[0].silent, false);
+  const measured = new f.ChunkTranscriber(new f.Stream([new f.Track('audio')]), { getToken: async () => 'test', onResult: r => results.push(r) });
+  measured.start(); measured.chunk.samples = 60;         // three seconds of listening, nothing above the threshold
+  await measured.stop(1000);
+  assert.equal(sent, 1, 'real silence costs nothing'); assert.equal(results[1].silent, true);
+});
+
 test('leaving a game cancels transcription and prevents late updates to the next screen', async () => {
   const f = fixture(); recorderFixture(f);
   let resolveRequest, aborts = 0, callbacks = 0;

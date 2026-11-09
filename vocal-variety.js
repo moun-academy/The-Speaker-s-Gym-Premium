@@ -6,7 +6,7 @@ import { ChunkTranscriber, MeetingAudio } from './meeting-audio.js';
 import { WordPaceTracker } from './vocal-variety-pace.js';
 import {
   BADGES, DEFAULT_NATURAL, DEFAULT_SPEECH, DIMENSIONS, DIM_ORDER, FRAME_DT, PREP_PARTS, QUESTIONS, SOFT_EDGE, SPEECH_LENGTHS, STAGES, STRONG_EDGE,
-  VoiceTracker, VoiceCalibration, applyRound, coachingTip, countSwings, lengthLabel, paceLevel, phaseAt, prepBreakdown,
+  VoiceTracker, VoiceCalibration, applyRound, coachingTip, swingsOf, ribbonEdges, lengthLabel, paceLevel, phaseAt, prepBreakdown,
   questionIndexFor, rangeLabel, rankFor, ribbonCredit, sanitizeProgress, scaleStage, scoreRound, stageById, targetAt, voiceScale, zoneHint,
   zoneLabel, zoneOf
 } from './vocal-variety-game.js';
@@ -557,15 +557,10 @@ function mount() {
     if (!transcriber.start()) { paceFailed(r, { status: 0, failures: 2 }); return; }
     transcriber.t0 = r.t0;
   }
-  // Words a minute around moment t: the words that started within 3 seconds either side (only the part of
-  // that window already transcribed), pauses included. Null if nobody was speaking there.
-  function windowWpm(r, t) {
-    return r.speech.pace.at(t);
-  }
   function backfillPace(r, from, to) {
     const first = Math.max(0, Math.floor(from / FRAME_DT)), last = Math.min(r.frames.length - 1, Math.floor(to / FRAME_DT));
     for (let i = first; i <= last; i++) {
-      const frame = r.frames[i], wpm = Number.isFinite(frame.volume) ? windowWpm(r, frame.t) : null;
+      const frame = r.frames[i], wpm = Number.isFinite(frame.volume) || r.speech.pace.speakingAt(frame.t) ? r.speech.pace.at(frame.t) : null;
       frame.wpm = wpm; frame.pace = paceLevel(wpm);
     }
   }
@@ -600,6 +595,9 @@ function mount() {
     const counted = r.wantsPace && r.paceSource === 'speech' ? r.speech?.pace.latest(t) : null;
     const wpm = counted?.wpm ?? null;
     r.live = { ...out, t, wpm, pace: paceLevel(wpm), paceAt: counted?.at ?? null };
+    // Here rather than in the drawing loop, so the readings keep updating when the page is not being painted.
+    const now = performance.now();
+    if (now - r.lastHud > 100) { r.lastHud = now; updateHud(r, now); }
     if (!live) return;
     if (t >= r.plan.duration) { finishRound(); return; }
     while (r.frames.length * FRAME_DT <= t) {
@@ -624,7 +622,7 @@ function mount() {
     closeMic(r.mic); round = null; micToken++;
     if (!played || frames.length < 20) { notice = 'That round ended before we heard enough. Try again when you are ready.'; go('brief', { quiet: true }); return; }
     result = scoreRound({ frames, stage, scale: r.scale }); result.frames = frames; result.notes = { ...notes };
-    if (r.wantsPace && (r.paceSource === 'unavailable' || frames.filter(f => Number.isFinite(f.pace)).length < frames.filter(f => Number.isFinite(f.volume)).length * 0.5 || !r.speech.pace.words.length)) {
+    if (r.wantsPace && (r.paceSource === 'unavailable' || frames.filter(f => Number.isFinite(f.pace)).length < frames.filter(f => Number.isFinite(f.volume) || Number.isFinite(f.pace)).length * 0.5 || !r.speech.pace.words.length)) {
       notice = r.paceError || 'We could not recognize enough words to measure pace reliably. This round was not scored. Check your connection and try again.';
       result = null; go('brief', { quiet: true }); return;
     }
@@ -638,8 +636,6 @@ function mount() {
   function drawLoop() {
     const r = round; if (!r) return;
     r.raf = requestAnimationFrame(drawLoop);
-    const now = performance.now();
-    if (now - r.lastHud > 100) { r.lastHud = now; updateHud(r, now); }
     drawStageFrame();
   }
   // One plain line that says whether words are being counted, so a bad reading can be told from a missing one.
@@ -672,9 +668,9 @@ function mount() {
     paceStatus(r, t);
     $('#vvTimeFill').style.width = `${clamp(t / plan.duration, 0, 1) * 100}%`;
     if (stage.dim === 'all') {
-      DIM_ORDER.forEach((dim, i) => { $(`#vvHud${i + 1}`).textContent = String(countSwings(r.frames.map(f => ({ t: f.t, level: f[dim] }))).swings); });
+      DIM_ORDER.forEach((dim, i) => { $(`#vvHud${i + 1}`).textContent = String(swingsOf(dim, r.frames.map(f => ({ t: f.t, level: f[dim] }))).swings); });
     } else {
-      $('#vvHud3').textContent = String(countSwings(r.frames.map(f => ({ t: f.t, level: f[stage.dim] }))).swings);
+      $('#vvHud3').textContent = String(swingsOf(stage.dim, r.frames.map(f => ({ t: f.t, level: f[stage.dim] }))).swings);
       // Worked out from the stored frames, so pace readings that arrive late are counted where they belong.
       if (r.guided) {
         let credit = 0, count = 0, streak = 0, misses = 0;
@@ -752,8 +748,9 @@ function mount() {
       const yOf = laneY(lane), dim = lane.dim;
       // ribbon
       if (lane.guided) {
-        const band = DIMENSIONS[dim].band, t0 = Math.max(0, s.t - past), t1 = Math.min(plan.duration, s.t + future), up = [], low = [];
-        for (let tt = t0; tt <= t1 + 1e-6; tt += 0.1) { const c = targetAt(plan, tt), x = xOf(tt); up.push([x, yOf(c + band)]); low.push([x, yOf(c - band)]); }
+        const edgesAt = c => { const edge = ribbonEdges(dim, c); return { top: Math.min(edge.high, HI), bottom: Math.max(edge.low, LO) }; };
+        const t0 = Math.max(0, s.t - past), t1 = Math.min(plan.duration, s.t + future), up = [], low = [];
+        for (let tt = t0; tt <= t1 + 1e-6; tt += 0.1) { const edge = edgesAt(targetAt(plan, tt)), x = xOf(tt); up.push([x, yOf(edge.top)]); low.push([x, yOf(edge.bottom)]); }
         const path = () => { ctx.beginPath(); up.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); for (let i = low.length - 1; i >= 0; i--) ctx.lineTo(low[i][0], low[i][1]); ctx.closePath(); };
         const edge = () => { ctx.beginPath(); up.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.moveTo(low[0][0], low[0][1]); low.forEach(([x, y]) => ctx.lineTo(x, y)); };
         for (const [alpha, x0, x1] of [[0.45, L, px], [1, px, L + pw]]) {
@@ -767,8 +764,8 @@ function mount() {
         let hits = [];
         const flushHits = () => {
           if (hits.length > 1) {
-            ctx.beginPath(); hits.forEach(([x, c], i) => i ? ctx.lineTo(x, yOf(c + band)) : ctx.moveTo(x, yOf(c + band)));
-            for (let i = hits.length - 1; i >= 0; i--) ctx.lineTo(hits[i][0], yOf(hits[i][1] - band));
+            ctx.beginPath(); hits.forEach(([x, c], i) => i ? ctx.lineTo(x, yOf(edgesAt(c).top)) : ctx.moveTo(x, yOf(edgesAt(c).top)));
+            for (let i = hits.length - 1; i >= 0; i--) ctx.lineTo(hits[i][0], yOf(edgesAt(hits[i][1]).bottom));
             ctx.closePath(); ctx.fill();
           }
           hits = [];
