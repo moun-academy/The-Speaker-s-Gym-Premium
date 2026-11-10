@@ -38,7 +38,7 @@ test('shows the latest web update date and refreshes the web cache', () => {
   assert.match(html, /settingsLastUpdated\.textContent = LAST_UPDATED/);
   assert.match(gradle, /versionCode 33/);
   assert.match(gradle, /versionName "33"/);
-  assert.match(serviceWorker, /speakers-gym-v42-twisters/);
+  assert.match(serviceWorker, /speakers-gym-v43-twisters/);
 });
 
 test('the Warm Up page has the Top 10 tongue twisters with instructions', () => {
