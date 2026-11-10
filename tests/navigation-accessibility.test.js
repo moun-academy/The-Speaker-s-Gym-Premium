@@ -38,5 +38,15 @@ test('shows the latest web update date and refreshes the web cache', () => {
   assert.match(html, /settingsLastUpdated\.textContent = LAST_UPDATED/);
   assert.match(gradle, /versionCode 33/);
   assert.match(gradle, /versionName "33"/);
-  assert.match(serviceWorker, /speakers-gym-v41-story/);
+  assert.match(serviceWorker, /speakers-gym-v42-twisters/);
+});
+
+test('the Warm Up page has the Top 10 tongue twisters with instructions', () => {
+  const page = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(page, /id="twisterCard"/);
+  assert.match(page, /Top 10 Tongue Twisters/);
+  assert.match(page, /How to do it/);
+  const list = page.slice(page.indexOf('const twisters = ['), page.indexOf('let index = 0;', page.indexOf('const twisters = [')));
+  assert.equal((list.match(/\{ text: /g) || []).length, 10);
+  assert.ok(page.indexOf('id="twisterCard"') > page.indexOf('id="warmUpPage"'), 'the card sits inside the Warm Up page');
 });

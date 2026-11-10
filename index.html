@@ -1064,6 +1064,27 @@
       font-weight: 500;
       line-height: 1.5;
     }
+    /* Top 10 tongue twisters */
+    .twister-card { background: linear-gradient(160deg, rgba(250, 204, 21, 0.10), rgba(250, 204, 21, 0.03)); border: 1px solid rgba(250, 204, 21, 0.28); border-radius: 16px; padding: 20px; margin-bottom: 28px; }
+    .twister-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+    .twister-head h3 { margin: 0; font-size: 18px; color: #fde68a; }
+    .twister-count { font-size: 12px; font-weight: 700; color: #fbbf24; letter-spacing: .06em; white-space: nowrap; }
+    .twister-sub { margin: 0 0 16px; font-size: 13px; color: rgba(226, 232, 240, .75); }
+    .twister-stage { background: rgba(15, 23, 42, .55); border: 1px solid rgba(250, 204, 21, .18); border-radius: 14px; padding: 22px 18px; text-align: center; min-height: 150px; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+    .twister-focus { align-self: center; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #0f172a; background: #fbbf24; border-radius: 999px; padding: 4px 10px; }
+    .twister-text { font-size: clamp(20px, 5vw, 26px); font-weight: 800; line-height: 1.35; color: #fff7d6; margin: 0; }
+    .twister-tip { font-size: 13px; color: rgba(226, 232, 240, .8); margin: 0; }
+    .twister-nav { display: flex; gap: 10px; margin-top: 14px; }
+    .twister-nav button { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid rgba(250, 204, 21, .35); background: rgba(250, 204, 21, .08); color: #fde68a; font-weight: 700; font-size: 14px; cursor: pointer; }
+    .twister-nav button.primary { background: #fbbf24; color: #0f172a; border-color: #fbbf24; }
+    .twister-nav button:focus-visible { outline: 3px solid #fde68a; outline-offset: 2px; }
+    .twister-dots { display: flex; justify-content: center; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+    .twister-dots button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(250, 204, 21, .35); background: transparent; color: rgba(253, 230, 138, .8); font-size: 12px; font-weight: 700; cursor: pointer; padding: 0; }
+    .twister-dots button[aria-current="true"] { background: #fbbf24; color: #0f172a; border-color: #fbbf24; }
+    .twister-how { margin-top: 16px; padding: 14px 16px; border-radius: 12px; background: rgba(15, 23, 42, .4); }
+    .twister-how h4 { margin: 0 0 8px; font-size: 14px; color: #fde68a; }
+    .twister-how ol { margin: 0; padding-left: 20px; font-size: 13.5px; line-height: 1.6; color: rgba(226, 232, 240, .9); }
+    .twister-how p { margin: 10px 0 0; font-size: 13px; color: rgba(226, 232, 240, .75); }
     .exercise-category {
       margin-bottom: 28px;
     }
@@ -5070,6 +5091,35 @@
         </div>
       </div>
     </div>
+    <!-- Top 10 Tongue Twisters -->
+    <section class="twister-card" id="twisterCard" aria-labelledby="twisterTitle">
+      <div class="twister-head">
+        <h3 id="twisterTitle">👅 Top 10 Tongue Twisters</h3>
+        <span class="twister-count" id="twisterCount">1 / 10</span>
+      </div>
+      <p class="twister-sub">Wake up your lips, tongue and jaw so every word lands clearly.</p>
+      <div class="twister-stage" aria-live="polite">
+        <span class="twister-focus" id="twisterFocus"></span>
+        <p class="twister-text" id="twisterText"></p>
+        <p class="twister-tip" id="twisterTip"></p>
+      </div>
+      <div class="twister-nav">
+        <button type="button" id="twisterPrev" aria-label="Previous tongue twister">← Previous</button>
+        <button type="button" class="primary" id="twisterNext" aria-label="Next tongue twister">Next →</button>
+      </div>
+      <div class="twister-dots" id="twisterDots" role="group" aria-label="Jump to a tongue twister"></div>
+      <div class="twister-how">
+        <h4>How to do it</h4>
+        <ol>
+          <li><strong>Read it once, slowly.</strong> Know every word before you speed up.</li>
+          <li><strong>Say it 3 times slowly</strong>, over-moving your lips and tongue so every consonant is crisp.</li>
+          <li><strong>Say it 3 times at normal speaking speed</strong>, keeping it just as clear.</li>
+          <li><strong>Say it 3 times as fast as you can stay clear.</strong> If you trip, slow down one step and build back up.</li>
+          <li>Move to the next one. All ten take about 5 minutes.</li>
+        </ol>
+        <p>Keep your jaw loose and your shoulders down. Clarity first, speed second: a fast mumble trains nothing. Recording yourself once shows you which sounds still blur.</p>
+      </div>
+    </section>
     <!-- Lip & Tongue Exercises -->
     <div class="exercise-category">
       <div class="category-header">
@@ -5123,11 +5173,9 @@
           <div class="exercise-details-inner">
             <p class="exercise-instruction">Sharpen your articulation and diction for crystal-clear speech.</p>
             <ul class="exercise-steps">
-              <li>"Red leather, yellow leather." Repeat 5x, getting faster.</li>
-              <li>"Unique New York, you know you need unique New York." Repeat 5x.</li>
-              <li>"She sells seashells by the seashore." Repeat 5x.</li>
-              <li>"Peter Piper picked a peck of pickled peppers." Repeat 5x.</li>
-              <li>"Toy boat, toy boat, toy boat." Repeat 10x fast.</li>
+              <li>Use the <strong>Top 10 Tongue Twisters</strong> card above this section.</li>
+              <li>Each one: 3 times slowly, 3 times at speaking speed, 3 times as fast as you can stay clear.</li>
+              <li>Short on time? Do numbers 1 to 5.</li>
             </ul>
             <div class="exercise-tip">Start slowly and prioritize clarity. Speed comes with practice!</div>
             <div class="warmup-timer-section">
@@ -13723,6 +13771,46 @@
       import('./meeting-audio.js').catch(error => console.warn('Meeting audio could not load:', error));
       import('./vocal-variety.js').catch(error => console.warn('Vocal variety preview could not load:', error));
     }
+  </script>
+  <script>
+    // Top 10 tongue twisters on the Warm Up page: one at a time, with the sounds each one trains.
+    (function () {
+      const twisters = [
+        { text: 'The lips, the teeth, the tip of the tongue.', focus: 'L, T and TH', tip: 'The classic actor’s warm-up. Feel each part of your mouth do its job.' },
+        { text: 'Red leather, yellow leather.', focus: 'R and L', tip: 'Keep the R and the L clearly different, even at speed.' },
+        { text: 'Unique New York. You know you need unique New York.', focus: 'Y, N and the jaw', tip: 'Let your jaw open on “New York”. Do not swallow the Y.' },
+        { text: 'She sells seashells by the seashore.', focus: 'S and SH', tip: 'Smile slightly for S, round your lips for SH.' },
+        { text: 'Peter Piper picked a peck of pickled peppers.', focus: 'P (lips)', tip: 'Pop every P with your lips, without spitting air.' },
+        { text: 'How much wood would a woodchuck chuck if a woodchuck could chuck wood?', focus: 'W and CH', tip: 'Round your lips fully on every W.' },
+        { text: 'Toy boat. Toy boat. Toy boat.', focus: 'T and B', tip: 'Harder than it looks: keep “toy” and “boat” separate as you speed up.' },
+        { text: 'Irish wristwatch, Swiss wristwatch.', focus: 'R, SH and ST', tip: 'Go slowly at first: the “st-w” join trips everyone.' },
+        { text: 'A proper copper coffee pot.', focus: 'P, K and F', tip: 'Crisp P and K. Let the F breathe out softly.' },
+        { text: 'Betty Botter bought some butter, but she said the butter’s bitter.', focus: 'B and T', tip: 'Clear Ts in the middle of words: butter, not “budder”.' }
+      ];
+      let index = 0;
+      const $ = id => document.getElementById(id);
+      if (!$('twisterCard')) return;
+      const dots = $('twisterDots');
+      twisters.forEach((_, i) => {
+        const dot = document.createElement('button');
+        dot.type = 'button'; dot.textContent = String(i + 1); dot.setAttribute('aria-label', 'Tongue twister ' + (i + 1));
+        dot.addEventListener('click', () => show(i));
+        dots.appendChild(dot);
+      });
+      function show(i) {
+        index = (i + twisters.length) % twisters.length;
+        const t = twisters[index];
+        $('twisterText').textContent = '“' + t.text + '”';
+        $('twisterFocus').textContent = 'Trains: ' + t.focus;
+        $('twisterTip').textContent = t.tip;
+        $('twisterCount').textContent = (index + 1) + ' / ' + twisters.length;
+        [...dots.children].forEach((dot, n) => dot.setAttribute('aria-current', n === index ? 'true' : 'false'));
+      }
+      $('twisterPrev').addEventListener('click', () => show(index - 1));
+      $('twisterNext').addEventListener('click', () => show(index + 1));
+      window.speakersGymTwisters = twisters;
+      show(0);
+    })();
   </script>
 </body>
 </html>
