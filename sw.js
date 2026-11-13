@@ -1,5 +1,5 @@
 // Service Worker for The Speaker's Gym
-const CACHE_NAME = 'speakers-gym-v43-twisters';
+const CACHE_NAME = 'speakers-gym-v44-business-vocab';
 const ASSETS = [
   '/',
   '/index.html',
@@ -11,6 +11,10 @@ const ASSETS = [
   '/think-fast-core.js',
   '/think-fast-words.js',
   '/think-fast.css',
+  '/business-vocab.js',
+  '/business-vocab-core.js',
+  '/business-vocab-words.js',
+  '/business-vocab.css',
   '/spot-core.js',
   '/spot.css',
   '/tracker.css',

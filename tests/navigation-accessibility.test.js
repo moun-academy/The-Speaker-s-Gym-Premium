@@ -7,8 +7,8 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 test('uses semantic buttons for the primary navigation and icon controls', () => {
   const menuButtons = html.match(/<button class="menu-item(?: active)?"[^>]+data-page="[^"]+"/g) || [];
 
-  assert.equal(menuButtons.length, 6);
-  assert.deepEqual(menuButtons.map(button => button.match(/data-page="([^"]+)"/)[1]), ['warmup', 'main', 'rapidfire', 'spot', 'analytics', 'settings']);
+  assert.equal(menuButtons.length, 7);
+  assert.deepEqual(menuButtons.map(button => button.match(/data-page="([^"]+)"/)[1]), ['warmup', 'main', 'rapidfire', 'spot', 'business', 'analytics', 'settings']);
   assert.match(html, /<button class="hamburger-btn"[^>]+aria-label="Open menu"[^>]+aria-expanded="false"/);
   assert.match(html, /<button class="profile-btn"[^>]+aria-label="Open profile menu"[^>]+aria-expanded="false"/);
   assert.match(html, /<button class="menu-close"[^>]+aria-label="Close menu"/);
@@ -38,7 +38,7 @@ test('shows the latest web update date and refreshes the web cache', () => {
   assert.match(html, /settingsLastUpdated\.textContent = LAST_UPDATED/);
   assert.match(gradle, /versionCode 33/);
   assert.match(gradle, /versionName "33"/);
-  assert.match(serviceWorker, /speakers-gym-v43-twisters/);
+  assert.match(serviceWorker, /speakers-gym-v44-business-vocab/);
 });
 
 test('the Warm Up page has the Top 10 tongue twisters with instructions', () => {

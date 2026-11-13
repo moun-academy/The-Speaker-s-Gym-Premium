@@ -4559,6 +4559,10 @@
         <span class="menu-item-icon">🎯</span>
         <span>Speak on the Spot</span>
       </button>
+      <button class="menu-item" id="menuBusiness" type="button" data-page="business">
+        <span class="menu-item-icon">💼</span>
+        <span>Business Vocabulary</span>
+      </button>
       <button class="menu-item" id="menuAnalytics" type="button" data-page="analytics">
         <span class="menu-item-icon">📊</span>
         <span>Performance Tracker</span>
@@ -4817,6 +4821,12 @@
     <div id="thinkFastRoot" aria-live="off"></div>
   </div>
   <!-- END RAPID FIRE PAGE -->
+
+  <!-- BUSINESS VOCABULARY PAGE (the game lives in business-vocab.js) -->
+  <div class="container page" id="bizVocabPage">
+    <button class="back-btn" id="bizVocabBackBtn">← Back to Home</button>
+    <div id="bizVocabRoot"></div>
+  </div>
 
   <!-- SPEAK ON THE SPOT PAGE -->
   <div class="container page" id="spotChallengePage">
@@ -10359,6 +10369,7 @@
       }
 
       if (currentPage === 'settings') stopMicTest();
+      if (currentPage === 'business') window.BusinessVocab?.stop();
 
       // Stop warm up timers if leaving that page
       if (currentPage === 'warmup') {
@@ -10379,6 +10390,9 @@
       } else if (pageName === 'rapidfire') {
         document.getElementById('rapidFirePage').classList.add('active');
         window.ThinkFast?.render();
+      } else if (pageName === 'business') {
+        document.getElementById('bizVocabPage').classList.add('active');
+        window.BusinessVocab?.render();
       } else if (pageName === 'warmup') {
         document.getElementById('warmUpPage').classList.add('active');
         setRandomWarmupQuote();
@@ -10583,6 +10597,7 @@
 
     // Back buttons
     document.getElementById('rapidFireBackBtn').addEventListener('click', () => { if (!window.ThinkFast?.back?.()) navigateToPage('main'); });
+    document.getElementById('bizVocabBackBtn').addEventListener('click', () => { if (!window.BusinessVocab?.back()) navigateToPage('main'); });
     document.getElementById('warmUpBackBtn').addEventListener('click', () => navigateToPage('main'));
     document.getElementById('spotBackBtn').addEventListener('click', () => { if (!window.spotBackOneStep?.()) navigateToPage('main'); });
     document.getElementById('settingsBackBtn').addEventListener('click', () => navigateToPage('main'));
@@ -13749,6 +13764,7 @@
   </script>
   <script type="module">
     import('./think-fast.js').catch(error => console.warn('Think Fast could not load:', error));
+    import('./business-vocab.js').catch(error => console.warn('Business Vocabulary could not load:', error));
     import('./spot-core.js').then(core => { window.SpotCore = core; window.dispatchEvent(new Event('spotcore:ready')); }).catch(error => console.warn('Speak on the Spot extras could not load:', error));
   </script>
   <script>
