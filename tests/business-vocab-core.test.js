@@ -120,3 +120,9 @@ test('the game is in the menu, is cached for offline use and goes back one step'
     assert.match(sw, new RegExp(`'/${file.replace('.', '\\.')}'`)); assert.match(build, new RegExp(`'${file.replace('.', '\\.')}'`));
   }
 });
+
+test('the old hidden word game is gone, and the program task opens Business Vocabulary instead', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.doesNotMatch(html, /id="vocabPage"|vocabStats|VOCAB_DATA|\.vocab-|Word Upgrade/);
+  assert.match(html, /t: 'Vocabulary upgrade'[^}]*mode: 'business'/);
+});
