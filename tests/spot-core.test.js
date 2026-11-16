@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  PRESETS, presetFor, presetById, tokenMatchesWord, highlightWords, countWords, countWordHits, estimateConnection, scoreSession,
+  PRESETS, WORD_GAPS, fitSettings, maxWordsFor, presetFor, presetById, tokenMatchesWord, highlightWords, countWords, countWordHits, estimateConnection, scoreSession,
   gradeOf, starsFor, xpFor, rankFor, RANKS, applyResult, newProfile, normalizeProfile, coachingTip, STORY_WEIGHTS
 } from '../spot-core.js';
 
@@ -16,7 +16,21 @@ test('every preset fits inside its own speech time, and the settings map back to
     assert.equal(presetFor({ thinkTime: p.think, speechDuration: p.duration, wordInterval: p.interval, numWords: p.words }), p.id);
   });
   assert.equal(presetFor({ thinkTime: 5, speechDuration: 60, wordInterval: 10, numWords: 5 }), 'custom');
+  PRESETS.filter(p => p.words).forEach(p => {
+    assert.ok(p.interval >= 10 && p.interval <= 15, `${p.id} gives each word ${p.interval}s: it must be 10 to 15`);
+    assert.equal(p.words, maxWordsFor(p.duration, p.interval), `${p.id} uses its whole time, with no word shown too late`);
+    assert.deepEqual(fitSettings({ thinkTime: p.think, speechDuration: p.duration, wordInterval: p.interval, numWords: p.words }), { thinkTime: p.think, speechDuration: p.duration, wordInterval: p.interval, numWords: p.words });
+  });
   assert.equal(presetById('nope').id, 'classic');
+});
+
+test('custom and old saved settings are brought inside the rules: a 10 to 15 second gap and only words that fit', () => {
+  assert.deepEqual(WORD_GAPS, [10, 12, 15]);
+  assert.deepEqual(fitSettings({ thinkTime: 3, speechDuration: 60, wordInterval: 6, numWords: 8 }), { thinkTime: 3, speechDuration: 60, wordInterval: 10, numWords: 6 });
+  assert.deepEqual(fitSettings({ thinkTime: 5, speechDuration: 30, wordInterval: 7, numWords: 4 }), { thinkTime: 5, speechDuration: 30, wordInterval: 10, numWords: 3 });
+  assert.equal(fitSettings({ speechDuration: 90, wordInterval: 20, numWords: 10 }).wordInterval, 15);
+  assert.equal(fitSettings({ speechDuration: 90, wordInterval: 15 }).numWords, 6, 'no word count given: as many as fit');
+  assert.equal(fitSettings({ speechDuration: 30, wordInterval: 15, numWords: 1 }).numWords, 2);
 });
 
 test('word matching keeps its old leniency and can count how many times a word was said', () => {
@@ -49,7 +63,8 @@ test('the score looks at the whole story: words worked in, how long it is and ho
   const list = scoreSession(session(6, 90, { connection: { score: 20 } }));
   assert.ok(list.score < full.score - 15, 'a list of words that is not a connected story scores much lower');
   const dropped = scoreSession(session(2, 90, { connection: { score: 100 } }));
-  assert.ok(dropped.score < full.score - 20, 'leaving most words out costs points');
+  assert.ok(dropped.score < full.score - 15, 'leaving most words out costs points');
+  assert.ok(list.score < dropped.score, 'a list of words that does not connect costs more than leaving words out: the connected story counts most');
   assert.equal(scoreSession({ words: [], transcript: story(50), settings: {} }).score, 0);
   assert.equal(scoreSession(session(0, 0)).score, 0, 'silence scores nothing');
 });
@@ -101,11 +116,18 @@ test('finishing a game updates the profile once, with story badges and rank-ups'
   const estimated = scoreSession(session(6, 160, { connection: null }));
   assert.ok(!applyResult(newProfile(), { result: estimated, session: session(6, 160), preset: 'classic' }).earned.some(b => b.id === 'connected'), 'only a real rating earns the connection badge');
   let profile = newProfile(), last;
-  for (const preset of ['spark', 'classic', 'pressure', 'endurance']) { last = applyResult(profile, { result, session: s, preset }); profile = last.profile; }
+  for (const preset of ['spark', 'classic', 'weaver', 'endurance']) { last = applyResult(profile, { result, session: s, preset }); profile = last.profile; }
   assert.ok(profile.badges.includes('explorer'));
   for (let i = 0; i < 20; i++) last = applyResult(last.profile, { result, session: s, preset: 'classic' });
   assert.ok(last.profile.badges.includes('century'));
   assert.ok(applyResult({ ...newProfile(), xp: 70 }, { result, session: s, preset: 'classic' }).rankedUp);
+});
+
+test('Pressure became Story Weaver: its badge and play history carry over', () => {
+  const old = normalizeProfile({ badges: ['pressure-cooker', 'first-spot'], presetsPlayed: ['pressure', 'spark'], settings: { preset: 'pressure' } });
+  assert.deepEqual(old.badges, ['story-weaver', 'first-spot']);
+  assert.deepEqual(old.presetsPlayed, ['weaver', 'spark']);
+  assert.equal(old.settings.preset, 'weaver');
 });
 
 test('saved profiles are repaired, and old ones keep working', () => {

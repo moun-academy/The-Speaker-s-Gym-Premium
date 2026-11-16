@@ -3,13 +3,30 @@
 
 export const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
 
+// Each new word gets 10 to 15 seconds: enough to link it to the story before the next one arrives. Every preset fits its
+// time exactly (words × gap = speaking time), so each word gets its full gap and none is shown too late to use.
+export const WORD_GAPS = [10, 12, 15];
+export const DURATIONS = [30, 60, 90, 120];
+export const THINK_TIMES = [3, 5, 10];
+export const MIN_WORDS = 2;
 export const PRESETS = [
-  { id: 'spark', icon: '⚡', name: 'Quick Spark', blurb: 'A 30-second story with 4 new words.', think: 3, duration: 30, interval: 7, words: 4 },
-  { id: 'classic', icon: '🎯', name: 'Classic', blurb: 'A 60-second story with 6 new words.', think: 5, duration: 60, interval: 10, words: 6 },
-  { id: 'pressure', icon: '🔥', name: 'Pressure', blurb: 'A 60-second story, a new word every 6 seconds.', think: 3, duration: 60, interval: 6, words: 8 },
-  { id: 'endurance', icon: '🏔️', name: 'Endurance', blurb: 'A 90-second story with 10 words. Keep it flowing.', think: 5, duration: 90, interval: 8, words: 10 },
-  { id: 'custom', icon: '🎛️', name: 'Custom', blurb: 'Choose every setting yourself.' }
+  { id: 'spark', icon: '⚡', name: 'Quick Spark', blurb: '30 seconds, 3 words: a new one every 10 seconds.', think: 5, duration: 30, interval: 10, words: 3 },
+  { id: 'classic', icon: '🎯', name: 'Classic', blurb: '60 seconds, 5 words: a new one every 12 seconds.', think: 5, duration: 60, interval: 12, words: 5 },
+  { id: 'weaver', icon: '🧵', name: 'Story Weaver', blurb: '90 seconds, 6 words: 15 seconds to weave each one in.', think: 10, duration: 90, interval: 15, words: 6 },
+  { id: 'endurance', icon: '🏔️', name: 'Endurance', blurb: 'Two minutes, 10 words, one every 12 seconds. Keep it flowing.', think: 10, duration: 120, interval: 12, words: 10 },
+  { id: 'custom', icon: '🎛️', name: 'Custom', blurb: 'Your own time and word gap (10 to 15 seconds).' }
 ];
+// How many words fit: each needs its full gap before the speech ends.
+export const maxWordsFor = (duration, gap) => Math.max(MIN_WORDS, Math.floor(duration / gap));
+const nearest = (list, value) => list.reduce((best, item) => Math.abs(item - value) < Math.abs(best - value) ? item : best, list[0]);
+// Any settings (old saved ones included) brought inside the rules: a 10 to 15 second gap and only as many words as fit.
+export function fitSettings({ thinkTime, speechDuration, wordInterval, numWords } = {}) {
+  const duration = nearest(DURATIONS, Number(speechDuration) || 60);
+  const gap = nearest(WORD_GAPS, Number(wordInterval) || 12);
+  const max = maxWordsFor(duration, gap);
+  const words = Number.isFinite(Number(numWords)) && Number(numWords) > 0 ? clamp(Math.round(Number(numWords)), MIN_WORDS, max) : max;
+  return { thinkTime: nearest(THINK_TIMES, Number(thinkTime) || 5), speechDuration: duration, wordInterval: gap, numWords: words };
+}
 export const presetById = id => PRESETS.find(preset => preset.id === id) || PRESETS[1];
 // Which preset the four settings add up to (so a manual change shows as Custom).
 export function presetFor({ thinkTime, speechDuration, wordInterval, numWords }) {
@@ -46,7 +63,8 @@ export function countWordHits(text, word) {
   return normalize(text).split(/\s+/).filter(token => token && tokenMatchesWord(token, word)).length;
 }
 
-export const STORY_WEIGHTS = { words: 45, length: 25, connection: 30 };
+// The connected story matters most: how well the words are linked into one story, then how many made it in, then length.
+export const STORY_WEIGHTS = { connection: 50, words: 30, length: 20 };
 export const WORDS_PER_SECOND = 1.5;       // about 90 words a minute of actual story is a full-length telling
 
 // Words that join one idea to the next. Used only when the AI rating is not available, and then only as an estimate.
@@ -103,16 +121,20 @@ export const BADGES = [
   { id: 'word-wizard', icon: '🧙', name: 'Word Wizard', hint: 'Work every word into one story (4 or more words).', test: ctx => ctx.result.total >= 4 && ctx.result.used === ctx.result.total },
   { id: 'storyteller', icon: '📖', name: 'Storyteller', hint: 'Tell a story of 150 words or more.', test: ctx => ctx.result.spokenWords >= 150 },
   { id: 'connected', icon: '🔗', name: 'Connect the Dots', hint: 'Get a connection rating of 80 or more.', test: ctx => !ctx.result.connectionEstimated && ctx.result.connection >= 80 },
-  { id: 'pressure-cooker', icon: '🥵', name: 'Pressure Cooker', hint: 'Score 70+ on Pressure.', test: ctx => ctx.preset === 'pressure' && ctx.result.score >= 70 },
+  { id: 'story-weaver', icon: '🧵', name: 'Story Weaver', hint: 'Score 70+ on Story Weaver.', test: ctx => ctx.preset === 'weaver' && ctx.result.score >= 70 },
   { id: 'iron-voice', icon: '🏔️', name: 'Iron Voice', hint: 'Finish Endurance with 60+.', test: ctx => ctx.preset === 'endurance' && !ctx.session.earlyStopped && ctx.result.score >= 60 },
   { id: 'century', icon: '💯', name: 'Century', hint: 'Use 100 words in total.', test: ctx => ctx.profile.totalUsed >= 100 },
-  { id: 'explorer', icon: '🧭', name: 'Explorer', hint: 'Play Quick Spark, Classic, Pressure and Endurance.', test: ctx => ['spark', 'classic', 'pressure', 'endurance'].every(id => ctx.profile.presetsPlayed.includes(id)) }
+  { id: 'explorer', icon: '🧭', name: 'Explorer', hint: 'Play Quick Spark, Classic, Story Weaver and Endurance.', test: ctx => ['spark', 'classic', 'weaver', 'endurance'].every(id => ctx.profile.presetsPlayed.includes(id)) }
 ];
 
 export const newProfile = () => ({ xp: 0, sessions: 0, totalUsed: 0, longestStory: 0, badges: [], presetsPlayed: [], history: [], settings: { preset: 'classic', custom: '' } });
+// Pressure (a word every 6 seconds) became Story Weaver: what was earned there carries over.
+const RENAMED = { pressure: 'weaver', 'pressure-cooker': 'story-weaver' };
+const renamed = list => Array.isArray(list) ? [...new Set(list.map(id => RENAMED[id] || id))] : [];
 export function normalizeProfile(raw) {
   const base = newProfile();
   if (!raw || typeof raw !== 'object') return base;
+  raw = { ...raw, badges: renamed(raw.badges), presetsPlayed: renamed(raw.presetsPlayed), settings: { ...raw.settings, preset: RENAMED[raw.settings?.preset] || raw.settings?.preset } };
   const preset = PRESETS.some(p => p.id === raw.settings?.preset) ? raw.settings.preset : 'classic';
   return {
     xp: Math.max(0, Number(raw.xp) || 0), sessions: Math.max(0, Number(raw.sessions) || 0),
@@ -147,7 +169,7 @@ export function coachingTip(result, session, detection) {
   if (result.used < Math.ceil(result.total / 2)) return 'Most words never made it into your story. Treat each new word as a plot twist: use it when it appears, or circle back to it later.';
   if (result.lengthRatio < 0.6) return 'Keep the story going: longer is better. When you run out of ideas, ask yourself "and then what happened?" and carry on.';
   if (result.connection < 60) return 'Connect the dots. Link each new word to the last one with because, so, then or but, so the story moves forward instead of listing things.';
-  if (result.score >= 90) return 'That is a spotlight story: long, connected and every word earns its place. Raise the stakes with Pressure, or write your own question.';
+  if (result.score >= 90) return 'That is a spotlight story: long, connected and every word earns its place. Raise the stakes with Endurance, or write your own question.';
   if (result.score >= 65) return 'Solid story. To finish stronger, give it a beginning, a problem and an ending, and land the last word in the final sentence.';
   return 'Good start. Pick a character and a place, then let each new word change what happens next.';
 }

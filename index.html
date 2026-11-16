@@ -4518,28 +4518,24 @@
           <option value="30">30 seconds</option>
           <option value="60" selected>60 seconds</option>
           <option value="90">90 seconds</option>
+          <option value="120">2 minutes</option>
         </select>
       </div>
       <div class="spot-setting-card">
         <label for="spotWordInterval">Word Interval</label>
         <select id="spotWordInterval">
-          <option value="5">5 seconds</option>
-          <option value="6">6 seconds</option>
-          <option value="7">7 seconds</option>
-          <option value="8">8 seconds</option>
-          <option value="10" selected>10 seconds</option>
+          <option value="10">10 seconds</option>
+          <option value="12" selected>12 seconds</option>
           <option value="15">15 seconds</option>
         </select>
       </div>
       <div class="spot-setting-card">
         <label for="spotNumWords">Number of Words</label>
         <select id="spotNumWords">
+          <option value="2">2 words</option>
           <option value="3">3 words</option>
           <option value="4">4 words</option>
-          <option value="5">5 words</option>
-          <option value="6" selected>6 words</option>
-          <option value="8">8 words</option>
-          <option value="10">10 words</option>
+          <option value="5" selected>5 words</option>
         </select>
       </div>
     </div>
@@ -4627,7 +4623,10 @@
         </div>
         <div id="spotNewBadges"></div>
         <p class="spot-tip" id="spotTip"></p>
-        <div class="spot-transcript" id="spotFinalTranscript">Transcript appears here after your run.</div>
+        <div class="spot-word-list spot-story">
+          <h4>Your story, word for word</h4>
+          <div class="spot-transcript" id="spotFinalTranscript">Transcript appears here after your run.</div>
+        </div>
         <div class="spot-controls spot-controls-center">
           <button class="spot-btn primary" id="spotPlayAgainBtn">🔁 Play Again</button>
           <button class="spot-btn alt" id="spotChangeBtn">🎛️ Change challenge</button>
@@ -11744,7 +11743,8 @@
       const speechDuration = parseInt(spotEl('spotSpeechDuration').value, 10);
       const wordInterval = parseInt(spotEl('spotWordInterval').value, 10);
       const numWords = parseInt(spotEl('spotNumWords').value, 10);
-      return { thinkTime, speechDuration, wordInterval, numWords };
+      const core = spotCore();
+      return core ? core.fitSettings({ thinkTime, speechDuration, wordInterval, numWords }) : { thinkTime, speechDuration, wordInterval, numWords };
     }
 
     function applySpotPreset(id) {
@@ -11756,7 +11756,7 @@
         spotEl('spotThinkTime').value = String(preset.think);
         spotEl('spotSpeechDuration').value = String(preset.duration);
         spotEl('spotWordInterval').value = String(preset.interval);
-        spotEl('spotNumWords').value = String(preset.words);
+        fitSpotWordChoices(preset.words);
       }
       const profile = getSpotProfile(); if (profile) { profile.settings.preset = id; saveSpotProfile(); }
       renderSpotPresets();
@@ -11792,11 +11792,21 @@
       spotEl('spotPreviewQuestion').textContent = spotNextQuestion;
     }
 
+    // The word count can only be as high as the speaking time allows with a full gap for every word.
+    function fitSpotWordChoices(wanted) {
+      const core = spotCore(), select = spotEl('spotNumWords');
+      if (!core || !select) return;
+      const duration = parseInt(spotEl('spotSpeechDuration').value, 10), gap = parseInt(spotEl('spotWordInterval').value, 10);
+      const max = core.maxWordsFor(duration, gap);
+      select.innerHTML = Array.from({ length: max - core.MIN_WORDS + 1 }, (_, i) => core.MIN_WORDS + i).map(n => `<option value="${n}">${n} words</option>`).join('');
+      select.value = String(Number.isFinite(wanted) ? Math.min(Math.max(wanted, core.MIN_WORDS), max) : max);
+    }
+
     function refreshSpotSettingsDefaults() {
       const core = spotCore(), profile = getSpotProfile();
       if (core && profile && !refreshSpotSettingsDefaults.done) {          // first visit: bring back the last chosen preset
         refreshSpotSettingsDefaults.done = true;
-        if (profile.settings.preset !== 'custom') applySpotPreset(profile.settings.preset);
+        if (profile.settings.preset !== 'custom') applySpotPreset(profile.settings.preset); else fitSpotWordChoices(parseInt(spotEl('spotNumWords').value, 10));
       }
       renderSpotPresets();
       renderSpotRank();
@@ -11819,7 +11829,10 @@
     function initSpotChallengePage() {
       updateSpotChallengeStatsUI();
       refreshSpotSettingsDefaults();
-      ['spotThinkTime', 'spotSpeechDuration', 'spotWordInterval', 'spotNumWords'].forEach(id => spotEl(id).addEventListener('change', () => { renderSpotPresets(); }));
+      ['spotThinkTime', 'spotNumWords'].forEach(id => spotEl(id).addEventListener('change', () => { renderSpotPresets(); }));
+      // A new time or word gap changes how many words fit: offer only those, and pick the most that fit.
+      ['spotSpeechDuration', 'spotWordInterval'].forEach(id => spotEl(id).addEventListener('change', () => { fitSpotWordChoices(); renderSpotPresets(); }));
+      fitSpotWordChoices(parseInt(spotEl('spotNumWords').value, 10));
       spotEl('spotPresets').addEventListener('click', event => {
         const card = event.target.closest('[data-preset]'); if (card) applySpotPreset(card.dataset.preset);
       });
@@ -12438,9 +12451,9 @@
 
       const line = (label, value, tone) => `<div class="spot-brow ${tone || ''}"><span>${label}</span><b>${value}</b></div>`;
       spotEl('spotBreakdown').innerHTML = [
+        line(`How well the words connect into one story${result.connectionEstimated ? ' (estimated)' : ''}`, `+${result.connectionPoints} / ${core.STORY_WEIGHTS.connection}`, 'plus'),
         line(`Words woven into the story (${result.used} of ${result.total})`, `+${result.wordPoints} / ${core.STORY_WEIGHTS.words}`, 'plus'),
         line(`Story length (${result.spokenWords} of ${result.targetWords} words)`, `+${result.lengthPoints} / ${core.STORY_WEIGHTS.length}`, 'plus'),
-        line(`How well it connects${result.connectionEstimated ? ' (estimated)' : ''}`, `+${result.connectionPoints} / ${core.STORY_WEIGHTS.connection}`, 'plus'),
         line('Total', `${score} / 100`, 'total')
       ].join('');
 

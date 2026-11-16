@@ -87,12 +87,15 @@ sync. Files: `think-fast-core.js` (prompts, listening maths, scoring, ranks, bad
 
 Get a question, think for a moment, then tell **one story** that answers it. New words appear every few seconds
 (whether or not you have used the last one) and stay on the board until you have worked them in; connect each into the
-story so it keeps flowing. Pick **Quick Spark** (30 s, 4 words), **Classic** (60 s, 6 words), **Pressure** (a new word every
-6 s), **Endurance** (90 s, 10 words) or **Custom**. The question can be shuffled or typed in ("Write my own").
+story so it keeps flowing. Each new word gets 10 to 15 seconds, enough to link it to the story, and every game shows only
+as many words as its time allows: **Quick Spark** (30 s, 3 words, one every 10 s), **Classic** (60 s, 5 words, every 12 s),
+**Story Weaver** (90 s, 6 words, every 15 s), **Endurance** (2 min, 10 words, every 12 s) or **Custom** (the word count adjusts to fit).
+The question can be shuffled or typed in ("Write my own").
 
-**Speed is not scored.** The score is out of 100 for the whole story: 45 points for how many of the words ended up in it
-(at any moment, even right at the end), 25 for how long it is (a full telling is about 90 words a minute of speech) and
-30 for how well it connects. The connection is rated once, at the end, by the AI (`api/story-score.js`, signed-in
+**Speed is not scored.** The score is out of 100 for the whole story, and the connected story counts most: 50 points for
+how well the words are linked into one story, 30 for how many of the words ended up in it (at any moment, even right at
+the end) and 20 for how long it is (a full telling is about 90 words a minute of speech). The transcript is shown with
+the results ("Your story, word for word"), with the words highlighted. The connection is rated once, at the end, by the AI (`api/story-score.js`, signed-in
 users only); if it cannot be reached the connection is a capped estimate from joining words (because, so, then, but) and
 the results say "estimated". Saying a word before it appears does not count. Words are detected as before (the browser's
 speech recognition, or the call audio when Google Meet audio is on). Ranks, XP and eight badges are kept in this browser

@@ -1,5 +1,5 @@
 // Service Worker for The Speaker's Gym
-const CACHE_NAME = 'speakers-gym-v45-one-vocab';
+const CACHE_NAME = 'speakers-gym-v46-spot-gaps';
 const ASSETS = [
   '/',
   '/index.html',
