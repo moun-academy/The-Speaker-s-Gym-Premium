@@ -164,3 +164,51 @@ test('the game counts overlapping clips, retries, and says what is happening', (
   assert.match(source, /fail\.failures >= 4/, 'a few missed clips are tolerated before pace is called unavailable');
   assert.doesNotMatch(source, /\[401, 403, 404, 405, 500, 501\]\.includes\(fail\.status\)/, 'a single server error no longer ends pace counting');
 });
+
+// Speech at 125 words a minute, in clips of 3 s + 0.8 s overlap, as the game records it.
+const steadyClips = (seconds = 30) => Array.from({ length: Math.ceil(seconds / 3) }, (_, i) => {
+  const start = i * 3, end = start + 3.8, words = [];
+  for (let k = 0; k * 0.48 < seconds; k++) { const at = 0.2 + k * 0.48; if (at >= start && at < end) words.push({ word: `w${k}`, start: at, end: at + 0.3 }); }
+  return { index: i, start, end, text: 'speech', words };
+});
+
+test('a reading, once settled, never changes: the drawn line does not jump when later words arrive', () => {
+  const pace = new WordPaceTracker(), clips = steadyClips(30), first = new Map();
+  for (const clip of clips) {
+    pace.add(clip);
+    const until = pace.settledUntil();
+    for (let t = 0; t <= until; t += 0.5) { const v = pace.at(t); if (Number.isFinite(v) && !first.has(t)) first.set(t, v); }
+  }
+  assert.ok(first.size > 20);
+  for (const [t, v] of first) assert.equal(pace.at(t), v, `the reading at ${t}s changed after it was drawn`);
+  assert.ok(pace.settledUntil() < clips.at(-1).end - 4, 'the last few seconds wait for the words that follow');
+});
+
+test('a missing clip holds back what follows, a lost one does not stop it for good, and a late one fills its gap', () => {
+  const clips = steadyClips(24), pace = new WordPaceTracker();
+  for (const clip of clips) if (clip.index !== 3) pace.add(clip);
+  assert.ok(pace.settledUntil() <= clips[3].start, 'waiting for clip 3');
+  pace.miss({ index: 3, start: clips[3].start, end: clips[3].end });
+  assert.ok(pace.settledUntil() > clips.at(-1).end - 6, 'a lost clip no longer holds everything back');
+  pace.add(clips[3]);
+  assert.ok(Math.abs(pace.at(clips[3].start + 1.5) - 125) < 8, 'the clip arrived after all and its stretch reads normally');
+});
+
+test('the live reading is the newest settled one, held through a pause, and dropped after a long silence', () => {
+  const pace = new WordPaceTracker(), clips = steadyClips(21);
+  clips.forEach(clip => pace.add(clip));
+  const live = pace.liveReading(22);
+  assert.ok(live && Math.abs(live.wpm - 125) < 8);
+  assert.equal(live.wpm, pace.at(live.at), 'the number shown is the line where the orb sits');
+  for (let i = 0; i < 3; i++) pace.add({ index: 7 + i, start: 21 + i * 3, end: 24.8 + i * 3, text: '', words: [], silent: true });
+  assert.ok(pace.liveReading(30), 'a short pause keeps the reading');
+  assert.equal(pace.liveReading(60), null, 'a long silence is not a pace');
+});
+
+test('the game draws only settled readings, holds the orb through pauses and rounds the number', () => {
+  const source = readFileSync(new URL('../vocal-variety.js', import.meta.url), 'utf8');
+  assert.match(source, /backfillPace\(r, 0, Math\.min\(r\.frames\.length \* FRAME_DT, r\.speech\.pace\.settledUntil\(\)\)\)/);
+  assert.match(source, /pace\.liveReading\(t\)/);
+  assert.match(source, /pace\.miss\(fail\)/);
+  assert.match(source, /Math\.round\(wpm \/ 5\) \* 5/);
+});

@@ -13,6 +13,8 @@ const SAME_SPOT_SECONDS = 0.2;    // two words this close in overlapping clips a
 const PAUSE_CAP = 1.5;            // seconds from one word's start to the next: anything longer is a silence, and counts as this
 const LIVE_BACK = 2.5;            // the live reading is taken this far before the newest words, so its window is mostly full
 const LIVE_HOLD = 7;              // through a pause the last reading stays up this long after the last word
+const SETTLE = WINDOW + 1;        // a moment's reading is final once the audio this far past it has been heard
+const LIVE_MAX_AGE = 16;          // the live reading is dropped once it is this old (a long silence, or the service stopped)
 
 const key = word => String(word).toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
 const median = list => { const sorted = [...list].sort((a, b) => a - b), mid = sorted.length >> 1; return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2; };
@@ -26,10 +28,18 @@ export function speakingSeconds(starts) {
 }
 
 export class WordPaceTracker {
-  constructor() { this.clips = new Map(); this.words = []; this.ranges = []; }
+  constructor() { this.clips = new Map(); this.missing = new Map(); this.words = []; this.ranges = []; this.live = null; }
+  // A clip whose words cannot be known (the service failed, or gave text without timings). Its stretch stays unknown,
+  // never "silence", but later moments stop waiting for it.
+  miss(clip) {
+    if (!Number.isFinite(clip?.start) || !Number.isFinite(clip?.end) || clip.end <= clip.start || this.clips.has(clip.index)) return;
+    this.missing.set(clip.index, { start: clip.start, end: clip.end });
+    this.refreshLive();
+  }
   add(clip) {
     if (!Number.isFinite(clip.start) || !Number.isFinite(clip.end) || clip.end <= clip.start) return;
-    if (clip.text?.trim() && !clip.words?.length) return;
+    if (clip.text?.trim() && !clip.words?.length) { this.miss(clip); return; }
+    this.missing.delete(clip.index);
     let run = 0, previous = null;
     const words = (clip.words || []).filter(w => Number.isFinite(w.start) && Number.isFinite(w.end)
       && w.start >= clip.start - 0.1 && w.start < clip.end && w.end >= w.start && w.end - w.start <= MAX_WORD_SECONDS && /[\p{L}\p{N}]/u.test(w.word))
@@ -68,7 +78,27 @@ export class WordPaceTracker {
       if (!twice) once.push(w);
     }
     this.words = once;
+    this.refreshLive();
   }
+  // Up to which moment every reading is final. A reading looks WINDOW seconds ahead, and the next clip can still change
+  // the words at the end of the last one, so a moment is settled once the audio has been heard (or is known to be lost),
+  // with no gaps from the start, to SETTLE seconds past it. Settled readings never change, so the drawn line never jumps.
+  settledUntil() {
+    const spans = [...this.clips.values(), ...this.missing.values()].map(c => ({ start: c.start, end: c.end })).sort((a, b) => a.start - b.start);
+    if (!spans.length || spans[0].start > 1) return -Infinity;
+    let end = spans[0].end;
+    for (const span of spans) { if (span.start > end + 0.12) break; end = Math.max(end, span.end); }
+    return end - SETTLE;
+  }
+  // The newest settled reading: the end of the drawn line. Through a pause the last one stays.
+  refreshLive() {
+    const until = this.settledUntil();
+    for (let t = until; t >= until - LIVE_HOLD && t >= 0; t -= 0.25) {
+      const wpm = this.at(t);
+      if (Number.isFinite(wpm)) { this.live = { at: t, wpm }; return; }
+    }
+  }
+  liveReading(now) { return this.live && now - this.live.at <= LIVE_MAX_AGE ? this.live : null; }
   at(t) {
     const range = this.ranges.find(r => t >= r.start && t <= r.end);
     if (!range) return null;

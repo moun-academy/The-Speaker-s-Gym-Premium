@@ -507,7 +507,7 @@ function mount() {
     round = {
       mic, plan, guided: stage.kind === 'guided', mode: 'countdown', t0: 0, frames: [], scale: roundScale, call: callOn(), tracker: new VoiceTracker(roundScale), tick: 0, lastMidi: null,
       wantsPace: stage.dim === 'pace' || stage.dim === 'all', paceSource: 'speech', speech: null, paceError: '', paceHealth: 'ok', finishing: false,
-      live: { t: 0, volume: null, pitch: null, pace: null, wpm: null, active: false, db: -90 }, display: { volume: -0.1, pitch: -0.1, pace: -0.1 },
+      live: { t: 0, volume: null, pitch: null, pace: null, wpm: null, active: false, db: -90 }, display: { volume: -0.1, pitch: -0.1, pace: -0.1, paceAt: null },
       particles: [], timers: [], recorder: null, chunks: [], lastHud: 0, lastScore: 0, phaseKey: -1
     };
     const r = round;
@@ -538,7 +538,7 @@ function mount() {
       } catch { r.recorder = null; }
     }
     $('#vvLiveStatus').textContent = r.wantsPace
-      ? 'Listening. Pace counts recognized words and appears a few seconds behind the white time line.'
+      ? 'Listening. Pace counts recognized words. Each part of the line is drawn once all its words are in, about eight seconds behind the white time line, and then never changes.'
       : 'Listening. Follow the vocal cue for each part.';
     if (r.wantsPace) startSpeech(r);
     announce(`Go. ${r.plan.phases[0].label}: ${r.plan.phases[0].zone}. ${r.plan.phases[0].cue}`);
@@ -568,10 +568,12 @@ function mount() {
     if (round !== r || !r.speech) return;
     r.paceHealth = 'ok';
     r.speech.pace.add(res);
-    backfillPace(r, 0, r.frames.length * FRAME_DT);
+    // Only moments whose reading is final are drawn and scored while speaking, so the line never jumps afterwards.
+    backfillPace(r, 0, Math.min(r.frames.length * FRAME_DT, r.speech.pace.settledUntil()));
   }
   function paceFailed(r, fail) {
     if (round !== r) return;
+    if (r.speech) { r.speech.pace.miss(fail); backfillPace(r, 0, Math.min(r.frames.length * FRAME_DT, r.speech.pace.settledUntil())); }
     r.paceHealth = [401, 403].includes(fail.status) ? 'signin' : 'retrying';
     if (fail.failures >= 4 || [401, 403, 404, 405, 501].includes(fail.status)) {
       r.paceSource = 'unavailable';
@@ -592,7 +594,7 @@ function mount() {
     const live = r.mode === 'live';
     const t = live ? (performance.now() - r.t0) / 1000 : 0;
     const out = r.tracker.push(live ? t : performance.now() / 1000, rms, r.tick % 2 === 1 ? r.lastMidi : null);
-    const counted = r.wantsPace && r.paceSource === 'speech' ? r.speech?.pace.latest(t) : null;
+    const counted = r.wantsPace && r.paceSource === 'speech' ? r.speech?.pace.liveReading(t) : null;
     const wpm = counted?.wpm ?? null;
     r.live = { ...out, t, wpm, pace: paceLevel(wpm), paceAt: counted?.at ?? null };
     // Here rather than in the drawing loop, so the readings keep updating when the page is not being painted.
@@ -654,6 +656,8 @@ function mount() {
     if (el.textContent !== text) el.textContent = text;
     el.dataset.state = r.paceSource === 'unavailable' ? 'down' : r.paceHealth !== 'ok' ? 'warn' : /^No (words|new)/.test(text) ? 'warn' : 'ok';
   }
+  // To the nearest 5: a steady speaker varies by a few words a minute, and a number that flickers by 1 or 2 is noise.
+  const roundWpm = wpm => Math.round(wpm / 5) * 5;
   function updateHud(r, now) {
     const t = r.mode === 'live' ? r.live.t : 0, plan = r.plan;
     const clockEl = $('#vvClock'); if (!clockEl) return;
@@ -662,7 +666,7 @@ function mount() {
     reading.dataset.volume = Number.isFinite(r.live.volume) ? r.live.volume.toFixed(3) : '';
     reading.dataset.wpm = Number.isFinite(r.live.wpm) ? r.live.wpm.toFixed(1) : '';
     reading.textContent = r.wantsPace
-      ? Number.isFinite(r.live.wpm) ? `Pace: ${Math.round(r.live.wpm)} WPM. Measured at ${clock(r.live.paceAt)}.`
+      ? Number.isFinite(r.live.wpm) ? `Pace: about ${roundWpm(r.live.wpm)} WPM. Measured at ${clock(r.live.paceAt)}.`
         : r.paceSource === 'unavailable' ? 'Pace unavailable.' : 'Pace: waiting for enough recognized words.'
       : Number.isFinite(r.live[stage.dim]) ? `${DIMENSIONS[stage.dim].name}: ${zoneLabel(stage.dim, zoneOf(r.live[stage.dim]))}.` : 'No speech detected.';
     paceStatus(r, t);
@@ -687,7 +691,7 @@ function mount() {
         const hit = new Set(r.frames.filter(f => Number.isFinite(f[stage.dim])).map(f => zoneOf(f[stage.dim])));
         $('#vvHud1').textContent = `${hit.size} / 3`;
         const level = r.live[stage.dim];
-        $('#vvHud2').textContent = Number.isFinite(level) ? (stage.dim === 'pace' ? `${Math.round(r.live.wpm)} WPM` : zoneLabel(stage.dim, zoneOf(level))) : '—';
+        $('#vvHud2').textContent = Number.isFinite(level) ? (stage.dim === 'pace' ? `${roundWpm(r.live.wpm)} WPM` : zoneLabel(stage.dim, zoneOf(level))) : '—';
       }
     }
     if (stage.kind === 'free' && now - r.lastScore > 500 && r.frames.length >= 10) {
@@ -714,15 +718,19 @@ function mount() {
     const live = r ? r.live : { volume: null, pitch: null, pace: null, active: false };
     const t = r && r.mode === 'live' ? r.live.t : 0;
     if (r) for (const dim of DIM_ORDER) {
-      const goal = Number.isFinite(live[dim]) ? live[dim] : -0.1;
-      r.display[dim] += (goal - r.display[dim]) * (Number.isFinite(live[dim]) ? 0.3 : 0.08);
+      // A pace reading is held where it was (dimmed) rather than dropping to Slow while the next words are counted.
+      const hold = dim === 'pace' && r.display.pace > -0.1;
+      const goal = Number.isFinite(live[dim]) ? live[dim] : hold ? r.display.pace : -0.1;
+      r.display[dim] += (goal - r.display[dim]) * (Number.isFinite(live[dim]) ? (dim === 'pace' ? 0.12 : 0.3) : 0.08);
     }
+    // The pace orb glides along to its new moment instead of leaping a few seconds at a time.
+    if (r && Number.isFinite(live.paceAt)) r.display.paceAt = Number.isFinite(r.display.paceAt) ? r.display.paceAt + (live.paceAt - r.display.paceAt) * 0.12 : live.paceAt;
     drawStage(sized.ctx, sized.w, sized.h, { t, frames: r?.frames || [], live, display: r ? r.display : { volume: -0.1, pitch: -0.1, pace: -0.1 }, particles: r?.particles || [], now: performance.now(), mode: r?.mode || 'countdown' });
   }
   function drawStage(ctx, w, h, s) {
     const plan = stage.plan, compact = w < 560, solo = stage.dim !== 'all';
     const L = solo ? (compact ? 54 : 84) : (compact ? 66 : 92), R = 12, T = 24, B = 22;
-    const pw = w - L - R, ph = h - T - B, past = stage.dim === 'pace' || stage.dim === 'all' ? 10 : compact ? 4 : 5, future = compact ? 6 : 9, span = past + future;
+    const pw = w - L - R, ph = h - T - B, past = stage.dim === 'pace' || stage.dim === 'all' ? 16 : compact ? 4 : 5, future = compact ? 6 : 9, span = past + future;
     const xOf = time => L + pw * (past + (time - s.t)) / span, px = L + pw * past / span;
     ctx.clearRect(0, 0, w, h);
     const lanes = lanesFor(stage, T, ph);
@@ -789,7 +797,7 @@ function mount() {
       ctx.globalAlpha = 1; ctx.shadowBlur = 0;
       // orb
       const level = s.display[dim], oy = yOf(level), color = levelRgb(clamp(level, 0, 1)), present = Number.isFinite(s.live[dim]);
-      const measuredAt = dim === 'pace' && Number.isFinite(s.live.paceAt) ? s.live.paceAt : s.t;
+      const measuredAt = dim === 'pace' && Number.isFinite(s.display.paceAt) ? s.display.paceAt : s.t;
       const orbX = xOf(measuredAt);
       const inBand = lane.guided && present && s.mode === 'live' && ribbonCredit(dim, s.live[dim], plan, measuredAt) === 1;
       const radius = lane.solo ? 1 : 0.75;
