@@ -1,6 +1,6 @@
 // Think Fast: the rules, scoring and prompts, with no screen or microphone in sight so they can be tested.
 // think-fast.js draws the game and feeds this file the numbers it hears.
-import { WORDS } from './think-fast-words.js';
+import { WORDS, MORE_HOT_TAKES, MORE_PITCHES } from './think-fast-words.js';
 
 export const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
 
@@ -21,7 +21,7 @@ export const MODES = [
 ];
 export const modeById = id => MODES.find(mode => mode.id === id) || MODES[0];
 
-export const HOT_TAKES = [
+const FIRST_HOT_TAKES = [
   'Homework should be banned.', 'Cities beat small towns.', 'Breakfast is the best meal of the day.', 'Remote work beats the office.',
   'Social media does more harm than good.', 'Everyone should learn to cook.', 'Books are better than movies.', 'Mornings beat evenings.',
   'Cash will disappear within ten years.', 'School should start later.', 'Video games are a real sport.', 'Tipping should be abolished.',
@@ -34,7 +34,7 @@ export const HOT_TAKES = [
   'Exams measure the wrong things.', 'Leaders are made, not born.', 'Fast food should carry a health warning.', 'Learning never stops after school.'
 ];
 
-export const PITCHES = [
+const FIRST_PITCHES = [
   'A pen that never runs out', 'An umbrella for the sun', 'Shoes that tie themselves', 'A mirror that only tells the truth',
   'A backpack that carries itself', 'Socks that never get lost', 'A clock that runs backwards', 'A fridge that orders groceries',
   'A pillow that cancels noise', 'A bicycle that folds into a wallet', 'Glasses that translate any language', 'A spoon that cools soup',
@@ -52,17 +52,33 @@ export function analogyText(first, second) {
   return `${part(first)} ${first[2] ? 'ARE' : 'IS'} LIKE ${part(second)}`;
 }
 
-function pick(list, rng, used) {
-  for (let tries = 0; tries < 40; tries++) {
-    const index = Math.floor(rng() * list.length);
-    if (!used.has(index)) { used.add(index); return list[index]; }
-  }
-  return list[Math.floor(rng() * list.length)];
+export const HOT_TAKES = [...FIRST_HOT_TAKES, ...MORE_HOT_TAKES];
+export const PITCHES = [...FIRST_PITCHES, ...MORE_PITCHES];
+
+// What a player has already been shown, per game, so every prompt comes up once before any comes up again.
+// { analogy: [words], hottake: [statements], sellit: [products] }, kept between sessions by the screen.
+export const newSeen = () => ({ analogy: [], hottake: [], sellit: [] });
+export function normalizeSeen(raw) {
+  const seen = newSeen();
+  for (const key of Object.keys(seen)) if (Array.isArray(raw?.[key])) seen[key] = raw[key].filter(item => typeof item === 'string').slice(-400);
+  return seen;
+}
+// A random item not yet used this session and not yet seen. When every item has been seen, a new cycle starts.
+function pick(list, keyOf, rng, used, seen) {
+  let options = list.filter(item => !used.has(keyOf(item)) && !seen.has(keyOf(item)));
+  if (!options.length) { list.forEach(item => seen.delete(keyOf(item))); options = list.filter(item => !used.has(keyOf(item))); }
+  if (!options.length) options = list;
+  const item = options[Math.floor(rng() * options.length)];
+  used.add(keyOf(item)); seen.add(keyOf(item));
+  return item;
 }
 
-// A deck of prompts for one session: no repeats inside a session, shuffled for Wild Mix.
-export function makeDeck(modeId, rounds, rng = Math.random) {
+// A deck of prompts for one session: no repeats inside a session, nothing already seen until everything has been,
+// shuffled for Wild Mix. `seen` (from normalizeSeen) is updated in place, so the screen can save it.
+export function makeDeck(modeId, rounds, rng = Math.random, seen = newSeen()) {
   const usedWords = new Set(), usedTakes = new Set(), usedPitches = new Set();
+  const seenWords = new Set(seen.analogy), seenTakes = new Set(seen.hottake), seenPitches = new Set(seen.sellit);
+  const word = item => item[0], same = item => item;
   const single = ['analogy', 'hottake', 'sellit'];
   const deck = [];
   for (let i = 0; i < rounds; i++) {
@@ -70,13 +86,14 @@ export function makeDeck(modeId, rounds, rng = Math.random) {
     const mode = modeById(kind);
     let text;
     if (kind === 'analogy') {
-      const first = pick(WORDS, rng, usedWords); let second = pick(WORDS, rng, usedWords);
+      const first = pick(WORDS, word, rng, usedWords, seenWords); let second = pick(WORDS, word, rng, usedWords, seenWords);
       if (second === first) second = WORDS[(WORDS.indexOf(first) + 1) % WORDS.length];
       text = analogyText(first, second);
-    } else if (kind === 'hottake') text = pick(HOT_TAKES, rng, usedTakes).toUpperCase();
-    else text = pick(PITCHES, rng, usedPitches).toUpperCase();
+    } else if (kind === 'hottake') text = pick(HOT_TAKES, same, rng, usedTakes, seenTakes).toUpperCase();
+    else text = pick(PITCHES, same, rng, usedPitches, seenPitches).toUpperCase();
     deck.push({ kind, lead: mode.lead, text, tail: mode.tail });
   }
+  seen.analogy = [...seenWords]; seen.hottake = [...seenTakes]; seen.sellit = [...seenPitches];
   return deck;
 }
 

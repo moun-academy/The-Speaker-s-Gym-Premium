@@ -1,7 +1,7 @@
 // Think Fast: the screen. Rules, scoring and prompts live in think-fast-core.js.
 import {
   MODES, TIME_OPTIONS, ROUND_OPTIONS, BADGES, GRADES, CUES, COMBO_MIN, MIN_REACTION_MS,
-  limitFor, modeById, makeDeck, estimateFloorDb, analyseRound, scoreRound, summarize, rankFor, applyResult,
+  limitFor, modeById, makeDeck, normalizeSeen, estimateFloorDb, analyseRound, scoreRound, summarize, rankFor, applyResult,
   normalizeProfile, coachingTip, clamp
 } from './think-fast-core.js';
 
@@ -14,6 +14,10 @@ const esc = text => String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': 
 const seconds = ms => (ms / 1000).toFixed(1);
 
 function loadProfile() { try { return normalizeProfile(JSON.parse(localStorage.getItem(STORE))); } catch { return normalizeProfile(null); } }
+// Prompts already shown, kept apart from the profile so a long history never slows the profile down.
+const SEEN = 'sg-think-fast-seen-v1';
+function loadSeen() { try { return normalizeSeen(JSON.parse(localStorage.getItem(SEEN))); } catch { return normalizeSeen(null); } }
+function saveSeen(seen) { try { localStorage.setItem(SEEN, JSON.stringify(seen)); } catch { /* private mode: repeats are possible, nothing breaks */ } }
 function saveProfile() { try { localStorage.setItem(STORE, JSON.stringify(profile)); } catch { /* private mode: the game still works */ } }
 
 let profile = loadProfile();
@@ -224,8 +228,10 @@ async function start() {
   if (session) return;
   const s = profile.settings;
   notice = '';
+  const seen = loadSeen(), deck = makeDeck(s.mode, s.rounds, Math.random, seen);
+  saveSeen(seen);
   session = {
-    mode: s.mode, limit: s.limit, deck: makeDeck(s.mode, s.rounds), results: [], index: 0, combo: 0, longestCombo: 0, points: 0,
+    mode: s.mode, limit: s.limit, deck, results: [], index: 0, combo: 0, longestCombo: 0, points: 0,
     listening: s.listen, call: callOn(), mic: null, quiet: [], frames: [], phase: 'ready', timeouts: [], floorDb: -65, count: 3, token: Symbol()
   };
   const mine = session;

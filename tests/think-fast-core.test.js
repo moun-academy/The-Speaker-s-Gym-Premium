@@ -25,7 +25,8 @@ test('every mode explains itself in three short steps, and the single modes give
 });
 
 test('the whole analogy word list survived the move into its own module', () => {
-  assert.equal(WORDS.length, 169);
+  assert.ok(WORDS.length >= 269, 'at least 100 more things to compare');
+  assert.equal(new Set(WORDS.map(w => w[0])).size, WORDS.length, 'no word twice');
   assert.ok(WORDS.some(([word, article, plural]) => word === 'SCISSORS' && article === null && plural === true));
 });
 
@@ -163,4 +164,30 @@ test('Hot Take and Sell It get 30 seconds, and reading time does not cost speed 
   assert.equal(scoreRound({ onsetMs: 3500, talkShare: 1 }, 30000).grade, 'lightning', 'starting after reading for 3.5 s is still full speed marks');
   assert.ok(scoreRound({ onsetMs: 15000, talkShare: 1 }, 30000).points < scoreRound({ onsetMs: 5000, talkShare: 1 }, 30000).points);
   assert.ok(scoreRound({ onsetMs: 29000, talkShare: 1 }, 30000).points >= 40, 'even a late start that keeps going earns something');
+});
+
+test('each game has at least 100 more prompts, none repeated', async () => {
+  const core = await import('../think-fast-core.js');
+  assert.ok(core.HOT_TAKES.length >= 140, `${core.HOT_TAKES.length} hot takes`);
+  assert.ok(core.PITCHES.length >= 140, `${core.PITCHES.length} products`);
+  assert.equal(new Set(core.HOT_TAKES.map(s => s.toLowerCase())).size, core.HOT_TAKES.length);
+  assert.equal(new Set(core.PITCHES.map(s => s.toLowerCase())).size, core.PITCHES.length);
+  for (const take of core.HOT_TAKES) assert.match(take, /[.!?]$/, take);
+});
+
+test('nothing comes up again until everything in that game has been shown', async () => {
+  const core = await import('../think-fast-core.js');
+  let seed = 11; const rng = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const seen = core.normalizeSeen(null), shown = [];
+  const sessions = Math.floor(core.HOT_TAKES.length / 10);
+  for (let i = 0; i < sessions; i++) shown.push(...core.makeDeck('hottake', 10, rng, seen).map(card => card.text));
+  assert.equal(new Set(shown).size, shown.length, 'no hot take repeated across sessions');
+  // after every one has been shown, a new cycle begins and play carries on
+  const next = core.makeDeck('hottake', 20, rng, seen);
+  assert.equal(next.length, 20);
+  assert.equal(new Set(next.map(card => card.text)).size, 20);
+  const pitches = core.normalizeSeen({ sellit: ['nope', 3] });
+  assert.deepEqual(pitches.sellit, ['nope']);
+  const sells = []; for (let i = 0; i < 10; i++) sells.push(...core.makeDeck('sellit', 10, rng, pitches).map(card => card.text));
+  assert.equal(new Set(sells).size, 100, '100 products in a row without a repeat');
 });
