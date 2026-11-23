@@ -1945,6 +1945,37 @@
       font-size: 16px;
     }
 
+    /* My Own Topic: the student's own question, judged by the AI report */
+    .custom-topic { display: none; text-align: left; padding: 2px 0; }
+    .custom-topic.show { display: block; }
+    .word-box.custom-mode .label, .word-box.custom-mode .word, .word-box.custom-mode .definition { display: none; }
+    .custom-topic-label { display: flex; align-items: baseline; gap: 6px; font-size: 13px; font-weight: 700; color: #fde68a; margin: 0 0 8px; }
+    .custom-topic small { font-weight: 500; color: #94a3b8; font-size: 12px; }
+    .custom-topic textarea {
+      width: 100%; box-sizing: border-box; min-height: 74px; resize: vertical; padding: 12px 14px; border-radius: 14px; font: inherit; font-size: 16px; line-height: 1.45;
+      background: rgba(8, 13, 26, 0.6); color: #f1f5f9; border: 1px solid rgba(148, 163, 184, 0.25); outline: none; margin: 0;
+    }
+    .custom-topic textarea:focus { border-color: rgba(250, 204, 21, 0.6); box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.12); }
+    .custom-topic textarea::placeholder { color: #64748b; }
+    .custom-types { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
+    .custom-type, .custom-recent-chip {
+      padding: 8px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; margin: 0;
+      background: rgba(8, 13, 26, 0.55); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.2); transition: border-color 0.2s, background 0.2s;
+    }
+    .custom-type:hover, .custom-recent-chip:hover { border-color: rgba(250, 204, 21, 0.45); }
+    .custom-type[aria-checked="true"] { background: rgba(250, 204, 21, 0.15); color: #fde68a; border-color: rgba(250, 204, 21, 0.55); }
+    .custom-section { margin-top: 14px; }
+    .custom-recent { display: flex; flex-wrap: wrap; gap: 8px; }
+    .custom-recent-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+    .custom-type-tip { font-size: 13px; color: #a5f3fc; line-height: 1.5; margin: 8px 0 0; min-height: 1em; }
+    .custom-topic-note { font-size: 12.5px; color: #94a3b8; line-height: 1.5; margin: 14px 0 0; }
+    #mainPage .word-box.custom-mode .label, #mainPage .word-box.custom-mode .word, #mainPage .word-box.custom-mode .definition, #mainPage .controls[hidden] { display: none; }
+    @media (max-width: 520px) {
+      /* three equal choices on a phone: icon above the name, nothing squeezed onto two lines */
+      #mainPage .prompt-mode-toggle { width: 100%; box-sizing: border-box; }
+      #mainPage .prompt-mode-btn { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 3px; padding: 9px 4px; font-size: 12.5px; line-height: 1.2; text-align: center; }
+    }
+
     /* Conversation Question Display */
     .conversation-question {
       display: none;
@@ -4318,6 +4349,10 @@
         <span class="mode-icon">💬</span>
         <span>Questions</span>
       </button>
+      <button class="prompt-mode-btn" id="customTopicBtn">
+        <span class="mode-icon">✍️</span>
+        <span>My Own Topic</span>
+      </button>
     </div>
 
     <!-- Main Action Button -->
@@ -4331,6 +4366,22 @@
       <div class="label">Your Word</div>
       <div id="word" class="word">Ready?</div>
       <div class="definition" id="definition">Click "New Word" to get started</div>
+
+      <!-- My Own Topic Mode -->
+      <div class="custom-topic" id="customTopic">
+        <label class="custom-topic-label" for="customTopicInput">Your question or topic <small>(optional)</small></label>
+        <textarea id="customTopicInput" maxlength="300" rows="2" placeholder="For example: Tell me about yourself. Leave it empty for a free speech on any topic."></textarea>
+        <div class="custom-section">
+          <div class="custom-topic-label" id="customTypesLabel">What kind of speech? <small>(optional)</small></div>
+          <div class="custom-types" id="customTypes" role="radiogroup" aria-labelledby="customTypesLabel"></div>
+          <p class="custom-type-tip" id="customTypeTip"></p>
+        </div>
+        <div class="custom-section" id="customRecentBox" hidden>
+          <div class="custom-topic-label">Practice again</div>
+          <div class="custom-recent" id="customRecent"></div>
+        </div>
+        <p class="custom-topic-note">Speak for about 2 minutes (recording stops at 2½). Your AI report judges your answer against your own question, or, if you leave it empty, against the topic you chose to talk about.</p>
+      </div>
 
       <!-- Conversation Mode -->
       <div class="conversation-question" id="conversationQuestion">
@@ -5758,6 +5809,7 @@
     let prepExampleError = '';
 
     function currentPromptContext() {
+      if (isCustomMode) return customPromptContext();
       if (isConversationMode && currentConversationQuestion) {
         return currentConversationQuestion.question;
       }
@@ -5989,6 +6041,18 @@
     function retryPracticePrompt() {
       const session = latestPracticeSession;
       if (!session) return;
+      if (session.customTopic) {
+        if (!isCustomMode) setPromptMode('custom'); else resetPrompt();
+        document.getElementById('customTopicInput').value = session.customTopic.text || '';
+        customTopicType = customTypeById(session.customTopic.type) ? session.customTopic.type : '';
+        applyCustomTopic();
+        updateStructure();
+        document.getElementById('retryPractice').hidden = true;
+        wordBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        requestAnimationFrame(() => document.getElementById(currentMode === 'video' ? 'startVideoBtn' : 'startAudioBtn').focus());
+        return;
+      }
+      isCustomMode = false;
       isConversationMode = Boolean(session.conversationQuestion);
       localStorage.setItem('promptMode', isConversationMode ? 'conversation' : 'words');
       if (isConversationMode) {
@@ -6127,7 +6191,10 @@
     }
 
     // Prompt Mode state (Random Words vs Conversation)
-    let isConversationMode = localStorage.getItem('promptMode') === 'conversation';
+    // Three ways to practice: random words, the app's questions, or the student's own question ("custom").
+    // My Own Topic works like a question: isConversationMode is true and isCustomMode says the question is theirs.
+    let isCustomMode = localStorage.getItem('promptMode') === 'custom';
+    let isConversationMode = localStorage.getItem('promptMode') === 'conversation' || isCustomMode;
     let currentConversationQuestion = null;
     let currentConversationCategory = localStorage.getItem('conversationCategory') || 'General Questions';
     let categoryQuestionPools = {}; // keyed by category name
@@ -6424,21 +6491,103 @@
       initConversationCategoryControls();
       updatePromptModeUI();
 
-      randomWordsBtn.addEventListener('click', () => {
-        if (!isConversationMode) return;
-        isConversationMode = false;
-        localStorage.setItem('promptMode', 'words');
-        updatePromptModeUI();
-        resetPrompt();
-      });
+      randomWordsBtn.addEventListener('click', () => setPromptMode('words'));
+      ieltsBtn.addEventListener('click', () => setPromptMode('conversation'));
+      document.getElementById('customTopicBtn').addEventListener('click', () => setPromptMode('custom'));
+      initCustomTopic();
+      if (isCustomMode) applyCustomTopic();
+    }
 
-      ieltsBtn.addEventListener('click', () => {
-        if (isConversationMode) return;
-        isConversationMode = true;
-        localStorage.setItem('promptMode', 'conversation');
-        updatePromptModeUI();
-        resetPrompt();
+    function setPromptMode(mode) {
+      const current = isCustomMode ? 'custom' : isConversationMode ? 'conversation' : 'words';
+      if (mode === current || isRunning) return;
+      isCustomMode = mode === 'custom';
+      isConversationMode = mode !== 'words';
+      localStorage.setItem('promptMode', mode);
+      updatePromptModeUI();
+      resetPrompt();
+      if (isCustomMode) requestAnimationFrame(() => document.getElementById('customTopicInput').focus({ preventScroll: true }));
+    }
+
+    // ---- My Own Topic ---------------------------------------------------------------
+    // The kind of speech tells the AI report what good looks like; the tip tells the student before they start.
+    const CUSTOM_SPEECH_TYPES = [
+      { id: 'interview', icon: '💼', label: 'Job interview', prompt: 'Job interview answer', tip: 'Answer the question in your first sentence, give one real example (situation, what you did, the result), then link it to the job.' },
+      { id: 'presentation', icon: '📊', label: 'Presentation', prompt: 'Presentation', tip: 'Open with why it matters, announce your two or three points, then close by repeating the one idea people should remember.' },
+      { id: 'pitch', icon: '🚀', label: 'Pitch', prompt: 'Pitch', tip: 'Name the problem, show your solution and why it is better, then finish with a clear ask.' },
+      { id: 'toast', icon: '🥂', label: 'Toast / ceremony', prompt: 'Toast or ceremony speech', tip: 'Start warmly, tell one short personal story, then end by raising a glass or a wish.' },
+      { id: 'story', icon: '📖', label: 'Story', prompt: 'Story', tip: 'Set the scene, bring in a problem, show the turning point, and finish with what you learned.' },
+      { id: 'other', icon: '✨', label: 'Other', prompt: 'Other speech', tip: '' }
+    ];
+    const CUSTOM_RECENT_KEY = 'customTopicsRecent';
+    const CUSTOM_STATE_KEY = 'customTopicDraft';
+    let customTopicType = '';
+    const customTypeById = id => CUSTOM_SPEECH_TYPES.find(type => type.id === id) || null;
+    const customTopicText = () => (document.getElementById('customTopicInput')?.value || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+
+    function initCustomTopic() {
+      const input = document.getElementById('customTopicInput'), types = document.getElementById('customTypes');
+      try { const draft = JSON.parse(localStorage.getItem(CUSTOM_STATE_KEY) || 'null'); if (draft) { input.value = String(draft.text || '').slice(0, 300); customTopicType = customTypeById(draft.type) ? draft.type : ''; } } catch { /* no draft */ }
+      types.innerHTML = CUSTOM_SPEECH_TYPES.map(type => `<button type="button" class="custom-type" role="radio" aria-checked="false" data-type="${type.id}">${type.icon} ${type.label}</button>`).join('');
+      types.addEventListener('click', event => {
+        const button = event.target.closest('[data-type]'); if (!button || isRunning) return;
+        customTopicType = customTopicType === button.dataset.type ? '' : button.dataset.type;      // tap again to clear
+        applyCustomTopic();
       });
+      input.addEventListener('input', () => { if (!isRunning) applyCustomTopic(); });
+      document.getElementById('customRecent').addEventListener('click', event => {
+        const chip = event.target.closest('[data-recent]'); if (!chip || isRunning) return;
+        const item = readCustomRecent()[Number(chip.dataset.recent)]; if (!item) return;
+        input.value = item.text; customTopicType = customTypeById(item.type) ? item.type : '';
+        applyCustomTopic();
+      });
+      renderCustomTopic();
+    }
+
+    function readCustomRecent() {
+      try { const list = JSON.parse(localStorage.getItem(CUSTOM_RECENT_KEY) || '[]'); return Array.isArray(list) ? list.filter(item => item && typeof item.text === 'string' && item.text.trim()).slice(0, 6) : []; } catch { return []; }
+    }
+
+    function renderCustomTopic() {
+      document.querySelectorAll('#customTypes .custom-type').forEach(button => button.setAttribute('aria-checked', String(button.dataset.type === customTopicType)));
+      document.getElementById('customTypeTip').textContent = customTypeById(customTopicType)?.tip ? `Tip: ${customTypeById(customTopicType).tip}` : '';
+      const recent = readCustomRecent();
+      document.getElementById('customRecentBox').hidden = !recent.length;
+      document.getElementById('customRecent').innerHTML = recent.map((item, i) => `<button type="button" class="custom-recent-chip" data-recent="${i}" title="${escapeHtml(item.text)}">${customTypeById(item.type)?.icon || '↺'} ${escapeHtml(item.text)}</button>`).join('');
+    }
+
+    // The student's topic becomes the current "question", so recording, saving, the tracker and the report all work as usual.
+    function applyCustomTopic() {
+      if (!isCustomMode) return;
+      const text = customTopicText(), type = customTypeById(customTopicType);
+      const category = type ? `My topic · ${type.label}` : 'My own topic';
+      const question = text || 'Free speech on a topic of my choice';
+      currentConversationQuestion = { category, question, custom: true };
+      currentWord = { word: category, definition: question };
+      try { localStorage.setItem(CUSTOM_STATE_KEY, JSON.stringify({ text, type: customTopicType })); } catch { /* private mode */ }
+      renderCustomTopic();
+      if (structureBox.style.display !== 'none') updateStructure();
+    }
+
+    function customPromptContext() {
+      const text = customTopicText(), type = customTypeById(customTopicType);
+      const parts = [];
+      if (type && type.id !== 'other') parts.push(`Speech type: ${type.prompt}.`);
+      parts.push(text
+        ? `Question or topic chosen by the speaker: ${text}`
+        : 'Free speech: the speaker chose their own topic and did not write it down. Work out the topic from the transcript.');
+      return parts.join(' ');
+    }
+
+    // Called when a recording starts: keeps the topic for "Practice again" and returns what the saved session needs.
+    function rememberCustomTopic() {
+      if (!isCustomMode) return null;
+      const item = { text: customTopicText(), type: customTopicType };
+      if (item.text) {
+        const list = [item, ...readCustomRecent().filter(old => old.text.toLowerCase() !== item.text.toLowerCase())].slice(0, 6);
+        try { localStorage.setItem(CUSTOM_RECENT_KEY, JSON.stringify(list)); } catch { /* private mode */ }
+      }
+      return item;
     }
 
     function initConversationCategoryControls() {
@@ -6467,11 +6616,16 @@
 
     function updatePromptModeUI() {
       randomWordsBtn.classList.toggle('active', !isConversationMode);
-      ieltsBtn.classList.toggle('active', isConversationMode);
+      ieltsBtn.classList.toggle('active', isConversationMode && !isCustomMode);
+      document.getElementById('customTopicBtn').classList.toggle('active', isCustomMode);
+      [randomWordsBtn, ieltsBtn, document.getElementById('customTopicBtn')].forEach(button => button.setAttribute('aria-pressed', String(button.classList.contains('active'))));
 
-      wordBox.classList.toggle('conversation-mode', isConversationMode);
+      wordBox.classList.toggle('conversation-mode', isConversationMode && !isCustomMode);
+      wordBox.classList.toggle('custom-mode', isCustomMode);
+      document.getElementById('customTopic').classList.toggle('show', isCustomMode);
+      newWordBtn.closest('.controls').hidden = isCustomMode;          // nothing to generate: the topic is theirs
 
-      if (isConversationMode) {
+      if (isConversationMode && !isCustomMode) {
         conversationQuestionEl.classList.add('show');
         newWordBtn.textContent = 'Next Question';
       } else {
@@ -6495,6 +6649,7 @@
       const toggleBtn = document.getElementById('toggleStructureBtn');
       toggleBtn.innerHTML = '<span class="btn-icon">✨</span><span>Structure Guide</span>';
       toggleBtn.classList.remove('active');
+      if (isCustomMode) applyCustomTopic();
     }
 
     function shuffleArray(items) {
@@ -6665,6 +6820,7 @@
     }
 
     function newWord() {
+      if (isCustomMode) { document.getElementById('customTopicInput').focus(); return; }
       // Check if in IELTS mode
       if (isConversationMode) {
         nextConversationQuestion();
@@ -6697,7 +6853,8 @@
         duration: 0, stopped: false, cancelled: false,
         word: currentWord.word, definition: currentWord.definition,
         promptContext: currentPromptContext(),
-        category: isConversationMode ? currentConversationCategory : null,
+        category: isConversationMode ? (currentConversationQuestion?.category || currentConversationCategory) : null,
+        customTopic: rememberCustomTopic(),
         conversationQuestion: isConversationMode ? currentConversationQuestion?.question : null
       };
       latestPracticeSession = activeSpeechSession;
@@ -8059,7 +8216,8 @@
         duration: 0, stopped: false, cancelled: false,
         word: currentWord.word, definition: currentWord.definition,
         promptContext: currentPromptContext(),
-        category: isConversationMode ? currentConversationCategory : null,
+        category: isConversationMode ? (currentConversationQuestion?.category || currentConversationCategory) : null,
+        customTopic: rememberCustomTopic(),
         conversationQuestion: isConversationMode ? currentConversationQuestion?.question : null
       };
       activeSpeechSession = session;
@@ -8190,7 +8348,8 @@
         duration: 0, stopped: false, cancelled: false,
         word: currentWord.word, definition: currentWord.definition,
         promptContext: currentPromptContext(),
-        category: isConversationMode ? currentConversationCategory : null,
+        category: isConversationMode ? (currentConversationQuestion?.category || currentConversationCategory) : null,
+        customTopic: rememberCustomTopic(),
         conversationQuestion: isConversationMode ? currentConversationQuestion?.question : null
       };
       activeSpeechSession = session;
@@ -10001,7 +10160,7 @@
       {
         target: '.prompt-mode-toggle',
         title: 'Choose how you want to practice',
-        copy: 'Use Questions for everyday answers, or Random Words for quick-thinking practice.'
+        copy: 'Use Questions for everyday answers, Random Words for quick-thinking practice, or My Own Topic to practice any question you bring, like an interview question.'
       },
       {
         target: '#newWordBtn',
