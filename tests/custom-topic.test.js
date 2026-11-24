@@ -27,3 +27,19 @@ test('every saved session keeps the topic, so the tracker, history and "try agai
   assert.match(html, /if \(session\.customTopic\) \{/);
   assert.match(html, /const CUSTOM_RECENT_KEY = 'customTopicsRecent';/);
 });
+
+test('Settings explains how to put the app on a phone, with an install button where the browser offers one', () => {
+  assert.match(html, /id="setInstall"[\s\S]{0,200}Get the app on your phone/);
+  assert.match(html, /data-jump="setInstall"/);
+  for (const id of ['installIos', 'installAndroid', 'installDesktop']) assert.match(html, new RegExp(`<details id="${id}">`));
+  assert.match(html, /Add to Home Screen/);
+  assert.match(html, /beforeinstallprompt/);
+  assert.match(html, /copyAppLinkBtn/);
+});
+
+test('mobile polish: no WEB BETA label, and the tagline uses the display font', () => {
+  const vv = readFileSync(new URL('../vocal-variety.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(vv, /WEB BETA/);
+  assert.match(html, /family=Fraunces/);
+  assert.match(html, /font-family: 'Fraunces'/);
+});

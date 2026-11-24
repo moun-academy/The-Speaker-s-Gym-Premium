@@ -156,7 +156,7 @@ function mount() {
   const root = document.createElement('section');
   root.id = 'varietyPage'; root.className = 'container page vv-page'; root.setAttribute('aria-label', 'Expand your vocal variety');
   root.innerHTML = `
-    <div class="vv-topline"><button type="button" class="vv-back" id="vvBack" data-act="back">← Home</button><span class="vv-beta">WEB BETA</span>
+    <div class="vv-topline"><button type="button" class="vv-back" id="vvBack" data-act="back">← Home</button>
       <button type="button" class="vv-sound" id="vvSound" data-act="sound" aria-pressed="false" aria-label="Sound effects"><span aria-hidden="true">♪</span></button><span class="vv-brand">SPEAKER’S GYM</span></div>
     <div id="vvView" class="vv-viewport"></div>
     <p class="vv-sr" id="vvAnnounce" role="status" aria-live="polite"></p>`;

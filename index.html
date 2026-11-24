@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Fraunces:ital,opsz,wght@1,9..144,400;1,9..144,500&display=swap" rel="stylesheet">
   <title>The Speaker's Gym - MOUN Academy</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -3871,11 +3871,16 @@
     }
     #mainPage .brand { margin: 6px 0 8px; }
     #mainPage .tagline {
-      font-size: 14px;
-      color: #94a3b8;
-      line-height: 1.5;
-      max-width: 46ch;
-      margin: 0 auto;
+      font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+      font-style: italic;
+      font-weight: 400;
+      font-size: 18px;
+      color: #e8dcb8;
+      line-height: 1.4;
+      letter-spacing: 0.005em;
+      max-width: 30ch;
+      margin: 2px auto 0;
+      text-wrap: balance;
     }
 
     /* Week calendar ---------------------------------------------------- */
@@ -4149,9 +4154,15 @@
     @media (max-width: 520px) {
       #mainPage.container { padding: 22px 16px 26px; border-radius: 24px; }
       /* the menu and profile buttons float over the top corners; the emblem sits between them */
-      #mainPage .header { padding-top: 34px; }
-      #mainPage h1.brand-logo { width: min(64%, 236px); }
-      #mainPage .tagline { font-size: 13px; }
+      #mainPage .header { padding-top: 54px; }
+      #mainPage .hamburger-btn, #mainPage .profile-btn {
+        position: absolute; top: 0; width: 42px; height: 42px; border-radius: 13px;
+        background: rgba(10, 15, 30, 0.78); border: 1px solid rgba(250, 204, 21, 0.28); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+      }
+      #mainPage .hamburger-btn { left: 0; right: auto; font-size: 21px; }
+      #mainPage .profile-btn { right: 0; left: auto; font-size: 17px; }
+      #mainPage h1.brand-logo { width: min(66%, 240px); margin-top: 0; }
+      #mainPage .tagline { font-size: 16.5px; }
       #mainPage .stats-bar { gap: 8px; }
       #mainPage .stat-value { font-size: 23px; }
       #mainPage .stat-label { font-size: 9px; letter-spacing: 0.05em; }
@@ -5458,12 +5469,52 @@
     <section class="set-summary" id="settingsSummary" aria-label="Your setup at a glance"></section>
 
     <nav class="set-nav" id="settingsNav" aria-label="Jump to a section">
+      <button type="button" data-jump="setInstall" id="setInstallJump">📲 Get the app</button>
       <button type="button" data-jump="setAudio">🎙️ Microphone</button>
       <button type="button" data-jump="setMeet">📞 Google Meet</button>
       <button type="button" data-jump="setReminders">🔔 Reminders</button>
       <button type="button" data-jump="setAccount">👤 Account</button>
       <button type="button" data-jump="setAbout">ℹ️ About</button>
     </nav>
+
+    <!-- Get the app: add the web app to the home screen (filled in by script) -->
+    <div class="settings-section set-install" id="setInstall">
+      <h3>📲 Get the app on your phone</h3>
+      <p class="set-intro">Put The Speaker's Gym on your home screen. It opens full screen with its own icon, like any app, and you stay signed in. No app store and nothing to pay.</p>
+      <p class="set-install-status" id="installStatus" role="status" hidden></p>
+      <div class="set-actions">
+        <button type="button" class="set-btn primary" id="installAppBtn" hidden>📲 Install the app</button>
+        <button type="button" class="set-btn" id="copyAppLinkBtn">🔗 Copy the app link</button>
+      </div>
+      <div class="set-install-steps">
+        <details id="installIos">
+          <summary><span aria-hidden="true">🍎</span> iPhone or iPad</summary>
+          <ol>
+            <li>Open this page in <b>Safari</b> (Chrome works too on recent iPhones).</li>
+            <li>Tap the <b>Share</b> button <span class="set-key" aria-hidden="true">⬆︎</span>: at the bottom of the screen in Safari, at the top right in Chrome.</li>
+            <li>Scroll down and tap <b>Add to Home Screen</b>.</li>
+            <li>Tap <b>Add</b>. The Speaker's Gym icon appears on your home screen.</li>
+          </ol>
+        </details>
+        <details id="installAndroid">
+          <summary><span aria-hidden="true">🤖</span> Android</summary>
+          <ol>
+            <li>Open this page in <b>Chrome</b>.</li>
+            <li>Tap the <b>Install the app</b> button above if you see it. If not, tap the menu <span class="set-key" aria-hidden="true">⋮</span> at the top right.</li>
+            <li>Tap <b>Install app</b> (on some phones it says <b>Add to Home screen</b>).</li>
+            <li>Tap <b>Install</b>. The app appears with your other apps.</li>
+          </ol>
+        </details>
+        <details id="installDesktop">
+          <summary><span aria-hidden="true">💻</span> Computer</summary>
+          <ol>
+            <li>Open this page in <b>Chrome</b> or <b>Edge</b>.</li>
+            <li>Click the install icon at the right end of the address bar, or open the browser menu and choose <b>Install The Speaker's Gym</b> (in Edge: <b>Apps</b>, then <b>Install this site as an app</b>).</li>
+            <li>The app opens in its own window and can be pinned to the taskbar or dock.</li>
+          </ol>
+        </details>
+      </div>
+    </div>
 
     <!-- Audio Input Section -->
     <div class="settings-section" id="setAudio">
@@ -13125,6 +13176,40 @@
       $('twisterNext').addEventListener('click', () => show(index + 1));
       window.speakersGymTwisters = twisters;
       show(0);
+    })();
+  </script>
+  <script>
+    // Settings, "Get the app": the web app installs to the home screen. Not shown inside the Android store app.
+    (function () {
+      const box = document.getElementById('setInstall'); if (!box) return;
+      if (window.Capacitor?.isNativePlatform?.() || ['capacitor:', 'ionic:'].includes(location.protocol)) {
+        box.hidden = true; document.getElementById('setInstallJump')?.setAttribute('hidden', ''); return;
+      }
+      const status = document.getElementById('installStatus'), button = document.getElementById('installAppBtn');
+      const say = text => { status.textContent = text; status.hidden = !text; };
+      const ua = navigator.userAgent || '';
+      const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const android = /Android/.test(ua);
+      const installed = () => window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      document.getElementById(ios ? 'installIos' : android ? 'installAndroid' : 'installDesktop').open = true;
+      if (installed()) say('✅ You are using the installed app. Nothing else to do.');
+      let offer = null;
+      window.addEventListener('beforeinstallprompt', event => {
+        event.preventDefault(); offer = event; button.hidden = false;
+      });
+      button.addEventListener('click', async () => {
+        if (!offer) return;
+        offer.prompt();
+        const choice = await offer.userChoice.catch(() => null);
+        offer = null; button.hidden = true;
+        if (choice?.outcome === 'accepted') say('✅ Installing. The Speaker\'s Gym will appear on your home screen.');
+      });
+      window.addEventListener('appinstalled', () => { button.hidden = true; say('✅ Installed. Open The Speaker\'s Gym from your home screen.'); });
+      document.getElementById('copyAppLinkBtn').addEventListener('click', async () => {
+        const link = location.origin + '/';
+        try { await navigator.clipboard.writeText(link); say('🔗 Link copied: ' + link + ' Send it to your students so they can open it and install it.'); }
+        catch { say('Share this link with your students: ' + link); }
+      });
     })();
   </script>
 </body>
